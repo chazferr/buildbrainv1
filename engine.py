@@ -742,22 +742,22 @@ def build_excel_bytes(
     # H=Bid3  I=Bid3$  J=Bid4  K=Bid4$  L=Low Bidder  M=Low Bid
     # N=Budget/SOV  O=Variance  P=Notes
     col_headers = [
-        ("A", "DIV", 6),
-        ("B", "TRADE", 28),
-        ("C", "SCOPE", 50),
-        ("D", "Bid 1", 16),
-        ("E", "$", 14),
-        ("F", "Bid 2", 16),
-        ("G", "$", 14),
-        ("H", "Bid 3", 16),
-        ("I", "$", 14),
-        ("J", "Bid 4", 16),
-        ("K", "$", 14),
-        ("L", "LOW BIDDER", 16),
-        ("M", "LOW BID", 14),
-        ("N", "BUDGET / SOV", 14),
-        ("O", "VARIANCE", 14),
-        ("P", "NOTES", 30),
+        ("A", "DIV", 7),
+        ("B", "TRADE", 34),
+        ("C", "SCOPE", 62),
+        ("D", "Bid 1", 28),
+        ("E", "$", 16),
+        ("F", "Bid 2", 28),
+        ("G", "$", 16),
+        ("H", "Bid 3", 28),
+        ("I", "$", 16),
+        ("J", "Bid 4", 28),
+        ("K", "$", 16),
+        ("L", "LOW BIDDER", 28),
+        ("M", "LOW BID", 16),
+        ("N", "BUDGET / SOV", 18),
+        ("O", "VARIANCE", 16),
+        ("P", "NOTES", 36),
     ]
 
     # Row 1: title bar
@@ -767,7 +767,7 @@ def build_excel_bytes(
     title_cell.font = title_font
     title_cell.fill = navy_fill
     title_cell.alignment = Alignment(horizontal="left", vertical="center")
-    ws.row_dimensions[1].height = 32
+    ws.row_dimensions[1].height = 40
 
     # Row 2: bid section header
     ws.merge_cells("D2:K2")
@@ -779,7 +779,7 @@ def build_excel_bytes(
     for col_letter in ["L", "M", "N", "O", "P"]:
         c = ws[f"{col_letter}2"]
         c.fill = orange_fill
-    ws.row_dimensions[2].height = 20
+    ws.row_dimensions[2].height = 26
 
     # Row 3: column headers
     for col_letter, label, width in col_headers:
@@ -790,7 +790,7 @@ def build_excel_bytes(
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.border = thin_border
         ws.column_dimensions[col_letter].width = width
-    ws.row_dimensions[3].height = 22
+    ws.row_dimensions[3].height = 30
 
     # Data rows start at row 4
     data_start = 4
@@ -854,7 +854,7 @@ def build_excel_bytes(
         for col in range(1, 17):
             ws.cell(row=r, column=col).border = thin_border
 
-        ws.row_dimensions[r].height = max(15, min(len(scope_lines) * 14, 60))
+        ws.row_dimensions[r].height = max(30, min(len(scope_lines) * 18, 90))
 
     data_end = data_start + len(consolidated) - 1
 
@@ -946,12 +946,13 @@ def build_excel_bytes(
         cell.fill = navy_fill
         cell.border = thin_border
 
-    ws2.column_dimensions["A"].width = 6
-    ws2.column_dimensions["B"].width = 28
-    ws2.column_dimensions["C"].width = 80
-    ws2.column_dimensions["D"].width = 25
-    ws2.column_dimensions["E"].width = 14
-    ws2.column_dimensions["F"].width = 40
+    ws2.column_dimensions["A"].width = 7
+    ws2.column_dimensions["B"].width = 34
+    ws2.column_dimensions["C"].width = 90
+    ws2.column_dimensions["D"].width = 30
+    ws2.column_dimensions["E"].width = 18
+    ws2.column_dimensions["F"].width = 50
+    ws2.row_dimensions[1].height = 28
 
     for i, row_data in enumerate(consolidated):
         r = i + 2
@@ -969,7 +970,7 @@ def build_excel_bytes(
         budget_cell.alignment = top_align
         ws2.cell(row=r, column=6, value=row_data["source_pages"]).alignment = wrap_top
         line_count = row_data["scope"].count("\n") + 1
-        ws2.row_dimensions[r].height = max(15, line_count * 15)
+        ws2.row_dimensions[r].height = max(30, line_count * 18)
         for ci in range(1, 7):
             ws2.cell(row=r, column=ci).border = thin_border
 
@@ -978,38 +979,47 @@ def build_excel_bytes(
     ws3.sheet_properties.tabColor = "27AE60"
 
     req_headers = ["CATEGORY", "REQUIREMENT", "MANDATORY", "SOURCE PDF", "PAGE", "EVIDENCE"]
-    req_widths = [18, 60, 12, 28, 8, 60]
+    req_widths = [22, 70, 14, 36, 8, 70]
     for ci, (h, w) in enumerate(zip(req_headers, req_widths), 1):
         cell = ws3.cell(row=1, column=ci, value=h)
         cell.font = header_font
         cell.fill = navy_fill
         cell.border = thin_border
         ws3.column_dimensions[get_column_letter(ci)].width = w
+    ws3.row_dimensions[1].height = 28
 
     sorted_reqs = sorted(requirements, key=lambda r: (r.category, r.source_pdf, r.source_page))
     for i, req in enumerate(sorted_reqs):
         r = i + 2
         ws3.cell(row=r, column=1, value=req.category).border = thin_border
+        ws3.cell(row=r, column=1).alignment = top_align
         ws3.cell(row=r, column=2, value=req.requirement).border = thin_border
         ws3.cell(row=r, column=2).alignment = wrap_top
         ws3.cell(row=r, column=3, value="Yes" if req.mandatory else "No").border = thin_border
+        ws3.cell(row=r, column=3).alignment = Alignment(horizontal="center", vertical="top")
         ws3.cell(row=r, column=4, value=req.source_pdf).border = thin_border
+        ws3.cell(row=r, column=4).alignment = wrap_top
         ws3.cell(row=r, column=5, value=req.source_page).border = thin_border
+        ws3.cell(row=r, column=5).alignment = Alignment(horizontal="center", vertical="top")
         ws3.cell(row=r, column=6, value=req.evidence).border = thin_border
         ws3.cell(row=r, column=6).alignment = wrap_top
+        # Row height based on longest text in requirement or evidence
+        max_len = max(len(req.requirement), len(req.evidence))
+        ws3.row_dimensions[r].height = max(28, min(int(max_len / 60) * 18 + 28, 80))
 
     # ── TAB 4: Source Trace ───────────────────────────────────────────────
     ws4 = wb.create_sheet("Source Trace")
     ws4.sheet_properties.tabColor = "7F8C9B"
 
     trace_headers = ["TYPE", "CATEGORY / TRADE", "DETAIL", "SOURCE PDF", "PAGE", "EVIDENCE"]
-    trace_widths = [14, 28, 60, 28, 8, 60]
+    trace_widths = [16, 34, 70, 36, 8, 70]
     for ci, (h, w) in enumerate(zip(trace_headers, trace_widths), 1):
         cell = ws4.cell(row=1, column=ci, value=h)
         cell.font = header_font
         cell.fill = navy_fill
         cell.border = thin_border
         ws4.column_dimensions[get_column_letter(ci)].width = w
+    ws4.row_dimensions[1].height = 28
 
     all_traces = []
     for req in requirements:
@@ -1023,13 +1033,19 @@ def build_excel_bytes(
     for i, (rtype, cat, detail, pdf, page, ev) in enumerate(all_traces):
         r = i + 2
         ws4.cell(row=r, column=1, value=rtype).border = thin_border
+        ws4.cell(row=r, column=1).alignment = top_align
         ws4.cell(row=r, column=2, value=cat).border = thin_border
+        ws4.cell(row=r, column=2).alignment = top_align
         ws4.cell(row=r, column=3, value=detail).border = thin_border
         ws4.cell(row=r, column=3).alignment = wrap_top
         ws4.cell(row=r, column=4, value=pdf).border = thin_border
+        ws4.cell(row=r, column=4).alignment = wrap_top
         ws4.cell(row=r, column=5, value=page).border = thin_border
+        ws4.cell(row=r, column=5).alignment = Alignment(horizontal="center", vertical="top")
         ws4.cell(row=r, column=6, value=ev).border = thin_border
         ws4.cell(row=r, column=6).alignment = wrap_top
+        max_len = max(len(detail), len(ev))
+        ws4.row_dimensions[r].height = max(26, min(int(max_len / 55) * 18 + 26, 70))
 
     # ── Save ──────────────────────────────────────────────────────────────
     buf = io.BytesIO()

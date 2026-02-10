@@ -21,7 +21,7 @@ from queue import Empty, Queue
 from dotenv import load_dotenv
 from flask import Flask, Response, render_template, request, jsonify, send_file
 
-from engine import build_excel_bytes, process_pdfs
+from engine import build_excel_bytes, process_files, SUPPORTED_EXTENSIONS
 
 # ─── Load environment ────────────────────────────────────────────────────────
 load_dotenv()
@@ -68,10 +68,10 @@ def index():
 
 @app.route("/api/upload", methods=["POST"])
 def upload():
-    """Accept PDF file uploads and return a job_id."""
+    """Accept file uploads (PDFs, DOCX, XLSX, EML, images, etc.) and return a job_id."""
     files = request.files.getlist("pdfs")
     if not files or all(f.filename == "" for f in files):
-        return jsonify({"error": "No PDF files uploaded"}), 400
+        return jsonify({"error": "No files uploaded"}), 400
 
     job_id = uuid.uuid4().hex[:12]
     job_dir = UPLOAD_DIR / job_id
@@ -79,15 +79,17 @@ def upload():
 
     saved_paths = []
     for f in files:
-        if f.filename and f.filename.lower().endswith(".pdf"):
-            safe_name = Path(f.filename).name  # strip directory components
-            dest = job_dir / safe_name
-            f.save(str(dest))
-            saved_paths.append(dest)
+        if f.filename:
+            ext = Path(f.filename).suffix.lower()
+            if ext in SUPPORTED_EXTENSIONS:
+                safe_name = Path(f.filename).name  # strip directory components
+                dest = job_dir / safe_name
+                f.save(str(dest))
+                saved_paths.append(dest)
 
     if not saved_paths:
         shutil.rmtree(job_dir, ignore_errors=True)
-        return jsonify({"error": "No valid PDF files found"}), 400
+        return jsonify({"error": "No supported files found. Accepted: PDF, DOCX, XLSX, CSV, EML, JPG, PNG, TXT"}), 400
 
     # Initialize job
     progress_queue: Queue = Queue()
@@ -97,7 +99,7 @@ def upload():
         "excel_bytes": None,
         "stats": None,
         "error": None,
-        "pdf_paths": saved_paths,
+        "file_paths": saved_paths,
         "job_dir": job_dir,
     }
 
@@ -182,8 +184,8 @@ def _run_extraction(job_id: str):
         q.put(msg)
 
     try:
-        requirements, trades, stats = process_pdfs(
-            job["pdf_paths"],
+        requirements, trades, stats = process_files(
+            job["file_paths"],
             API_KEY,
             progress_callback=on_progress,
         )

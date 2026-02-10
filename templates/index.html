@@ -331,9 +331,9 @@
     <!-- Drop zone -->
     <div class="dropzone" id="dropzone">
         <div class="icon">&#128466;</div>
-        <h2>Drag & drop PDF files here</h2>
-        <p>or click to browse &mdash; accepts multiple construction drawing PDFs</p>
-        <input type="file" id="fileInput" accept=".pdf" multiple hidden>
+        <h2>Drag & drop files here</h2>
+        <p>or click to browse &mdash; PDF, DOCX, XLSX, CSV, EML, JPG, PNG, TXT</p>
+        <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.eml,.jpg,.jpeg,.png,.tiff,.tif,.bmp,.webp,.txt,.rtf" multiple hidden>
     </div>
 
     <!-- File list -->
@@ -416,7 +416,11 @@
     dropzone.addEventListener('drop', (e) => {
         e.preventDefault();
         dropzone.classList.remove('dragover');
-        const files = Array.from(e.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
+        const supported = ['.pdf','.docx','.doc','.xlsx','.xls','.csv','.eml','.jpg','.jpeg','.png','.tiff','.tif','.bmp','.webp','.txt','.rtf'];
+        const files = Array.from(e.dataTransfer.files).filter(f => {
+            const ext = '.' + f.name.split('.').pop().toLowerCase();
+            return supported.includes(ext);
+        });
         addFiles(files);
     });
 
@@ -480,7 +484,7 @@
         resultsSection.classList.remove('active');
         errorCard.classList.remove('active');
 
-        addLogEntry('Uploading PDFs...');
+        addLogEntry('Uploading files...');
 
         // Upload files
         const formData = new FormData();

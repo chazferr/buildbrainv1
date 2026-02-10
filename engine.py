@@ -6,10 +6,13 @@ and the web app (app.py).
 """
 
 import base64
+import csv
+import email
 import io
 import json
 import re
 import time
+from email import policy
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -17,6 +20,12 @@ import anthropic
 import fitz  # PyMuPDF
 import pandas as pd
 from pydantic import BaseModel, ValidationError, field_validator
+
+# Optional imports for extended file types
+try:
+    from docx import Document as DocxDocument
+except ImportError:
+    DocxDocument = None
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -221,6 +230,218 @@ def dedup_trades(items: list[TradeAndScope]) -> list[TradeAndScope]:
             seen.add(key)
             result.append(item)
     return result
+
+
+# ─── Supported file types ──────────────────────────────────────────────────
+
+SUPPORTED_EXTENSIONS = {
+    # PDFs (image-based extraction)
+    ".pdf",
+    # Images (direct to Vision API)
+    ".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".webp",
+    # Documents (text extraction)
+    ".docx", ".doc",
+    # Spreadsheets (text extraction)
+    ".xlsx", ".xls", ".csv",
+    # Email (text extraction)
+    ".eml",
+    # Plain text
+    ".txt", ".rtf",
+}
+
+# Max characters per text chunk sent to Claude
+_TEXT_CHUNK_SIZE = 8000
+
+
+def _extract_text_from_docx(file_path: Path) -> str:
+    """Extract all text from a DOCX file."""
+    if DocxDocument is None:
+        raise ImportError("python-docx is required for DOCX files. Install with: pip install python-docx")
+    doc = DocxDocument(str(file_path))
+    paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+    # Also extract text from tables
+    for table in doc.tables:
+        for row in table.rows:
+            cells = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+            if cells:
+                paragraphs.append(" | ".join(cells))
+    return "\n".join(paragraphs)
+
+
+def _extract_text_from_eml(file_path: Path) -> str:
+    """Extract text content from an EML email file."""
+    with open(file_path, "rb") as f:
+        msg = email.message_from_binary_file(f, policy=policy.default)
+
+    parts = []
+    # Headers
+    for header in ["From", "To", "Subject", "Date", "CC"]:
+        val = msg.get(header)
+        if val:
+            parts.append(f"{header}: {val}")
+
+    parts.append("")  # blank line after headers
+
+    # Body
+    body = msg.get_body(preferencelist=("plain", "html"))
+    if body:
+        content = body.get_content()
+        if isinstance(content, bytes):
+            content = content.decode("utf-8", errors="replace")
+        parts.append(content)
+
+    # List attachments
+    attachments = []
+    for part in msg.walk():
+        fn = part.get_filename()
+        if fn:
+            attachments.append(fn)
+    if attachments:
+        parts.append("\n--- Attachments ---")
+        for att in attachments:
+            parts.append(f"  - {att}")
+
+    return "\n".join(parts)
+
+
+def _extract_text_from_spreadsheet(file_path: Path) -> str:
+    """Extract text content from XLSX, XLS, or CSV files."""
+    ext = file_path.suffix.lower()
+    parts = []
+
+    if ext == ".csv":
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            reader = csv.reader(f)
+            for row_idx, row in enumerate(reader):
+                if any(cell.strip() for cell in row):
+                    parts.append(" | ".join(cell.strip() for cell in row))
+    else:
+        # XLSX / XLS via pandas
+        try:
+            xls = pd.ExcelFile(file_path)
+            for sheet_name in xls.sheet_names:
+                df = pd.read_excel(xls, sheet_name=sheet_name, header=None)
+                parts.append(f"--- Sheet: {sheet_name} ---")
+                for _, row in df.iterrows():
+                    cells = [str(v).strip() for v in row if pd.notna(v) and str(v).strip()]
+                    if cells:
+                        parts.append(" | ".join(cells))
+                parts.append("")
+        except Exception as e:
+            parts.append(f"[Error reading spreadsheet: {e}]")
+
+    return "\n".join(parts)
+
+
+def _extract_text_from_txt(file_path: Path) -> str:
+    """Read plain text or RTF file."""
+    with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+        return f.read()
+
+
+def _chunk_text(text: str, chunk_size: int = _TEXT_CHUNK_SIZE) -> list[str]:
+    """Split text into chunks, breaking at line boundaries."""
+    lines = text.split("\n")
+    chunks = []
+    current = []
+    current_len = 0
+
+    for line in lines:
+        line_len = len(line) + 1
+        if current_len + line_len > chunk_size and current:
+            chunks.append("\n".join(current))
+            current = []
+            current_len = 0
+        current.append(line)
+        current_len += line_len
+
+    if current:
+        chunks.append("\n".join(current))
+
+    return chunks if chunks else ["(empty document)"]
+
+
+def _get_image_media_type(file_path: Path) -> str:
+    """Get MIME type for image files."""
+    ext = file_path.suffix.lower()
+    return {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".tiff": "image/tiff",
+        ".tif": "image/tiff",
+        ".bmp": "image/bmp",
+        ".webp": "image/webp",
+    }.get(ext, "image/png")
+
+
+# ─── Text-based page processing ───────────────────────────────────────────
+
+
+def process_text_page(
+    client: anthropic.Anthropic,
+    text_content: str,
+    file_name: str,
+    page_num: int,
+    stats: dict,
+) -> Optional[PageExtraction]:
+    """Send text content (from DOCX/EML/XLSX/etc.) to Claude for extraction."""
+
+    prompt_text = EXTRACTION_PROMPT.format(pdf_name=file_name, page_num=page_num)
+
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": f"--- DOCUMENT CONTENT ({file_name}, section {page_num}) ---\n\n"
+                            f"{text_content}\n\n"
+                            f"--- END DOCUMENT CONTENT ---\n\n"
+                            f"{prompt_text}",
+                },
+            ],
+        }
+    ]
+
+    for attempt in range(2):
+        try:
+            response = client.messages.create(
+                model=MODEL,
+                max_tokens=4096,
+                temperature=TEMPERATURE,
+                messages=messages,
+            )
+
+            usage = response.usage
+            stats["input_tokens"] += usage.input_tokens
+            stats["output_tokens"] += usage.output_tokens
+            stats["api_calls"] += 1
+
+            raw_text = response.content[0].text
+            json_text = extract_json_from_text(raw_text)
+
+            data = json.loads(json_text)
+            extraction = PageExtraction(**data)
+            return extraction
+
+        except (json.JSONDecodeError, ValidationError):
+            if attempt == 0:
+                retry_text = RETRY_PROMPT.format(pdf_name=file_name, page_num=page_num)
+                messages.append({"role": "assistant", "content": raw_text})
+                messages.append({"role": "user", "content": retry_text})
+            else:
+                stats["failed_pages"].append(f"{file_name} section {page_num}")
+                return None
+
+        except anthropic.APIError:
+            if attempt == 0:
+                time.sleep(5)
+            else:
+                stats["failed_pages"].append(f"{file_name} section {page_num}")
+                return None
+
+    return None
 
 
 # ─── Trade consolidation ────────────────────────────────────────────────────
@@ -564,22 +785,198 @@ def process_page(
 # ─── Orchestrator ────────────────────────────────────────────────────────────
 
 
-def process_pdfs(
-    pdf_paths: list[Path],
+def _process_pdf(client, file_path, emit, global_stats, file_stats):
+    """Process a PDF file page by page using Vision API."""
+    file_name = file_path.name
+    doc = fitz.open(str(file_path))
+    num_pages = len(doc)
+    emit(f"{file_name} has {num_pages} pages")
+
+    per_file = {"input_tokens": 0, "output_tokens": 0, "api_calls": 0,
+                "pages": num_pages, "failed_pages": []}
+    reqs, trades = [], []
+
+    for page_idx in range(num_pages):
+        page_num = page_idx + 1
+        emit(f"Processing {file_name} — Page {page_num}/{num_pages}...")
+
+        try:
+            png_bytes = render_page_to_png(doc, page_idx)
+        except Exception as e:
+            emit(f"[RENDER ERROR] {file_name} p.{page_num}: {e}")
+            per_file["failed_pages"].append(f"{file_name} p.{page_num}")
+            continue
+
+        page_stats = {"input_tokens": 0, "output_tokens": 0, "api_calls": 0, "failed_pages": []}
+        extraction = process_page(client, png_bytes, file_name, page_num, page_stats)
+
+        per_file["input_tokens"] += page_stats["input_tokens"]
+        per_file["output_tokens"] += page_stats["output_tokens"]
+        per_file["api_calls"] += page_stats["api_calls"]
+        per_file["failed_pages"].extend(page_stats["failed_pages"])
+
+        if extraction:
+            emit(f"{file_name} p.{page_num} OK (reqs={len(extraction.submission_requirements)}, trades={len(extraction.trades_and_scope)})")
+            reqs.extend(extraction.submission_requirements)
+            trades.extend(extraction.trades_and_scope)
+        else:
+            emit(f"{file_name} p.{page_num} SKIPPED")
+
+    doc.close()
+    file_stats[file_name] = per_file
+    for k in ["input_tokens", "output_tokens", "api_calls"]:
+        global_stats[k] += per_file[k]
+    global_stats["total_pages"] += per_file["pages"]
+    global_stats["failed_pages"].extend(per_file["failed_pages"])
+    return reqs, trades
+
+
+def _process_image(client, file_path, emit, global_stats, file_stats):
+    """Process a standalone image file via Vision API."""
+    file_name = file_path.name
+    emit(f"Processing image {file_name}...")
+
+    image_bytes = file_path.read_bytes()
+    if len(image_bytes) > MAX_IMAGE_BYTES:
+        emit(f"[WARNING] {file_name} is large ({len(image_bytes)} bytes), may be truncated")
+
+    media_type = _get_image_media_type(file_path)
+    per_file = {"input_tokens": 0, "output_tokens": 0, "api_calls": 0,
+                "pages": 1, "failed_pages": []}
+
+    # Use the same process_page but with the raw image bytes
+    page_stats = {"input_tokens": 0, "output_tokens": 0, "api_calls": 0, "failed_pages": []}
+
+    b64_image = base64.standard_b64encode(image_bytes).decode("utf-8")
+    prompt_text = EXTRACTION_PROMPT.format(pdf_name=file_name, page_num=1)
+    messages = [{"role": "user", "content": [
+        {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64_image}},
+        {"type": "text", "text": prompt_text},
+    ]}]
+
+    extraction = None
+    for attempt in range(2):
+        try:
+            response = client.messages.create(model=MODEL, max_tokens=4096,
+                                              temperature=TEMPERATURE, messages=messages)
+            page_stats["input_tokens"] += response.usage.input_tokens
+            page_stats["output_tokens"] += response.usage.output_tokens
+            page_stats["api_calls"] += 1
+            raw_text = response.content[0].text
+            data = json.loads(extract_json_from_text(raw_text))
+            extraction = PageExtraction(**data)
+            break
+        except (json.JSONDecodeError, ValidationError):
+            if attempt == 0:
+                messages.append({"role": "assistant", "content": raw_text})
+                messages.append({"role": "user", "content": RETRY_PROMPT.format(pdf_name=file_name, page_num=1)})
+            else:
+                page_stats["failed_pages"].append(file_name)
+        except anthropic.APIError:
+            if attempt == 0:
+                time.sleep(5)
+            else:
+                page_stats["failed_pages"].append(file_name)
+
+    per_file["input_tokens"] = page_stats["input_tokens"]
+    per_file["output_tokens"] = page_stats["output_tokens"]
+    per_file["api_calls"] = page_stats["api_calls"]
+    per_file["failed_pages"] = page_stats["failed_pages"]
+    file_stats[file_name] = per_file
+    for k in ["input_tokens", "output_tokens", "api_calls"]:
+        global_stats[k] += per_file[k]
+    global_stats["total_pages"] += 1
+    global_stats["failed_pages"].extend(per_file["failed_pages"])
+
+    reqs, trades = [], []
+    if extraction:
+        emit(f"{file_name} OK (reqs={len(extraction.submission_requirements)}, trades={len(extraction.trades_and_scope)})")
+        reqs = list(extraction.submission_requirements)
+        trades = list(extraction.trades_and_scope)
+    else:
+        emit(f"{file_name} SKIPPED")
+    return reqs, trades
+
+
+def _process_text_file(client, file_path, emit, global_stats, file_stats):
+    """Process a text-based file (DOCX, EML, XLSX, CSV, TXT) by extracting text and sending to Claude."""
+    file_name = file_path.name
+    ext = file_path.suffix.lower()
+
+    emit(f"Extracting text from {file_name}...")
+
+    try:
+        if ext == ".docx":
+            text = _extract_text_from_docx(file_path)
+        elif ext == ".eml":
+            text = _extract_text_from_eml(file_path)
+        elif ext in (".xlsx", ".xls", ".csv"):
+            text = _extract_text_from_spreadsheet(file_path)
+        elif ext in (".txt", ".rtf", ".doc"):
+            text = _extract_text_from_txt(file_path)
+        else:
+            text = _extract_text_from_txt(file_path)
+    except Exception as e:
+        emit(f"[ERROR] Could not read {file_name}: {e}")
+        return [], []
+
+    if not text.strip():
+        emit(f"[WARNING] {file_name} has no extractable text, skipping")
+        return [], []
+
+    # Chunk the text and process each chunk
+    chunks = _chunk_text(text)
+    num_chunks = len(chunks)
+    emit(f"{file_name}: {len(text)} chars, {num_chunks} section(s)")
+
+    per_file = {"input_tokens": 0, "output_tokens": 0, "api_calls": 0,
+                "pages": num_chunks, "failed_pages": []}
+    reqs, trades = [], []
+
+    for chunk_idx, chunk in enumerate(chunks):
+        section_num = chunk_idx + 1
+        emit(f"Processing {file_name} — Section {section_num}/{num_chunks}...")
+
+        page_stats = {"input_tokens": 0, "output_tokens": 0, "api_calls": 0, "failed_pages": []}
+        extraction = process_text_page(client, chunk, file_name, section_num, page_stats)
+
+        per_file["input_tokens"] += page_stats["input_tokens"]
+        per_file["output_tokens"] += page_stats["output_tokens"]
+        per_file["api_calls"] += page_stats["api_calls"]
+        per_file["failed_pages"].extend(page_stats["failed_pages"])
+
+        if extraction:
+            emit(f"{file_name} s.{section_num} OK (reqs={len(extraction.submission_requirements)}, trades={len(extraction.trades_and_scope)})")
+            reqs.extend(extraction.submission_requirements)
+            trades.extend(extraction.trades_and_scope)
+        else:
+            emit(f"{file_name} s.{section_num} SKIPPED")
+
+    file_stats[file_name] = per_file
+    for k in ["input_tokens", "output_tokens", "api_calls"]:
+        global_stats[k] += per_file[k]
+    global_stats["total_pages"] += per_file["pages"]
+    global_stats["failed_pages"].extend(per_file["failed_pages"])
+    return reqs, trades
+
+
+def process_files(
+    file_paths: list[Path],
     api_key: str,
     progress_callback: Optional[Callable[[str], None]] = None,
 ) -> tuple[list[SubmissionRequirement], list[TradeAndScope], dict]:
     """
-    Process a list of PDF files: extract requirements and trades from every page.
+    Process a list of files (PDFs, images, DOCX, EML, XLSX, CSV, TXT):
+    extract requirements and trades from every file.
 
     Args:
-        pdf_paths: List of Path objects pointing to PDF files.
+        file_paths: List of Path objects pointing to supported files.
         api_key: Anthropic API key.
         progress_callback: Optional callable that receives progress message strings.
 
     Returns:
         (requirements, trades, stats) where stats is a dict with token counts,
-        costs, page counts, and per-PDF breakdowns.
+        costs, page counts, and per-file breakdowns.
     """
     def emit(msg: str):
         if progress_callback:
@@ -590,7 +987,7 @@ def process_pdfs(
     all_requirements: list[SubmissionRequirement] = []
     all_trades: list[TradeAndScope] = []
 
-    pdf_stats: dict[str, dict] = {}
+    file_stats: dict[str, dict] = {}
     global_stats = {
         "total_pages": 0,
         "input_tokens": 0,
@@ -599,68 +996,29 @@ def process_pdfs(
         "failed_pages": [],
     }
 
-    for pdf_path in pdf_paths:
-        if not pdf_path.exists():
-            emit(f"[WARNING] PDF not found, skipping: {pdf_path}")
+    image_exts = {".jpg", ".jpeg", ".png", ".tiff", ".tif", ".bmp", ".webp"}
+    text_exts = {".docx", ".doc", ".xlsx", ".xls", ".csv", ".eml", ".txt", ".rtf"}
+
+    for file_path in file_paths:
+        if not file_path.exists():
+            emit(f"[WARNING] File not found, skipping: {file_path}")
             continue
 
-        pdf_name = pdf_path.name
-        emit(f"Opening {pdf_name}...")
+        ext = file_path.suffix.lower()
+        emit(f"Opening {file_path.name}...")
 
-        doc = fitz.open(str(pdf_path))
-        num_pages = len(doc)
-        emit(f"{pdf_name} has {num_pages} pages")
+        if ext == ".pdf":
+            reqs, trades = _process_pdf(client, file_path, emit, global_stats, file_stats)
+        elif ext in image_exts:
+            reqs, trades = _process_image(client, file_path, emit, global_stats, file_stats)
+        elif ext in text_exts:
+            reqs, trades = _process_text_file(client, file_path, emit, global_stats, file_stats)
+        else:
+            emit(f"[WARNING] Unsupported file type: {ext}, skipping {file_path.name}")
+            continue
 
-        per_pdf = {
-            "input_tokens": 0,
-            "output_tokens": 0,
-            "api_calls": 0,
-            "pages": num_pages,
-            "failed_pages": [],
-        }
-
-        for page_idx in range(num_pages):
-            page_num = page_idx + 1
-            emit(f"Processing {pdf_name} \u2014 Page {page_num}/{num_pages}...")
-
-            try:
-                png_bytes = render_page_to_png(doc, page_idx)
-            except Exception as e:
-                emit(f"[RENDER ERROR] {pdf_name} p.{page_num}: {e}")
-                per_pdf["failed_pages"].append(f"{pdf_name} p.{page_num}")
-                continue
-
-            page_stats = {
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "api_calls": 0,
-                "failed_pages": [],
-            }
-
-            extraction = process_page(client, png_bytes, pdf_name, page_num, page_stats)
-
-            per_pdf["input_tokens"] += page_stats["input_tokens"]
-            per_pdf["output_tokens"] += page_stats["output_tokens"]
-            per_pdf["api_calls"] += page_stats["api_calls"]
-            per_pdf["failed_pages"].extend(page_stats["failed_pages"])
-
-            if extraction:
-                req_count = len(extraction.submission_requirements)
-                trade_count = len(extraction.trades_and_scope)
-                emit(f"{pdf_name} p.{page_num} OK (reqs={req_count}, trades={trade_count})")
-                all_requirements.extend(extraction.submission_requirements)
-                all_trades.extend(extraction.trades_and_scope)
-            else:
-                emit(f"{pdf_name} p.{page_num} SKIPPED")
-
-        doc.close()
-
-        pdf_stats[pdf_name] = per_pdf
-        global_stats["total_pages"] += per_pdf["pages"]
-        global_stats["input_tokens"] += per_pdf["input_tokens"]
-        global_stats["output_tokens"] += per_pdf["output_tokens"]
-        global_stats["api_calls"] += per_pdf["api_calls"]
-        global_stats["failed_pages"].extend(per_pdf["failed_pages"])
+        all_requirements.extend(reqs)
+        all_trades.extend(trades)
 
     # Dedup
     emit("Deduplicating results...")
@@ -679,7 +1037,7 @@ def process_pdfs(
         "input_cost": input_cost,
         "output_cost": output_cost,
         "total_cost": total_cost,
-        "pdf_stats": pdf_stats,
+        "file_stats": file_stats,
         "num_requirements": len(all_requirements),
         "num_trades": len(consolidated),
         "num_raw_trade_items": len(all_trades),
@@ -688,6 +1046,10 @@ def process_pdfs(
     emit(f"Done! {len(all_requirements)} requirements, {len(consolidated)} trades extracted.")
 
     return all_requirements, all_trades, stats
+
+
+# Backwards compatibility alias
+process_pdfs = process_files
 
 
 # ─── Excel builder ───────────────────────────────────────────────────────────

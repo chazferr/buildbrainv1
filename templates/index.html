@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BuildBrain</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --navy: #1a2332;
+            --navy-light: #243447;
+            --orange: #e8722a;
+            --orange-hover: #d4641f;
+            --bg: #f4f6f9;
+            --card: #ffffff;
+            --text: #2c3e50;
+            --text-muted: #7f8c9b;
+            --border: #dde2e8;
+            --success: #27ae60;
+            --error: #e74c3c;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background: var(--navy);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        header .logo {
+            width: 36px;
+            height: 36px;
+            background: var(--orange);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        header h1 span { color: var(--orange); }
+
+        header .subtitle {
+            margin-left: auto;
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.5);
+        }
+
+        /* Main content */
+        main {
+            max-width: 720px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        /* Drop zone */
+        .dropzone {
+            border: 2.5px dashed var(--border);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--card);
+        }
+
+        .dropzone:hover,
+        .dropzone.dragover {
+            border-color: var(--orange);
+            background: #fef5ee;
+        }
+
+        .dropzone .icon {
+            font-size: 3rem;
+            margin-bottom: 0.75rem;
+            opacity: 0.5;
+        }
+
+        .dropzone h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+        }
+
+        .dropzone p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* File list */
+        .file-list {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 1rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .file-item .file-icon { opacity: 0.4; }
+
+        .file-item .file-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-item .file-size {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .file-item .remove-btn {
+            background: none;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 0 0.25rem;
+            opacity: 0.6;
+            transition: opacity 0.15s;
+        }
+
+        .file-item .remove-btn:hover { opacity: 1; }
+
+        /* Submit button */
+        .submit-section {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .submit-btn {
+            background: var(--orange);
+            color: white;
+            border: none;
+            padding: 0.85rem 2.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .submit-btn:hover:not(:disabled) { background: var(--orange-hover); }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Progress section */
+        .progress-section {
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .progress-section.active { display: block; }
+
+        .progress-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.25rem;
+        }
+
+        .progress-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid var(--border);
+            border-top-color: var(--orange);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .progress-log {
+            max-height: 220px;
+            overflow-y: auto;
+            font-size: 0.82rem;
+            font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+            color: var(--text-muted);
+            line-height: 1.6;
+            padding: 0.5rem 0;
+        }
+
+        .progress-log .entry { padding: 0.1rem 0; }
+
+        .progress-log .entry:last-child { color: var(--text); font-weight: 500; }
+
+        /* Results section */
+        .results-section {
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .results-section.active { display: block; }
+
+        .results-card {
+            background: var(--card);
+            border: 1px solid var(--success);
+            border-radius: 10px;
+            padding: 1.25rem;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            color: var(--success);
+            margin-bottom: 1rem;
+            font-size: 1.05rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .stat-box {
+            background: var(--bg);
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        .stat-box .value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        .stat-box .label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.15rem;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        .download-btn:hover { opacity: 0.9; }
+
+        /* Error */
+        .error-card {
+            background: #fdf0ef;
+            border: 1px solid var(--error);
+            border-radius: 10px;
+            padding: 1.25rem;
+            color: var(--error);
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .error-card.active { display: block; }
+
+        /* Reset link */
+        .reset-link {
+            display: inline-block;
+            margin-top: 1rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .reset-link:hover { color: var(--text); }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">B</div>
+    <h1>Build<span>Brain</span></h1>
+    <div class="subtitle">Construction Document Extraction</div>
+</header>
+
+<main>
+    <!-- Drop zone -->
+    <div class="dropzone" id="dropzone">
+        <div class="icon">&#128466;</div>
+        <h2>Drag & drop PDF files here</h2>
+        <p>or click to browse &mdash; accepts multiple construction drawing PDFs</p>
+        <input type="file" id="fileInput" accept=".pdf" multiple hidden>
+    </div>
+
+    <!-- File list -->
+    <div class="file-list" id="fileList"></div>
+
+    <!-- Submit -->
+    <div class="submit-section" id="submitSection" style="display:none;">
+        <button class="submit-btn" id="submitBtn">Submit Bid</button>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-section" id="progressSection">
+        <div class="progress-card">
+            <div class="progress-header">
+                <div class="spinner" id="progressSpinner"></div>
+                <span>Processing documents...</span>
+            </div>
+            <div class="progress-log" id="progressLog"></div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-section" id="resultsSection">
+        <div class="results-card">
+            <div class="results-header">&#10003; Extraction Complete</div>
+            <div class="stats-grid" id="statsGrid"></div>
+            <div style="text-align:center;">
+                <button class="download-btn" id="downloadBtn">&#11015; Download Excel</button>
+            </div>
+        </div>
+        <div style="text-align:center;">
+            <span class="reset-link" id="resetLink">Process more files</span>
+        </div>
+    </div>
+
+    <!-- Error -->
+    <div class="error-card" id="errorCard">
+        <strong>Error:</strong> <span id="errorMsg"></span>
+        <div style="text-align:center;">
+            <span class="reset-link" id="errorResetLink">Try again</span>
+        </div>
+    </div>
+</main>
+
+<script>
+(function() {
+    // State
+    let selectedFiles = [];
+    let currentJobId = null;
+
+    // Elements
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileList');
+    const submitSection = document.getElementById('submitSection');
+    const submitBtn = document.getElementById('submitBtn');
+    const progressSection = document.getElementById('progressSection');
+    const progressLog = document.getElementById('progressLog');
+    const progressSpinner = document.getElementById('progressSpinner');
+    const resultsSection = document.getElementById('resultsSection');
+    const statsGrid = document.getElementById('statsGrid');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const errorCard = document.getElementById('errorCard');
+    const errorMsg = document.getElementById('errorMsg');
+    const resetLink = document.getElementById('resetLink');
+    const errorResetLink = document.getElementById('errorResetLink');
+
+    // Drag-and-drop
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        const files = Array.from(e.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith('.pdf'));
+        addFiles(files);
+    });
+
+    fileInput.addEventListener('change', () => {
+        addFiles(Array.from(fileInput.files));
+        fileInput.value = '';
+    });
+
+    function addFiles(files) {
+        for (const f of files) {
+            // Avoid duplicates by name
+            if (!selectedFiles.some(sf => sf.name === f.name && sf.size === f.size)) {
+                selectedFiles.push(f);
+            }
+        }
+        renderFileList();
+    }
+
+    function renderFileList() {
+        fileList.innerHTML = '';
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const f = selectedFiles[i];
+            const div = document.createElement('div');
+            div.className = 'file-item';
+
+            const sizeStr = f.size > 1048576
+                ? (f.size / 1048576).toFixed(1) + ' MB'
+                : (f.size / 1024).toFixed(0) + ' KB';
+
+            div.innerHTML = `
+                <span class="file-icon">&#128196;</span>
+                <span class="file-name">${escapeHtml(f.name)}</span>
+                <span class="file-size">${sizeStr}</span>
+                <button class="remove-btn" data-idx="${i}" title="Remove">&times;</button>
+            `;
+            fileList.appendChild(div);
+        }
+
+        // Bind remove buttons
+        fileList.querySelectorAll('.remove-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const idx = parseInt(e.target.getAttribute('data-idx'));
+                selectedFiles.splice(idx, 1);
+                renderFileList();
+            });
+        });
+
+        submitSection.style.display = selectedFiles.length > 0 ? '' : 'none';
+    }
+
+    // Submit
+    submitBtn.addEventListener('click', async () => {
+        if (selectedFiles.length === 0) return;
+
+        submitBtn.disabled = true;
+        dropzone.style.display = 'none';
+        fileList.style.display = 'none';
+        submitSection.style.display = 'none';
+        progressSection.classList.add('active');
+        progressLog.innerHTML = '';
+        resultsSection.classList.remove('active');
+        errorCard.classList.remove('active');
+
+        addLogEntry('Uploading PDFs...');
+
+        // Upload files
+        const formData = new FormData();
+        for (const f of selectedFiles) {
+            formData.append('pdfs', f);
+        }
+
+        try {
+            const uploadResp = await fetch('/api/upload', { method: 'POST', body: formData });
+            const uploadData = await uploadResp.json();
+
+            if (!uploadResp.ok) {
+                throw new Error(uploadData.error || 'Upload failed');
+            }
+
+            currentJobId = uploadData.job_id;
+            addLogEntry('Upload complete. Starting extraction...');
+
+            // Connect to SSE stream
+            const evtSource = new EventSource('/api/stream/' + currentJobId);
+
+            evtSource.addEventListener('progress', (e) => {
+                const data = JSON.parse(e.data);
+                addLogEntry(data.message);
+            });
+
+            evtSource.addEventListener('done', (e) => {
+                evtSource.close();
+                const stats = JSON.parse(e.data);
+                showResults(stats);
+            });
+
+            evtSource.addEventListener('error', (e) => {
+                // Check if it's a custom error event or connection error
+                if (e.data) {
+                    const data = JSON.parse(e.data);
+                    evtSource.close();
+                    showError(data.error);
+                } else {
+                    // SSE connection error — might just be stream ending
+                    evtSource.close();
+                }
+            });
+
+            evtSource.onerror = () => {
+                // Connection dropped
+                evtSource.close();
+            };
+
+        } catch (err) {
+            showError(err.message);
+        }
+    });
+
+    function addLogEntry(text) {
+        const div = document.createElement('div');
+        div.className = 'entry';
+        div.textContent = text;
+        progressLog.appendChild(div);
+        progressLog.scrollTop = progressLog.scrollHeight;
+    }
+
+    function showResults(stats) {
+        progressSection.classList.remove('active');
+        resultsSection.classList.add('active');
+
+        const totalCost = stats.total_cost !== undefined ? stats.total_cost.toFixed(4) : '—';
+
+        statsGrid.innerHTML = `
+            <div class="stat-box"><div class="value">${stats.total_pages || 0}</div><div class="label">Pages Processed</div></div>
+            <div class="stat-box"><div class="value">${stats.num_requirements || 0}</div><div class="label">Requirements</div></div>
+            <div class="stat-box"><div class="value">${stats.num_trades || 0}</div><div class="label">Trades</div></div>
+            <div class="stat-box"><div class="value">$${totalCost}</div><div class="label">API Cost</div></div>
+            <div class="stat-box"><div class="value">${((stats.input_tokens || 0) + (stats.output_tokens || 0)).toLocaleString()}</div><div class="label">Total Tokens</div></div>
+            <div class="stat-box"><div class="value">${stats.api_calls || 0}</div><div class="label">API Calls</div></div>
+        `;
+    }
+
+    function showError(msg) {
+        progressSection.classList.remove('active');
+        errorCard.classList.add('active');
+        errorMsg.textContent = msg;
+    }
+
+    // Download
+    downloadBtn.addEventListener('click', () => {
+        if (currentJobId) {
+            window.location.href = '/api/download/' + currentJobId;
+        }
+    });
+
+    // Reset
+    function resetUI() {
+        selectedFiles = [];
+        currentJobId = null;
+        dropzone.style.display = '';
+        fileList.style.display = '';
+        fileList.innerHTML = '';
+        submitSection.style.display = 'none';
+        submitBtn.disabled = false;
+        progressSection.classList.remove('active');
+        resultsSection.classList.remove('active');
+        errorCard.classList.remove('active');
+        progressLog.innerHTML = '';
+    }
+
+    resetLink.addEventListener('click', resetUI);
+    errorResetLink.addEventListener('click', resetUI);
+
+    // Utility
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+})();
+</script>
+
+</body>
+</html>

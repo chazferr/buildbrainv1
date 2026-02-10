@@ -53,6 +53,7 @@ class TradeAndScope(BaseModel):
     trade: str
     scope_description: str
     estimated_cost: Optional[float] = None
+    vendor_name: Optional[str] = None
     quantity: Optional[str] = None
     source_pdf: str
     source_page: int
@@ -96,7 +97,8 @@ Return a JSON object with exactly this structure (no markdown fences, no extra k
       "csi_division": "<string: 2-digit CSI MasterFormat division if identifiable, else 'NA'>",
       "trade": "<string: trade name e.g. Earthwork, Concrete, Structural Steel, Plumbing, Electrical, HVAC, etc.>",
       "scope_description": "<string: brief description of scope visible on this page>",
-      "estimated_cost": <number or null: dollar amount if a cost, bid, budget, price, or allowance is explicitly shown for this item — e.g. $12,500 becomes 12500. null if no dollar amount is visible>,
+      "estimated_cost": <number or null: dollar amount for this line item. Extract from bids, budgets, estimates, allowances, lump sums, unit prices x qty, contract amounts, SOV amounts, or any dollar figure tied to this trade. Strip $ and commas — e.g. $12,500 -> 12500. null if no dollar amount visible>,
+      "vendor_name": "<string or null: name of the bidder, contractor, vendor, subcontractor, or supplier associated with this cost/trade — e.g. 'Eastern Concrete', 'L&R Mechanical', 'Budget'. null if no vendor/bidder name is visible>",
       "quantity": "<string or null: quantity with unit if visible, e.g. '2,400 SF', '150 LF', '12 EA'. null if none>",
       "source_pdf": "{pdf_name}",
       "source_page": {page_num},
@@ -111,10 +113,16 @@ RULES:
 - For drawings: identify trades from drawing content (e.g., site plan implies Earthwork/Grading, \
   electrical symbols imply Electrical trade, plumbing fixtures imply Plumbing, etc.)
 - For notes/specs: extract submission requirements and any trade/scope references.
-- FINANCIAL DATA: If the page contains dollar amounts, budgets, bids, allowances, costs, \
-  prices, or estimates associated with a trade or scope item, capture them in estimated_cost. \
-  Strip the $ sign and commas — return a plain number (e.g. $12,500 -> 12500). \
-  If a lump-sum or line-item cost is shown, capture it. If no cost is shown, use null.
+- FINANCIAL DATA IS CRITICAL: This is a buyout/budgeting tool. Carefully scan every page for:
+  * Dollar amounts ($), costs, prices, budgets, allowances, bids, estimates, contract values
+  * Bid tabulations, cost breakdowns, SOV (Schedule of Values), line-item pricing
+  * Unit prices (e.g., $4.50/SF) — multiply by quantity if both are shown
+  * Lump-sum amounts, subtotals, per-trade totals
+  * If a table or list shows trade names with dollar amounts, create one entry per trade with its cost
+  Strip $ signs and commas — return a plain number (e.g. $12,500 -> 12500).
+- VENDOR/BIDDER NAMES: If a company name, contractor, subcontractor, or supplier is associated \
+  with a cost or trade, capture it in vendor_name. If the same trade has multiple vendors with \
+  different bids, create SEPARATE entries for each vendor+amount pair.
 - QUANTITIES: If quantities (SF, LF, EA, CY, SY, etc.) are visible, capture them in quantity.
 - evidence must be a SHORT snippet (max ~80 chars) directly from the page.
 - Return ONLY valid JSON. No markdown code fences. No commentary outside the JSON.
@@ -141,6 +149,7 @@ Return ONLY a valid JSON object with this exact structure:
       "trade": "string",
       "scope_description": "string",
       "estimated_cost": null,
+      "vendor_name": null,
       "quantity": null,
       "source_pdf": "{pdf_name}",
       "source_page": {page_num},
@@ -353,6 +362,8 @@ def consolidate_trades(trades: list[TradeAndScope]) -> list[dict]:
 
     Returns a list of dicts sorted by buyout order (matching the user's
     buyout sheet: Sitework, Paving, Landscaping, Concrete, ... Electrical).
+    Each dict includes 'bids' — a list of (vendor_name, amount) pairs for
+    populating the bid columns in the Excel output.
     """
 
     groups: dict[str, dict] = {}  # keyed by canonical trade name
@@ -372,6 +383,8 @@ def consolidate_trades(trades: list[TradeAndScope]) -> list[dict]:
                 "total_cost": 0.0,       # sum of all extracted costs
                 "has_cost": False,       # whether any cost was found
                 "quantities": [],        # collected quantity strings
+                "bids": {},              # vendor_name -> best (lowest) amount
+                "unnamed_costs": [],     # costs with no vendor name
             }
 
         g = groups[key]
@@ -384,10 +397,20 @@ def consolidate_trades(trades: list[TradeAndScope]) -> list[dict]:
             g["scope_items"].append((order_key, t.scope_description,
                                      t.estimated_cost, t.quantity))
 
-        # Accumulate costs
+        # Collect bids: vendor + amount pairs
         if t.estimated_cost is not None and t.estimated_cost > 0:
             g["total_cost"] += t.estimated_cost
             g["has_cost"] = True
+
+            if t.vendor_name and t.vendor_name.strip():
+                vname = t.vendor_name.strip()
+                # Keep the largest amount per vendor (they may bid on multiple scope items)
+                if vname in g["bids"]:
+                    g["bids"][vname] += t.estimated_cost
+                else:
+                    g["bids"][vname] = t.estimated_cost
+            else:
+                g["unnamed_costs"].append(t.estimated_cost)
 
         # Collect quantities
         if t.quantity:
@@ -415,13 +438,24 @@ def consolidate_trades(trades: list[TradeAndScope]) -> list[dict]:
             scope_lines.append(" ".join(parts))
         scope_text = "\n".join(scope_lines)
 
+        # Build bid list: sorted by amount (lowest first)
+        bid_list = sorted(g["bids"].items(), key=lambda x: x[1])
+        # If we have unnamed costs but no vendor bids, aggregate them as "Budget"
+        if not bid_list and g["unnamed_costs"]:
+            total_unnamed = sum(g["unnamed_costs"])
+            bid_list = [("Budget", total_unnamed)]
+
+        # Determine budget/SOV: use total_cost if any costs were found
+        budget = g["total_cost"] if g["has_cost"] else None
+
         result.append({
             "csi_division": g["csi_division"],
             "trade": g["trade"],
             "scope": scope_text,
             "source_pages": "; ".join(g["sources"]),
-            "budget": g["total_cost"] if g["has_cost"] else None,
+            "budget": budget,
             "quantities": "; ".join(g["quantities"]) if g["quantities"] else None,
+            "bids": bid_list,  # list of (vendor_name, amount) sorted low->high
         })
 
     return result
@@ -772,15 +806,27 @@ def build_excel_bytes(
             brief += f" (+{len(scope_lines) - 3} more)"
         ws.cell(row=r, column=3, value=brief).alignment = wrap_top
 
-        # Bid columns D-K: empty for user to fill
-        for col in range(4, 12):
-            ws.cell(row=r, column=col).border = thin_border
+        # Populate bid columns D-K from extracted bids
+        # bids is a list of (vendor_name, amount) sorted low->high
+        bids = row_data.get("bids", [])
+        bid_slots = [(4, 5), (6, 7), (8, 9), (10, 11)]  # (name_col, amount_col) pairs
+        for slot_idx, (name_col, amt_col) in enumerate(bid_slots):
+            if slot_idx < len(bids):
+                vendor, amount = bids[slot_idx]
+                ws.cell(row=r, column=name_col, value=vendor).font = normal_font
+                ws.cell(row=r, column=amt_col, value=amount).font = normal_font
+            ws.cell(row=r, column=name_col).border = thin_border
+            ws.cell(row=r, column=amt_col).border = thin_border
 
         # Money columns get number format
         for col in [5, 7, 9, 11, 13, 14, 15]:
             ws.cell(row=r, column=col).number_format = money_fmt
 
-        # Low Bidder / Low Bid (L, M): empty
+        # Low Bidder / Low Bid (L, M): auto-populate from lowest bid
+        if bids:
+            low_vendor, low_amount = bids[0]  # already sorted low->high
+            ws.cell(row=r, column=12, value=low_vendor).font = bold_font
+            ws.cell(row=r, column=13, value=low_amount).font = bold_font
         ws.cell(row=r, column=12).border = thin_border
         ws.cell(row=r, column=13).border = thin_border
 

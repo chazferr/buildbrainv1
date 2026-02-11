@@ -1098,32 +1098,24 @@ def build_excel_bytes(
     # ── TAB 1: Buyout Summary ─────────────────────────────────────────────
     ws = wb.active
     ws.title = "Buyout Summary"
+    NUM_COLS = 8  # A through H
 
-    # Column layout:
-    # A=DIV  B=TRADE  C=SCOPE(brief)  D=Bid1  E=Bid1$  F=Bid2  G=Bid2$
-    # H=Bid3  I=Bid3$  J=Bid4  K=Bid4$  L=Low Bidder  M=Low Bid
-    # N=Budget/SOV  O=Variance  P=Notes
+    # Column layout matching reference buyout sheet:
+    # A=DIV  B=TRADE  C=SCOPE(brief)  D=LOW BIDDER  E=LOW BID
+    # F=SOV  G=VARIANCE  H=NOTES
     col_headers = [
         ("A", "DIV", 7),
         ("B", "TRADE", 34),
         ("C", "SCOPE", 62),
-        ("D", "Bid 1", 28),
-        ("E", "$", 16),
-        ("F", "Bid 2", 28),
-        ("G", "$", 16),
-        ("H", "Bid 3", 28),
-        ("I", "$", 16),
-        ("J", "Bid 4", 28),
-        ("K", "$", 16),
-        ("L", "LOW BIDDER", 28),
-        ("M", "LOW BID", 16),
-        ("N", "BUDGET / SOV", 18),
-        ("O", "VARIANCE", 16),
-        ("P", "NOTES", 36),
+        ("D", "LOW BIDDER", 28),
+        ("E", "LOW BID", 18),
+        ("F", "SOV", 18),
+        ("G", "VARIANCE", 18),
+        ("H", "NOTES", 36),
     ]
 
     # Row 1: title bar
-    ws.merge_cells("A1:P1")
+    ws.merge_cells("A1:H1")
     title_cell = ws["A1"]
     title_cell.value = "BuildBrain Buyout Summary"
     title_cell.font = title_font
@@ -1131,31 +1123,19 @@ def build_excel_bytes(
     title_cell.alignment = Alignment(horizontal="left", vertical="center")
     ws.row_dimensions[1].height = 40
 
-    # Row 2: bid section header
-    ws.merge_cells("D2:K2")
-    bid_header = ws["D2"]
-    bid_header.value = "Bids"
-    bid_header.font = header_font
-    bid_header.fill = orange_fill
-    bid_header.alignment = Alignment(horizontal="center")
-    for col_letter in ["L", "M", "N", "O", "P"]:
-        c = ws[f"{col_letter}2"]
-        c.fill = orange_fill
-    ws.row_dimensions[2].height = 26
-
-    # Row 3: column headers
+    # Row 2: column headers
     for col_letter, label, width in col_headers:
-        cell = ws[f"{col_letter}3"]
+        cell = ws[f"{col_letter}2"]
         cell.value = label
         cell.font = header_font
         cell.fill = navy_fill
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.border = thin_border
         ws.column_dimensions[col_letter].width = width
-    ws.row_dimensions[3].height = 30
+    ws.row_dimensions[2].height = 30
 
-    # Data rows start at row 4
-    data_start = 4
+    # Data rows start at row 3
+    data_start = 3
     for i, row_data in enumerate(consolidated):
         r = data_start + i
         ws.cell(row=r, column=1, value=int(row_data["csi_division"])).font = bold_font
@@ -1168,52 +1148,32 @@ def build_excel_bytes(
             brief += f" (+{len(scope_lines) - 3} more)"
         ws.cell(row=r, column=3, value=brief).alignment = wrap_top
 
-        # Populate bid columns D-K from extracted bids
-        # bids is a list of (vendor_name, amount) sorted low->high
+        # Low Bidder (D): auto-populate from lowest bid
         bids = row_data.get("bids", [])
-        bid_slots = [(4, 5), (6, 7), (8, 9), (10, 11)]  # (name_col, amount_col) pairs
-        for slot_idx, (name_col, amt_col) in enumerate(bid_slots):
-            if slot_idx < len(bids):
-                vendor, amount = bids[slot_idx]
-                ws.cell(row=r, column=name_col, value=vendor).font = normal_font
-                ws.cell(row=r, column=amt_col, value=amount).font = normal_font
-            ws.cell(row=r, column=name_col).border = thin_border
-            ws.cell(row=r, column=amt_col).border = thin_border
-
-        # Money columns get number format
-        for col in [5, 7, 9, 11, 13, 14, 15]:
-            ws.cell(row=r, column=col).number_format = money_fmt
-
-        # Low Bidder / Low Bid (L, M): auto-populate from lowest bid
         if bids:
-            low_vendor, low_amount = bids[0]  # already sorted low->high
-            ws.cell(row=r, column=12, value=low_vendor).font = bold_font
-            ws.cell(row=r, column=13, value=low_amount).font = bold_font
-        ws.cell(row=r, column=12).border = thin_border
-        ws.cell(row=r, column=13).border = thin_border
+            low_vendor, low_amount = bids[0]  # sorted low->high
+            ws.cell(row=r, column=4, value=low_vendor).font = normal_font
+            ws.cell(row=r, column=5, value=low_amount).font = normal_font
+        ws.cell(row=r, column=5).number_format = money_fmt
 
-        # Budget/SOV (N): populate from extracted costs if available
-        budget_cell = ws.cell(row=r, column=14)
+        # SOV (F): populate from extracted costs (includes OH&P)
+        sov_cell = ws.cell(row=r, column=6)
         if row_data.get("budget") is not None:
-            budget_cell.value = row_data["budget"]
-        budget_cell.border = thin_border
+            sov_cell.value = row_data["budget"]
+        sov_cell.number_format = money_fmt
 
-        # Variance formula (O): =M{r}-N{r}
-        var_cell = ws.cell(row=r, column=15)
-        var_cell.value = f"=M{r}-N{r}"
+        # Variance formula (G): =E{r}-F{r} (Low Bid - SOV)
+        var_cell = ws.cell(row=r, column=7)
+        var_cell.value = f"=E{r}-F{r}"
         var_cell.number_format = money_fmt
-        var_cell.border = thin_border
-
-        # Notes (P): empty
-        ws.cell(row=r, column=16).border = thin_border
 
         # Alternate row shading
         if i % 2 == 1:
-            for col in range(1, 17):
+            for col in range(1, NUM_COLS + 1):
                 ws.cell(row=r, column=col).fill = light_gray_fill
 
         # All cells get border
-        for col in range(1, 17):
+        for col in range(1, NUM_COLS + 1):
             ws.cell(row=r, column=col).border = thin_border
 
         ws.row_dimensions[r].height = max(30, min(len(scope_lines) * 18, 90))
@@ -1225,76 +1185,74 @@ def build_excel_bytes(
 
     # SUBTOTALS row
     ws.cell(row=gap, column=2, value="SUBTOTALS").font = bold_font
-    ws[f"B{gap}"].fill = summary_fill
-    for col in [5, 7, 9, 11, 13, 14, 15]:
-        col_letter = get_column_letter(col)
-        cell = ws.cell(row=gap, column=col)
+    for col_idx in [5, 6, 7]:  # Low Bid, SOV, Variance
+        col_letter = get_column_letter(col_idx)
+        cell = ws.cell(row=gap, column=col_idx)
         cell.value = f"=SUM({col_letter}{data_start}:{col_letter}{data_end})"
         cell.number_format = money_fmt
         cell.font = bold_font
-        cell.fill = summary_fill
-        cell.border = thin_border
-    for col in range(1, 17):
+    for col in range(1, NUM_COLS + 1):
         ws.cell(row=gap, column=col).fill = summary_fill
         ws.cell(row=gap, column=col).border = thin_border
+    ws.row_dimensions[gap].height = 28
 
-    # GC OH&P row
+    # GC OH&P = 38% row
     ohp_row = gap + 1
     ws.cell(row=ohp_row, column=1, value=1).font = normal_font
-    ws.cell(row=ohp_row, column=2, value="GC OH&P").font = bold_font
-    ws.cell(row=ohp_row, column=14).number_format = money_fmt
-    ws.cell(row=ohp_row, column=14).border = thin_border
-    ws.cell(row=ohp_row, column=16, value="Enter OH&P % or amount").font = Font(
-        name="Calibri", size=10, italic=True, color="999999")
-    for col in range(1, 17):
+    ws.cell(row=ohp_row, column=2, value="GC OH&P = 38%").font = bold_font
+    ohp_sov = ws.cell(row=ohp_row, column=6)
+    ohp_sov.value = f"=F{gap}*0.38"
+    ohp_sov.number_format = money_fmt
+    for col in range(1, NUM_COLS + 1):
         ws.cell(row=ohp_row, column=col).border = thin_border
+    ws.row_dimensions[ohp_row].height = 28
 
     # Bond Premium row
     bond_row = ohp_row + 1
     ws.cell(row=bond_row, column=1, value=1).font = normal_font
     ws.cell(row=bond_row, column=2, value="Bond Premium").font = bold_font
-    ws.cell(row=bond_row, column=14).number_format = money_fmt
-    ws.cell(row=bond_row, column=14).border = thin_border
-    for col in range(1, 17):
+    ws.cell(row=bond_row, column=6).number_format = money_fmt
+    for col in range(1, NUM_COLS + 1):
         ws.cell(row=bond_row, column=col).border = thin_border
+    ws.row_dimensions[bond_row].height = 28
 
-    # Permit row
+    # Permit Fees row
     permit_row = bond_row + 1
     ws.cell(row=permit_row, column=1, value=1).font = normal_font
     ws.cell(row=permit_row, column=2, value="Permit Fees").font = bold_font
-    ws.cell(row=permit_row, column=14).number_format = money_fmt
-    ws.cell(row=permit_row, column=14).border = thin_border
-    for col in range(1, 17):
+    ws.cell(row=permit_row, column=6).number_format = money_fmt
+    for col in range(1, NUM_COLS + 1):
         ws.cell(row=permit_row, column=col).border = thin_border
+    ws.row_dimensions[permit_row].height = 28
 
-    # TOTAL row
+    # CONTRACT TOTAL row
     total_row = permit_row + 1
-    ws.cell(row=total_row, column=2, value="TOTAL").font = Font(
+    ws.cell(row=total_row, column=2, value="CONTRACT TOTAL").font = Font(
         name="Calibri", bold=True, size=12)
-    for col_idx in [14]:
-        col_letter = get_column_letter(col_idx)
-        cell = ws.cell(row=total_row, column=col_idx)
-        cell.value = f"=SUM({col_letter}{gap}:{col_letter}{permit_row})"
-        cell.number_format = money_fmt
-        cell.font = Font(name="Calibri", bold=True, size=12)
-    for col_idx in [13]:
-        col_letter = get_column_letter(col_idx)
-        cell = ws.cell(row=total_row, column=col_idx)
-        cell.value = f"=SUM({col_letter}{gap}:{col_letter}{permit_row})"
-        cell.number_format = money_fmt
-        cell.font = Font(name="Calibri", bold=True, size=12)
-    total_var = ws.cell(row=total_row, column=15)
-    total_var.value = f"=M{total_row}-N{total_row}"
+    # Total Low Bid
+    total_bid = ws.cell(row=total_row, column=5)
+    total_bid.value = f"=SUM(E{gap}:E{permit_row})"
+    total_bid.number_format = money_fmt
+    total_bid.font = Font(name="Calibri", bold=True, size=12)
+    # Total SOV
+    total_sov = ws.cell(row=total_row, column=6)
+    total_sov.value = f"=SUM(F{gap}:F{permit_row})"
+    total_sov.number_format = money_fmt
+    total_sov.font = Font(name="Calibri", bold=True, size=12)
+    # Total Variance
+    total_var = ws.cell(row=total_row, column=7)
+    total_var.value = f"=E{total_row}-F{total_row}"
     total_var.number_format = money_fmt
     total_var.font = Font(name="Calibri", bold=True, size=12)
-    for col in range(1, 17):
+    for col in range(1, NUM_COLS + 1):
         ws.cell(row=total_row, column=col).fill = navy_fill
         ws.cell(row=total_row, column=col).font = Font(
             name="Calibri", bold=True, size=12, color="FFFFFF")
         ws.cell(row=total_row, column=col).border = thin_border
+    ws.row_dimensions[total_row].height = 32
 
     # Freeze panes
-    ws.freeze_panes = "D4"
+    ws.freeze_panes = "C3"
     ws.sheet_properties.tabColor = "1A2332"
 
     # ── TAB 2: Scope Details ──────────────────────────────────────────────

@@ -682,6 +682,161 @@ def consolidate_trades(trades: list[TradeAndScope]) -> list[dict]:
     return result
 
 
+# ─── SOV mapping from reference buyout ──────────────────────────────────────
+
+
+def parse_sov_from_buyout(file_path: Path) -> dict:
+    """
+    Parse SOV (Schedule of Values) data from a reference buyout spreadsheet.
+
+    Searches for an 'SOV' column header, then reads trade name -> SOV value pairs.
+    Also extracts summary values (GC OH&P, Bond Premium, Permit Fees).
+
+    Returns a dict with:
+        'trade_sov': dict[str, float] - reference trade name -> SOV value
+        'ohp': float or None - GC OH&P value
+        'bond': float or None - Bond Premium value
+        'permit': float or None - Permit Fees value
+    """
+    df_dict = pd.read_excel(file_path, sheet_name=None, header=None)
+
+    result = {"trade_sov": {}, "ohp": None, "bond": None, "permit": None}
+
+    for sheet_name, df in df_dict.items():
+        # Search for ALL "SOV" column headers, use the rightmost (most recent)
+        sov_positions = []
+        for col_idx in range(len(df.columns)):
+            for row_idx in range(min(15, len(df))):
+                val = df.iloc[row_idx, col_idx]
+                if pd.notna(val) and isinstance(val, str) and "sov" in val.lower():
+                    sov_positions.append((row_idx, col_idx))
+                    break
+
+        if not sov_positions:
+            continue
+
+        sov_header_row, sov_col = max(sov_positions, key=lambda x: x[1])
+
+        # Find the trade name column: look for columns with trade-like names
+        trade_col = None
+        trade_keywords = [
+            "site", "pav", "concrete", "carp", "insul", "roof", "sid",
+            "door", "window", "drywall", "floor", "paint", "plumb",
+            "hvac", "electric", "cabinet", "gutter", "landscape", "fenc",
+            "steel", "masonry", "framing",
+        ]
+        best_count = 0
+        for col_idx in range(min(10, len(df.columns))):
+            trade_count = 0
+            for row_idx in range(sov_header_row + 1, min(len(df), sov_header_row + 30)):
+                val = df.iloc[row_idx, col_idx]
+                if pd.notna(val) and isinstance(val, str) and len(val.strip()) > 2:
+                    lower = val.lower().strip()
+                    if any(kw in lower for kw in trade_keywords):
+                        trade_count += 1
+            if trade_count > best_count:
+                best_count = trade_count
+                trade_col = col_idx
+
+        if trade_col is None:
+            trade_col = min(1, len(df.columns) - 1)
+
+        # Extract trade -> SOV pairs
+        for row_idx in range(sov_header_row + 1, len(df)):
+            trade_val = df.iloc[row_idx, trade_col]
+            sov_val = df.iloc[row_idx, sov_col]
+
+            if pd.isna(trade_val) or pd.isna(sov_val):
+                continue
+
+            trade_name = str(trade_val).strip()
+            if not trade_name:
+                continue
+
+            try:
+                sov_num = float(sov_val)
+            except (ValueError, TypeError):
+                continue
+
+            if sov_num == 0:
+                continue
+
+            # Detect summary rows
+            lower_trade = trade_name.lower()
+            if "oh&p" in lower_trade or "overhead" in lower_trade:
+                result["ohp"] = sov_num
+            elif "bond" in lower_trade:
+                result["bond"] = sov_num
+            elif "permit" in lower_trade:
+                result["permit"] = sov_num
+            elif "total" in lower_trade or "contract" in lower_trade:
+                pass  # Skip total/subtotal rows
+            else:
+                result["trade_sov"][trade_name] = sov_num
+
+        # Only process the first sheet with SOV data
+        if result["trade_sov"]:
+            break
+
+    return result
+
+
+def _match_sov_to_trades(
+    consolidated: list[dict], sov_mapping: dict[str, float]
+) -> dict[str, float]:
+    """
+    Match reference buyout trade names to BuildBrain canonical trade names.
+
+    Returns a dict of canonical_trade_name -> SOV value.
+    Uses three-pass matching: exact, containment, keyword classification.
+    """
+    matched = {}
+    used_refs = set()
+
+    # Pass 1: Exact match (case-insensitive)
+    for row in consolidated:
+        canon = row["trade"]
+        canon_lower = canon.lower().strip()
+        for ref_trade, sov_val in sov_mapping.items():
+            if ref_trade in used_refs:
+                continue
+            if ref_trade.lower().strip() == canon_lower:
+                matched[canon] = sov_val
+                used_refs.add(ref_trade)
+                break
+
+    # Pass 2: Containment match
+    for row in consolidated:
+        canon = row["trade"]
+        if canon in matched:
+            continue
+        canon_lower = canon.lower().strip()
+        for ref_trade, sov_val in sov_mapping.items():
+            if ref_trade in used_refs:
+                continue
+            ref_lower = ref_trade.lower().strip()
+            if canon_lower in ref_lower or ref_lower in canon_lower:
+                matched[canon] = sov_val
+                used_refs.add(ref_trade)
+                break
+
+    # Pass 3: Classify reference trade using same keyword patterns
+    for row in consolidated:
+        canon = row["trade"]
+        if canon in matched:
+            continue
+        for ref_trade, sov_val in sov_mapping.items():
+            if ref_trade in used_refs:
+                continue
+            _, _, ref_canonical = _classify_trade(ref_trade, "")
+            if ref_canonical == canon:
+                matched[canon] = sov_val
+                used_refs.add(ref_trade)
+                break
+
+    return matched
+
+
 # ─── Page processing ────────────────────────────────────────────────────────
 
 
@@ -1058,6 +1213,7 @@ process_pdfs = process_files
 def build_excel_bytes(
     requirements: list[SubmissionRequirement],
     trades: list[TradeAndScope],
+    sov_data: Optional[dict] = None,
 ) -> bytes:
     """Build the Excel workbook in memory and return it as bytes.
 
@@ -1098,24 +1254,30 @@ def build_excel_bytes(
     # ── TAB 1: Buyout Summary ─────────────────────────────────────────────
     ws = wb.active
     ws.title = "Buyout Summary"
-    NUM_COLS = 8  # A through H
+    NUM_COLS = 5  # A through E
 
-    # Column layout matching reference buyout sheet:
-    # A=DIV  B=TRADE  C=SCOPE(brief)  D=LOW BIDDER  E=LOW BID
-    # F=SOV  G=VARIANCE  H=NOTES
+    # Column layout: DIV | TRADE | SCOPE | SOV | NOTES
     col_headers = [
         ("A", "DIV", 7),
         ("B", "TRADE", 34),
         ("C", "SCOPE", 62),
-        ("D", "LOW BIDDER", 28),
-        ("E", "LOW BID", 18),
-        ("F", "SOV", 18),
-        ("G", "VARIANCE", 18),
-        ("H", "NOTES", 36),
+        ("D", "SOV", 18),
+        ("E", "NOTES", 36),
     ]
 
+    # Match SOV values from reference buyout if provided
+    sov_matched = {}
+    sov_summary = {"ohp": None, "bond": None, "permit": None}
+    if sov_data:
+        sov_matched = _match_sov_to_trades(
+            consolidated, sov_data.get("trade_sov", {})
+        )
+        sov_summary["ohp"] = sov_data.get("ohp")
+        sov_summary["bond"] = sov_data.get("bond")
+        sov_summary["permit"] = sov_data.get("permit")
+
     # Row 1: title bar
-    ws.merge_cells("A1:H1")
+    ws.merge_cells("A1:E1")
     title_cell = ws["A1"]
     title_cell.value = "BuildBrain Buyout Summary"
     title_cell.font = title_font
@@ -1148,24 +1310,15 @@ def build_excel_bytes(
             brief += f" (+{len(scope_lines) - 3} more)"
         ws.cell(row=r, column=3, value=brief).alignment = wrap_top
 
-        # Low Bidder (D): auto-populate from lowest bid
-        bids = row_data.get("bids", [])
-        if bids:
-            low_vendor, low_amount = bids[0]  # sorted low->high
-            ws.cell(row=r, column=4, value=low_vendor).font = normal_font
-            ws.cell(row=r, column=5, value=low_amount).font = normal_font
-        ws.cell(row=r, column=5).number_format = money_fmt
-
-        # SOV (F): populate from extracted costs (includes OH&P)
-        sov_cell = ws.cell(row=r, column=6)
-        if row_data.get("budget") is not None:
-            sov_cell.value = row_data["budget"]
+        # SOV (D): from reference buyout mapping
+        sov_cell = ws.cell(row=r, column=4)
+        trade_name = row_data["trade"]
+        if trade_name in sov_matched:
+            sov_cell.value = sov_matched[trade_name]
         sov_cell.number_format = money_fmt
 
-        # Variance formula (G): =E{r}-F{r} (Low Bid - SOV)
-        var_cell = ws.cell(row=r, column=7)
-        var_cell.value = f"=E{r}-F{r}"
-        var_cell.number_format = money_fmt
+        # Notes (E): empty for user
+        ws.cell(row=r, column=5, value="").font = normal_font
 
         # Alternate row shading
         if i % 2 == 1:
@@ -1185,12 +1338,10 @@ def build_excel_bytes(
 
     # SUBTOTALS row
     ws.cell(row=gap, column=2, value="SUBTOTALS").font = bold_font
-    for col_idx in [5, 6, 7]:  # Low Bid, SOV, Variance
-        col_letter = get_column_letter(col_idx)
-        cell = ws.cell(row=gap, column=col_idx)
-        cell.value = f"=SUM({col_letter}{data_start}:{col_letter}{data_end})"
-        cell.number_format = money_fmt
-        cell.font = bold_font
+    subtotal_cell = ws.cell(row=gap, column=4)
+    subtotal_cell.value = f"=SUM(D{data_start}:D{data_end})"
+    subtotal_cell.number_format = money_fmt
+    subtotal_cell.font = bold_font
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=gap, column=col).fill = summary_fill
         ws.cell(row=gap, column=col).border = thin_border
@@ -1200,9 +1351,12 @@ def build_excel_bytes(
     ohp_row = gap + 1
     ws.cell(row=ohp_row, column=1, value=1).font = normal_font
     ws.cell(row=ohp_row, column=2, value="GC OH&P = 38%").font = bold_font
-    ohp_sov = ws.cell(row=ohp_row, column=6)
-    ohp_sov.value = f"=F{gap}*0.38"
-    ohp_sov.number_format = money_fmt
+    ohp_cell = ws.cell(row=ohp_row, column=4)
+    if sov_summary["ohp"] is not None:
+        ohp_cell.value = sov_summary["ohp"]
+    else:
+        ohp_cell.value = f"=D{gap}*0.38"
+    ohp_cell.number_format = money_fmt
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=ohp_row, column=col).border = thin_border
     ws.row_dimensions[ohp_row].height = 28
@@ -1211,7 +1365,10 @@ def build_excel_bytes(
     bond_row = ohp_row + 1
     ws.cell(row=bond_row, column=1, value=1).font = normal_font
     ws.cell(row=bond_row, column=2, value="Bond Premium").font = bold_font
-    ws.cell(row=bond_row, column=6).number_format = money_fmt
+    bond_cell = ws.cell(row=bond_row, column=4)
+    if sov_summary["bond"] is not None:
+        bond_cell.value = sov_summary["bond"]
+    bond_cell.number_format = money_fmt
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=bond_row, column=col).border = thin_border
     ws.row_dimensions[bond_row].height = 28
@@ -1220,7 +1377,10 @@ def build_excel_bytes(
     permit_row = bond_row + 1
     ws.cell(row=permit_row, column=1, value=1).font = normal_font
     ws.cell(row=permit_row, column=2, value="Permit Fees").font = bold_font
-    ws.cell(row=permit_row, column=6).number_format = money_fmt
+    permit_cell = ws.cell(row=permit_row, column=4)
+    if sov_summary["permit"] is not None:
+        permit_cell.value = sov_summary["permit"]
+    permit_cell.number_format = money_fmt
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=permit_row, column=col).border = thin_border
     ws.row_dimensions[permit_row].height = 28
@@ -1229,21 +1389,10 @@ def build_excel_bytes(
     total_row = permit_row + 1
     ws.cell(row=total_row, column=2, value="CONTRACT TOTAL").font = Font(
         name="Calibri", bold=True, size=12)
-    # Total Low Bid
-    total_bid = ws.cell(row=total_row, column=5)
-    total_bid.value = f"=SUM(E{gap}:E{permit_row})"
-    total_bid.number_format = money_fmt
-    total_bid.font = Font(name="Calibri", bold=True, size=12)
-    # Total SOV
-    total_sov = ws.cell(row=total_row, column=6)
-    total_sov.value = f"=SUM(F{gap}:F{permit_row})"
+    total_sov = ws.cell(row=total_row, column=4)
+    total_sov.value = f"=SUM(D{gap}:D{permit_row})"
     total_sov.number_format = money_fmt
     total_sov.font = Font(name="Calibri", bold=True, size=12)
-    # Total Variance
-    total_var = ws.cell(row=total_row, column=7)
-    total_var.value = f"=E{total_row}-F{total_row}"
-    total_var.number_format = money_fmt
-    total_var.font = Font(name="Calibri", bold=True, size=12)
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=total_row, column=col).fill = navy_fill
         ws.cell(row=total_row, column=col).font = Font(

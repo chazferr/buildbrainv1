@@ -21,7 +21,7 @@ from queue import Empty, Queue
 from dotenv import load_dotenv
 from flask import Flask, Response, render_template, request, jsonify, send_file
 
-from engine import build_excel_bytes, process_files, SUPPORTED_EXTENSIONS
+from engine import build_excel_bytes, process_files, parse_sov_from_buyout, SUPPORTED_EXTENSIONS
 
 # ─── Load environment ────────────────────────────────────────────────────────
 load_dotenv()
@@ -91,6 +91,17 @@ def upload():
         shutil.rmtree(job_dir, ignore_errors=True)
         return jsonify({"error": "No supported files found. Accepted: PDF, DOCX, XLSX, CSV, EML, JPG, PNG, TXT"}), 400
 
+    # Handle optional reference buyout spreadsheet for SOV mapping
+    buyout_path = None
+    buyout_file = request.files.get("buyout")
+    if buyout_file and buyout_file.filename:
+        buyout_ext = Path(buyout_file.filename).suffix.lower()
+        if buyout_ext in (".xlsx", ".xls"):
+            safe_buyout = "buyout_ref" + buyout_ext
+            buyout_dest = job_dir / safe_buyout
+            buyout_file.save(str(buyout_dest))
+            buyout_path = buyout_dest
+
     # Initialize job
     progress_queue: Queue = Queue()
     jobs[job_id] = {
@@ -100,6 +111,7 @@ def upload():
         "stats": None,
         "error": None,
         "file_paths": saved_paths,
+        "buyout_path": buyout_path,
         "job_dir": job_dir,
     }
 
@@ -190,8 +202,20 @@ def _run_extraction(job_id: str):
             progress_callback=on_progress,
         )
 
+        # Parse SOV from reference buyout spreadsheet if provided
+        sov_data = None
+        buyout_path = job.get("buyout_path")
+        if buyout_path and Path(buyout_path).exists():
+            on_progress("Parsing SOV from reference buyout spreadsheet...")
+            try:
+                sov_data = parse_sov_from_buyout(Path(buyout_path))
+                matched_count = len(sov_data.get("trade_sov", {}))
+                on_progress(f"Found {matched_count} trade SOV values from buyout")
+            except Exception as e:
+                on_progress(f"[WARNING] Could not parse buyout: {e}")
+
         on_progress("Building Excel workbook...")
-        excel_bytes = build_excel_bytes(requirements, trades)
+        excel_bytes = build_excel_bytes(requirements, trades, sov_data=sov_data)
 
         job["excel_bytes"] = excel_bytes
         job["stats"] = stats

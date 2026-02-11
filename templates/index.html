@@ -317,6 +317,60 @@
         }
 
         .reset-link:hover { color: var(--text); }
+
+        /* Buyout reference upload */
+        .buyout-section {
+            margin-top: 1.25rem;
+            background: var(--card);
+            border: 1.5px dashed var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .buyout-section:hover {
+            border-color: var(--orange);
+            background: #fef5ee;
+        }
+
+        .buyout-section .buyout-icon {
+            font-size: 1.5rem;
+            opacity: 0.5;
+        }
+
+        .buyout-section .buyout-text h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.15rem;
+        }
+
+        .buyout-section .buyout-text p {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .buyout-section .buyout-file-name {
+            margin-left: auto;
+            font-size: 0.82rem;
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        .buyout-section .buyout-remove {
+            background: none;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 1.1rem;
+            opacity: 0.6;
+            padding: 0 0.25rem;
+        }
+
+        .buyout-section .buyout-remove:hover { opacity: 1; }
     </style>
 </head>
 <body>
@@ -338,6 +392,18 @@
 
     <!-- File list -->
     <div class="file-list" id="fileList"></div>
+
+    <!-- Reference buyout upload -->
+    <div class="buyout-section" id="buyoutSection" title="Click to select a reference buyout spreadsheet">
+        <span class="buyout-icon">&#128200;</span>
+        <div class="buyout-text">
+            <h3>Reference Buyout (optional)</h3>
+            <p>Upload buyout spreadsheet to auto-map SOV values</p>
+        </div>
+        <span class="buyout-file-name" id="buyoutFileName"></span>
+        <button class="buyout-remove" id="buyoutRemove" style="display:none;" title="Remove">&times;</button>
+        <input type="file" id="buyoutInput" accept=".xlsx,.xls" hidden>
+    </div>
 
     <!-- Submit -->
     <div class="submit-section" id="submitSection" style="display:none;">
@@ -382,12 +448,17 @@
 (function() {
     // State
     let selectedFiles = [];
+    let buyoutFile = null;
     let currentJobId = null;
 
     // Elements
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
     const fileList = document.getElementById('fileList');
+    const buyoutSection = document.getElementById('buyoutSection');
+    const buyoutInput = document.getElementById('buyoutInput');
+    const buyoutFileName = document.getElementById('buyoutFileName');
+    const buyoutRemove = document.getElementById('buyoutRemove');
     const submitSection = document.getElementById('submitSection');
     const submitBtn = document.getElementById('submitBtn');
     const progressSection = document.getElementById('progressSection');
@@ -427,6 +498,27 @@
     fileInput.addEventListener('change', () => {
         addFiles(Array.from(fileInput.files));
         fileInput.value = '';
+    });
+
+    // Buyout reference upload
+    buyoutSection.addEventListener('click', (e) => {
+        if (e.target !== buyoutRemove) buyoutInput.click();
+    });
+
+    buyoutInput.addEventListener('change', () => {
+        if (buyoutInput.files.length > 0) {
+            buyoutFile = buyoutInput.files[0];
+            buyoutFileName.textContent = buyoutFile.name;
+            buyoutRemove.style.display = '';
+        }
+        buyoutInput.value = '';
+    });
+
+    buyoutRemove.addEventListener('click', (e) => {
+        e.stopPropagation();
+        buyoutFile = null;
+        buyoutFileName.textContent = '';
+        buyoutRemove.style.display = 'none';
     });
 
     function addFiles(files) {
@@ -478,6 +570,7 @@
         submitBtn.disabled = true;
         dropzone.style.display = 'none';
         fileList.style.display = 'none';
+        buyoutSection.style.display = 'none';
         submitSection.style.display = 'none';
         progressSection.classList.add('active');
         progressLog.innerHTML = '';
@@ -490,6 +583,9 @@
         const formData = new FormData();
         for (const f of selectedFiles) {
             formData.append('pdfs', f);
+        }
+        if (buyoutFile) {
+            formData.append('buyout', buyoutFile);
         }
 
         try {
@@ -579,10 +675,14 @@
     // Reset
     function resetUI() {
         selectedFiles = [];
+        buyoutFile = null;
         currentJobId = null;
         dropzone.style.display = '';
         fileList.style.display = '';
         fileList.innerHTML = '';
+        buyoutSection.style.display = '';
+        buyoutFileName.textContent = '';
+        buyoutRemove.style.display = 'none';
         submitSection.style.display = 'none';
         submitBtn.disabled = false;
         progressSection.classList.remove('active');

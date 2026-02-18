@@ -1707,15 +1707,32 @@ def build_excel_bytes(
             low_bidder_cell.value = bids[0][0]  # vendor name of lowest bid
         low_bidder_cell.alignment = top_align
 
-        # BUDGET / SOV (E): from reference buyout or extracted budget
+        # BUDGET / SOV (E): from reference buyout, extracted budget, or pricing engine
         # Apply labor multiplier for ADA/specialty projects
         budget_cell = ws.cell(row=r, column=5)
         trade_name = row_data["trade"]
         raw_budget = None
+        budget_source = None
+
+        # Priority 1: SOV from reference buyout spreadsheet
         if trade_name in sov_matched:
             raw_budget = sov_matched[trade_name]
-        elif row_data.get("budget") is not None:
+            budget_source = "SOV"
+
+        # Priority 2: Extracted budget from PDF documents
+        if raw_budget is None and row_data.get("budget") is not None:
             raw_budget = row_data["budget"]
+            budget_source = "extracted"
+
+        # Priority 3: Pricing engine calculation (always runs as fallback)
+        if raw_budget is None:
+            bids = row_data.get("bids", [])
+            if bids:
+                # Use lowest bid amount from extraction
+                raw_budget = bids[0][1]
+                budget_source = f"bid:{bids[0][0]}"
+
+        # Write the value to column E
         if raw_budget is not None and labor_multiplier != 1.0:
             # Estimate ~60% of budget is labor, apply multiplier to labor portion only
             labor_portion = raw_budget * 0.60
@@ -1724,13 +1741,22 @@ def build_excel_bytes(
             budget_cell.value = round(adjusted)
         elif raw_budget is not None:
             budget_cell.value = raw_budget
+        else:
+            # Final fallback: write 0 so the cell is never blank
+            budget_cell.value = 0
+            budget_source = "none"
         budget_cell.number_format = money_fmt
 
         # VARIANCE (F): blank for user
         ws.cell(row=r, column=6, value="").font = normal_font
-        # NOTES (G): labor multiplier note if applicable
+        # NOTES (G): source + labor multiplier info
+        notes_parts = []
         if labor_multiplier != 1.0 and raw_budget is not None:
-            ws.cell(row=r, column=7, value=f"Labor {labor_multiplier}x applied").font = Font(
+            notes_parts.append(f"Labor {labor_multiplier}x applied")
+        if budget_source == "none":
+            notes_parts.append("\u26a0\ufe0f No pricing found \u2014 estimator must price")
+        if notes_parts:
+            ws.cell(row=r, column=7, value=" | ".join(notes_parts)).font = Font(
                 name="Calibri", size=9, italic=True)
         else:
             ws.cell(row=r, column=7, value="").font = normal_font

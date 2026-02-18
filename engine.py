@@ -21,6 +21,10 @@ import fitz  # PyMuPDF
 import pandas as pd
 from pydantic import BaseModel, ValidationError, field_validator
 
+from wage_rates import get_wage, CT_WAGE_RATES
+from material_db import get_material_price, MATERIAL_DB
+from productivity_rates import calculate_labor, PRODUCTIVITY_RATES
+
 # Optional imports for extended file types
 try:
     from docx import Document as DocxDocument
@@ -845,6 +849,169 @@ def _match_sov_to_trades(
                 break
 
     return matched
+
+
+# ─── Pricing engine ──────────────────────────────────────────────────────────
+
+
+def calculate_trade_estimate(
+    trade_name: str,
+    work_items: list[dict],
+    wage_regime: str = "CT_DOL_RESIDENTIAL",
+    sub_quote: float = None,
+    sub_quote_source: str = None
+) -> dict:
+    """
+    Calculates a complete trade estimate with full calculation trace.
+
+    work_items is a list of dicts, each with:
+        - "work_item": key from PRODUCTIVITY_RATES
+        - "quantity": numeric quantity
+        - "material_key": key from MATERIAL_DB (optional)
+        - "material_quantity": quantity of material (optional, defaults to same as work quantity)
+        - "description": human-readable description
+
+    If sub_quote is provided, it OVERRIDES the calculated baseline.
+    The calculated baseline is still shown for comparison.
+
+    Returns a dict with full trace suitable for Excel SOV output.
+    """
+    line_items = []
+    total_material = 0.0
+    total_labor = 0.0
+
+    for item in work_items:
+        work_item_key = item.get("work_item")
+        quantity = item.get("quantity", 0)
+        material_key = item.get("material_key")
+        mat_qty = item.get("material_quantity", quantity)
+        description = item.get("description", work_item_key)
+
+        # Labor calculation
+        labor_result = None
+        if work_item_key and quantity > 0:
+            labor_result = calculate_labor(work_item_key, quantity, wage_regime)
+
+        # Material calculation
+        material_result = None
+        if material_key and mat_qty > 0:
+            mat_data = get_material_price(material_key)
+            if mat_data:
+                mat_cost = mat_qty * mat_data["price"]
+                material_result = {
+                    "key": material_key,
+                    "quantity": mat_qty,
+                    "unit": mat_data["unit"],
+                    "unit_price": mat_data["price"],
+                    "cost": mat_cost,
+                    "note": mat_data["note"],
+                    "trace": f"{mat_qty} {mat_data['unit']} \u00d7 ${mat_data['price']:.2f}/{mat_data['unit']} = ${mat_cost:,.0f}"
+                }
+                total_material += mat_cost
+
+        labor_cost = labor_result["labor_cost"] if labor_result else 0
+        total_labor += labor_cost
+
+        line_items.append({
+            "description": description,
+            "labor": labor_result,
+            "material": material_result,
+            "line_total": labor_cost + (material_result["cost"] if material_result else 0)
+        })
+
+    calculated_total = total_material + total_labor
+
+    # Sub quote override logic
+    if sub_quote is not None:
+        variance = sub_quote - calculated_total
+        variance_pct = (variance / calculated_total * 100) if calculated_total > 0 else 0
+        use_amount = sub_quote
+        override_flag = True
+        override_note = f"SUB QUOTE USED: ${sub_quote:,.0f} from {sub_quote_source or 'unnamed source'}. Baseline was ${calculated_total:,.0f} (variance: {variance_pct:+.1f}%)"
+        if abs(variance_pct) > 20:
+            override_flag = "REVIEW"  # flag for human review if >20% off
+    else:
+        use_amount = calculated_total
+        override_flag = False
+        override_note = "Calculated baseline \u2014 no sub quote provided"
+
+    return {
+        "trade": trade_name,
+        "wage_regime": wage_regime,
+        "wage_regime_label": CT_WAGE_RATES.get(wage_regime, {}).get("label", wage_regime),
+        "line_items": line_items,
+        "total_material": round(total_material, 2),
+        "total_labor": round(total_labor, 2),
+        "calculated_total": round(calculated_total, 2),
+        "sub_quote": sub_quote,
+        "sub_quote_source": sub_quote_source,
+        "use_amount": round(use_amount, 2),
+        "sub_quote_override": override_flag,
+        "override_note": override_note,
+        "confidence": "HIGH" if sub_quote else "MEDIUM",
+        "accuracy_note": "Sub quote from named source" if sub_quote else "Calculated baseline \u00b110-15%"
+    }
+
+
+def detect_wage_regime(project_data: dict) -> dict:
+    """
+    Determines the applicable wage regime based on project characteristics.
+    Returns {"regime": str, "confidence": str, "flags": list[str]}
+
+    project_data should contain any of: owner, funding_source, project_type,
+    location, stories, notes
+    """
+    flags = []
+    regime = "CT_DOL_RESIDENTIAL"  # safe default
+    confidence = "MEDIUM"
+
+    text_to_check = " ".join([
+        str(project_data.get("owner", "")),
+        str(project_data.get("funding_source", "")),
+        str(project_data.get("notes", "")),
+        str(project_data.get("project_type", "")),
+    ]).lower()
+
+    # Federal funding triggers Davis-Bacon
+    federal_keywords = ["hud", "home program", "cdbg", "lihtc", "fha",
+                        "usda", "federal", "davis-bacon", "davis bacon"]
+    for kw in federal_keywords:
+        if kw in text_to_check:
+            regime = "DAVIS_BACON_BUILDING_NEW_HAVEN"
+            confidence = "HIGH"
+            flags.append(f"Federal funding keyword detected: '{kw}' \u2014 Davis-Bacon applies")
+            break
+
+    # Non-profit / housing authority suggests prevailing wage likely
+    nonprofit_keywords = ["arc", "housing authority", "affordable", "nonprofit",
+                          "non-profit", "501c", "community development"]
+    for kw in nonprofit_keywords:
+        if kw in text_to_check:
+            flags.append(f"Non-profit/affordable housing indicator: '{kw}' \u2014 confirm funding source for Davis-Bacon applicability")
+            if confidence != "HIGH":
+                confidence = "LOW"
+            break
+
+    # CT DOT / state roadway work
+    dot_keywords = ["ct dot", "dot form 816", "state roadway", "public right of way", "state highway"]
+    for kw in dot_keywords:
+        if kw in text_to_check:
+            flags.append(f"CT DOT / state roadway work detected \u2014 verify prevailing wage for ROW work")
+            break
+
+    # Residential building type (confirms CT DOL residential is correct)
+    if any(k in text_to_check for k in ["single family", "residential", "apartment", "housing"]):
+        if regime == "CT_DOL_RESIDENTIAL":
+            confidence = "HIGH"
+
+    flags.append(f"Annual adjustment: CT DOL rates update July 1 each year \u2014 verify before bid")
+
+    return {
+        "regime": regime,
+        "regime_label": CT_WAGE_RATES.get(regime, {}).get("label", regime),
+        "confidence": confidence,
+        "flags": flags
+    }
 
 
 # ─── Page processing ────────────────────────────────────────────────────────

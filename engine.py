@@ -1014,6 +1014,147 @@ def detect_wage_regime(project_data: dict) -> dict:
     }
 
 
+def detect_project_type(extraction: dict) -> dict:
+    """
+    Detects whether this is a standard residential project or a
+    specialty/ADA accessible housing project.
+
+    Returns:
+    {
+        "project_type": "STANDARD_RESIDENTIAL" | "ADA_ACCESSIBLE" | "COMMERCIAL",
+        "labor_multiplier": float,  # 1.0 for standard, 1.35 for ADA
+        "confidence": "HIGH" | "MEDIUM" | "LOW",
+        "trigger_items": list[str],  # what triggered the classification
+        "flag_message": str
+    }
+    """
+
+    ADA_KEYWORDS = [
+        "ceiling lift", "grab bar", "roll-in shower", "roll under",
+        "arms monitoring", "arms system", "panic button", "nurse call",
+        "body dryer", "smart bed", "hospital grade", "medical grade",
+        "touchless faucet", "auto dispenser", "accessibility",
+        "ada compliance", "ada compliant", "wheelchair", "accessible",
+        "supported living", "assisted living", "group home",
+        "hydrogiene", "bidette", "shower chair", "transfer bench",
+        "hearing loop", "visual alarm", "tactile"
+    ]
+
+    SPECIALTY_EQUIPMENT_KEYWORDS = [
+        "arms", "ceiling track", "lift system", "smart home integration",
+        "remote monitoring", "sensor", "auto", "touchless", "voice control"
+    ]
+
+    # Pull all text from extraction to search
+    all_text = " ".join([
+        str(extraction.get("project_summary", "")),
+        str(extraction.get("scope", "")),
+        str(extraction.get("equipment_list", "")),
+        str(extraction.get("special_requirements", "")),
+        str(extraction.get("notes", "")),
+        str(extraction.get("owner", "")),
+        str(extraction.get("raw_text", "")),
+    ]).lower()
+
+    trigger_items = []
+
+    for kw in ADA_KEYWORDS:
+        if kw in all_text:
+            trigger_items.append(kw)
+
+    specialty_count = sum(1 for kw in SPECIALTY_EQUIPMENT_KEYWORDS if kw in all_text)
+
+    # Count specialty equipment items if equipment list exists
+    equipment_list = extraction.get("equipment_list", [])
+    equipment_count = len(equipment_list) if isinstance(equipment_list, list) else 0
+
+    # Classification logic
+    if len(trigger_items) >= 3 or equipment_count >= 15 or specialty_count >= 3:
+        project_type = "ADA_ACCESSIBLE"
+        labor_multiplier = 1.35
+        confidence = "HIGH" if len(trigger_items) >= 5 else "MEDIUM"
+        flag_message = (
+            f"ADA/ACCESSIBLE HOUSING DETECTED \u2014 {len(trigger_items)} specialty "
+            f"indicators found: {', '.join(trigger_items[:5])}{'...' if len(trigger_items) > 5 else ''}. "
+            f"Labor costs adjusted by 1.35x to reflect specialty installation "
+            f"requirements, extended coordination time, and ADA-grade workmanship. "
+            f"Material costs unchanged. Estimator should verify multiplier."
+        )
+    elif len(trigger_items) >= 1 or equipment_count >= 8:
+        project_type = "ADA_ACCESSIBLE"
+        labor_multiplier = 1.20
+        confidence = "LOW"
+        flag_message = (
+            f"POSSIBLE SPECIALTY SCOPE \u2014 {len(trigger_items)} ADA/specialty "
+            f"indicators found. Labor adjusted by 1.20x as precaution. "
+            f"Estimator must review and confirm project type."
+        )
+    else:
+        project_type = "STANDARD_RESIDENTIAL"
+        labor_multiplier = 1.0
+        confidence = "HIGH"
+        flag_message = "Standard residential scope detected. No ADA labor premium applied."
+
+    return {
+        "project_type": project_type,
+        "labor_multiplier": labor_multiplier,
+        "confidence": confidence,
+        "trigger_items": trigger_items,
+        "flag_message": flag_message
+    }
+
+
+def _detect_site_scope(consolidated: list[dict], trades: list) -> dict:
+    """
+    Detect whether site drawings / civil scope are present in the extraction.
+
+    Returns:
+    {
+        "has_site_scope": bool,
+        "site_trade": dict or None,  # the consolidated row if found
+        "flag_note": str
+    }
+    """
+    SITE_KEYWORDS = [
+        "sitework", "earthwork", "grading", "excavat", "demolit",
+        "civil", "d-1", "c-1", "landscape", "dot", "paving",
+        "ramp", "curb", "utility", "stormwater", "drainage"
+    ]
+
+    # Check if any consolidated trade is already site-related
+    site_trade = None
+    for row in consolidated:
+        lower_trade = row["trade"].lower()
+        if any(kw in lower_trade for kw in ["sitework", "paving", "landscaping", "fencing", "site concrete"]):
+            site_trade = row
+            break
+
+    # Also scan raw trades for civil keywords
+    raw_text = " ".join([t.trade.lower() + " " + t.scope_description.lower() for t in trades])
+    has_keywords = any(kw in raw_text for kw in SITE_KEYWORDS)
+
+    if site_trade:
+        return {
+            "has_site_scope": True,
+            "site_trade": site_trade,
+            "flag_note": ""
+        }
+    elif has_keywords:
+        return {
+            "has_site_scope": True,
+            "site_trade": None,
+            "flag_note": "\u26a0\ufe0f SITE SCOPE DETECTED \u2014 quantities not extracted. "
+                         "Estimator must price. Typical range: $25,000\u2013$200,000 depending on scope."
+        }
+    else:
+        return {
+            "has_site_scope": False,
+            "site_trade": None,
+            "flag_note": "\u26a0\ufe0f NO SITE DRAWINGS PROVIDED \u2014 if site work exists, this line "
+                         "must be priced separately. Do not bid without site scope."
+        }
+
+
 # ─── Page processing ────────────────────────────────────────────────────────
 
 
@@ -1406,6 +1547,24 @@ def build_excel_bytes(
 
     consolidated = consolidate_trades(trades)
 
+    # ── Project type & site detection ─────────────────────────────────────
+    # Build a lightweight extraction dict from the raw trade data for detection
+    _raw_text_parts = []
+    for t in trades:
+        _raw_text_parts.append(t.trade)
+        _raw_text_parts.append(t.scope_description)
+        if t.vendor_name:
+            _raw_text_parts.append(t.vendor_name)
+        _raw_text_parts.append(t.evidence)
+    for r in requirements:
+        _raw_text_parts.append(r.category)
+        _raw_text_parts.append(r.requirement)
+    _extraction_for_detection = {"raw_text": " ".join(_raw_text_parts)}
+    project_type_result = detect_project_type(_extraction_for_detection)
+    labor_multiplier = project_type_result["labor_multiplier"]
+
+    site_result = _detect_site_scope(consolidated, trades)
+
     wb = openpyxl.Workbook()
 
     # ── Styles ────────────────────────────────────────────────────────────
@@ -1413,6 +1572,10 @@ def build_excel_bytes(
     orange_fill = PatternFill(start_color="E8722A", end_color="E8722A", fill_type="solid")
     light_gray_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
     summary_fill = PatternFill(start_color="D9E2F3", end_color="D9E2F3", fill_type="solid")
+    green_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    amber_fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
+    site_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+    blue_rate_font = Font(name="Calibri", bold=True, size=11, color="0000FF")
 
     header_font = Font(name="Calibri", bold=True, color="FFFFFF", size=11)
     title_font = Font(name="Calibri", bold=True, color="FFFFFF", size=14)
@@ -1473,19 +1636,58 @@ def build_excel_bytes(
     title_cell.alignment = Alignment(horizontal="left", vertical="center")
     ws.row_dimensions[1].height = 40
 
-    # Row 2: column headers
+    # Row 2: PROJECT TYPE banner (when ADA/specialty detected)
+    header_row = 2
+    if project_type_result["project_type"] != "STANDARD_RESIDENTIAL":
+        banner_text = (
+            f"\u26a0\ufe0f PROJECT TYPE: {project_type_result['project_type'].replace('_', ' ')}  |  "
+            f"Labor Multiplier: {labor_multiplier}x  |  "
+            f"{', '.join(project_type_result['trigger_items'][:3])}"
+        )
+        ws.merge_cells("A2:G2")
+        banner_cell = ws["A2"]
+        banner_cell.value = banner_text
+        banner_cell.font = Font(name="Calibri", bold=True, size=11)
+        banner_cell.fill = amber_fill
+        banner_cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        ws.row_dimensions[2].height = 32
+        header_row = 3
+
+    # Column headers
     for col_letter, label, width in col_headers:
-        cell = ws[f"{col_letter}2"]
+        cell = ws[f"{col_letter}{header_row}"]
         cell.value = label
         cell.font = header_font
         cell.fill = navy_fill
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.border = thin_border
         ws.column_dimensions[col_letter].width = width
-    ws.row_dimensions[2].height = 30
+    ws.row_dimensions[header_row].height = 30
 
-    # Data rows start at row 3
-    data_start = 3
+    # Data rows start after header
+    data_start = header_row + 1
+
+    # ── Site Work / Civil row (always first trade row) ────────────────
+    site_row_idx = data_start
+    site_in_buyout = site_result["has_site_scope"] and site_result["site_trade"] is not None
+    # Check if Sitework is already in buyout_rows
+    site_already_in_buyout = any(
+        r["trade"] in ("Sitework", "Paving & Striping", "Site Concrete")
+        for r in buyout_rows
+    )
+    if not site_already_in_buyout:
+        # Add a SITE WORK / CIVIL placeholder row
+        ws.cell(row=site_row_idx, column=1, value="02000").font = bold_font
+        ws.cell(row=site_row_idx, column=2, value="SITE WORK / CIVIL").font = bold_font
+        ws.cell(row=site_row_idx, column=3, value="See Scope Details tab").alignment = wrap_top
+        ws.cell(row=site_row_idx, column=5, value=0).number_format = money_fmt
+        ws.cell(row=site_row_idx, column=7, value=site_result["flag_note"]).alignment = wrap_top
+        ws.cell(row=site_row_idx, column=7).font = Font(name="Calibri", size=9, italic=True)
+        for col in range(1, NUM_COLS + 1):
+            ws.cell(row=site_row_idx, column=col).fill = site_fill
+            ws.cell(row=site_row_idx, column=col).border = thin_border
+        ws.row_dimensions[site_row_idx].height = 36
+        data_start = site_row_idx + 1
     for i, row_data in enumerate(buyout_rows):
         r = data_start + i
         ws.cell(row=r, column=1, value=int(row_data["csi_division"])).font = bold_font
@@ -1506,18 +1708,32 @@ def build_excel_bytes(
         low_bidder_cell.alignment = top_align
 
         # BUDGET / SOV (E): from reference buyout or extracted budget
+        # Apply labor multiplier for ADA/specialty projects
         budget_cell = ws.cell(row=r, column=5)
         trade_name = row_data["trade"]
+        raw_budget = None
         if trade_name in sov_matched:
-            budget_cell.value = sov_matched[trade_name]
+            raw_budget = sov_matched[trade_name]
         elif row_data.get("budget") is not None:
-            budget_cell.value = row_data["budget"]
+            raw_budget = row_data["budget"]
+        if raw_budget is not None and labor_multiplier != 1.0:
+            # Estimate ~60% of budget is labor, apply multiplier to labor portion only
+            labor_portion = raw_budget * 0.60
+            material_portion = raw_budget * 0.40
+            adjusted = material_portion + (labor_portion * labor_multiplier)
+            budget_cell.value = round(adjusted)
+        elif raw_budget is not None:
+            budget_cell.value = raw_budget
         budget_cell.number_format = money_fmt
 
         # VARIANCE (F): blank for user
         ws.cell(row=r, column=6, value="").font = normal_font
-        # NOTES (G): blank for user
-        ws.cell(row=r, column=7, value="").font = normal_font
+        # NOTES (G): labor multiplier note if applicable
+        if labor_multiplier != 1.0 and raw_budget is not None:
+            ws.cell(row=r, column=7, value=f"Labor {labor_multiplier}x applied").font = Font(
+                name="Calibri", size=9, italic=True)
+        else:
+            ws.cell(row=r, column=7, value="").font = normal_font
 
         # Alternate row shading
         if i % 2 == 1:
@@ -1532,72 +1748,94 @@ def build_excel_bytes(
 
     data_end = data_start + len(buyout_rows) - 1
 
+    # Include the site row in the SUM range if it was added
+    sum_start = site_row_idx if not site_already_in_buyout else data_start
+
     # ── Summary rows below data ──────────────────────────────────────────
     gap = data_end + 2
 
-    # SUBTOTALS row
+    # SUBTOTALS row — with "RATE" label in col G as header for editable rates below
     ws.cell(row=gap, column=2, value="SUBTOTALS").font = bold_font
     subtotal_cell = ws.cell(row=gap, column=5)
-    subtotal_cell.value = f"=SUM(E{data_start}:E{data_end})"
+    subtotal_cell.value = f"=SUM(E{sum_start}:E{data_end})"
     subtotal_cell.number_format = money_fmt
     subtotal_cell.font = bold_font
+    ws.cell(row=gap, column=7, value="RATE").font = Font(
+        name="Calibri", bold=True, size=10, color="666666")
+    ws.cell(row=gap, column=7).alignment = Alignment(horizontal="center")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=gap, column=col).fill = summary_fill
         ws.cell(row=gap, column=col).border = thin_border
     ws.row_dimensions[gap].height = 28
 
-    # GC OH&P row
-    ohp_row = gap + 1
-    ws.cell(row=ohp_row, column=1, value=1).font = normal_font
-    ws.cell(row=ohp_row, column=2, value="GC OH&P").font = bold_font
-    ohp_cell = ws.cell(row=ohp_row, column=5)
-    if sov_summary["ohp"] is not None:
-        ohp_cell.value = sov_summary["ohp"]
-    else:
-        ohp_cell.value = f"=E{gap}*0.38"
-    ohp_cell.number_format = money_fmt
-    # Rate metadata in NOTES col
-    ws.cell(row=ohp_row, column=7, value=0.38).number_format = '0%'
+    # GC OVERHEAD row (rate 0.10)
+    overhead_row = gap + 1
+    ws.cell(row=overhead_row, column=1, value=1).font = normal_font
+    ws.cell(row=overhead_row, column=2, value="GC OVERHEAD").font = bold_font
+    overhead_cell = ws.cell(row=overhead_row, column=5)
+    overhead_cell.value = f"=E{gap}*G{overhead_row}"
+    overhead_cell.number_format = money_fmt
+    ws.cell(row=overhead_row, column=7, value=0.10).font = blue_rate_font
+    ws.cell(row=overhead_row, column=7).number_format = '0%'
     for col in range(1, NUM_COLS + 1):
-        ws.cell(row=ohp_row, column=col).border = thin_border
-    ws.row_dimensions[ohp_row].height = 28
+        ws.cell(row=overhead_row, column=col).border = thin_border
+    ws.row_dimensions[overhead_row].height = 28
 
-    # Bond Premium row
-    bond_row = ohp_row + 1
-    ws.cell(row=bond_row, column=1, value=1).font = normal_font
-    ws.cell(row=bond_row, column=2, value="Bond Premium").font = bold_font
-    bond_cell = ws.cell(row=bond_row, column=5)
-    if sov_summary["bond"] is not None:
-        bond_cell.value = sov_summary["bond"]
-    else:
-        bond_cell.value = f"=E{gap}*0.005"
-    bond_cell.number_format = money_fmt
+    # GC PROFIT row (rate 0.12, green background)
+    profit_row = overhead_row + 1
+    ws.cell(row=profit_row, column=1, value=1).font = normal_font
+    ws.cell(row=profit_row, column=2, value="GC PROFIT").font = bold_font
+    profit_cell = ws.cell(row=profit_row, column=5)
+    profit_cell.value = f"=E{gap}*G{profit_row}"
+    profit_cell.number_format = money_fmt
+    ws.cell(row=profit_row, column=7, value=0.12).font = blue_rate_font
+    ws.cell(row=profit_row, column=7).number_format = '0%'
     for col in range(1, NUM_COLS + 1):
-        ws.cell(row=bond_row, column=col).border = thin_border
-    ws.row_dimensions[bond_row].height = 28
+        ws.cell(row=profit_row, column=col).fill = green_fill
+        ws.cell(row=profit_row, column=col).border = thin_border
+    ws.row_dimensions[profit_row].height = 28
 
-    # Permit row
-    permit_row = bond_row + 1
-    ws.cell(row=permit_row, column=1, value=1).font = normal_font
-    ws.cell(row=permit_row, column=2, value="Permit - EST @ $35/1000").font = bold_font
-    permit_cell = ws.cell(row=permit_row, column=5)
-    if sov_summary["permit"] is not None:
-        permit_cell.value = sov_summary["permit"]
-    else:
-        permit_cell.value = f"=E{gap}/1000*35"
-    permit_cell.number_format = money_fmt
+    # CONTINGENCY row (rate 0.10, amber background)
+    contingency_row = profit_row + 1
+    ws.cell(row=contingency_row, column=1, value=1).font = normal_font
+    ws.cell(row=contingency_row, column=2, value="CONTINGENCY").font = bold_font
+    contingency_cell = ws.cell(row=contingency_row, column=5)
+    contingency_cell.value = f"=E{gap}*G{contingency_row}"
+    contingency_cell.number_format = money_fmt
+    ws.cell(row=contingency_row, column=7, value=0.10).font = blue_rate_font
+    ws.cell(row=contingency_row, column=7).number_format = '0%'
     for col in range(1, NUM_COLS + 1):
-        ws.cell(row=permit_row, column=col).border = thin_border
-    ws.row_dimensions[permit_row].height = 28
+        ws.cell(row=contingency_row, column=col).fill = amber_fill
+        ws.cell(row=contingency_row, column=col).border = thin_border
+    ws.row_dimensions[contingency_row].height = 28
 
-    # TOTAL row
-    total_row = permit_row + 1
-    ws.cell(row=total_row, column=2, value="TOTAL").font = Font(
-        name="Calibri", bold=True, size=12)
+    # PERMITS + BOND row (rate 0.025)
+    permits_bond_row = contingency_row + 1
+    ws.cell(row=permits_bond_row, column=1, value=1).font = normal_font
+    ws.cell(row=permits_bond_row, column=2, value="PERMITS + BOND").font = bold_font
+    permits_bond_cell = ws.cell(row=permits_bond_row, column=5)
+    permits_bond_cell.value = f"=E{gap}*G{permits_bond_row}"
+    permits_bond_cell.number_format = money_fmt
+    ws.cell(row=permits_bond_row, column=7, value=0.025).font = blue_rate_font
+    ws.cell(row=permits_bond_row, column=7).number_format = '0.0%'
+    for col in range(1, NUM_COLS + 1):
+        ws.cell(row=permits_bond_row, column=col).border = thin_border
+    ws.row_dimensions[permits_bond_row].height = 28
+
+    # Blank spacer row
+    spacer_row = permits_bond_row + 1
+    ws.row_dimensions[spacer_row].height = 10
+
+    # PROJECT TOTAL row (dark navy, white bold — same style as old TOTAL row)
+    total_row = spacer_row + 1
+    ws.cell(row=total_row, column=2, value="PROJECT TOTAL").font = Font(
+        name="Calibri", bold=True, size=12, color="FFFFFF")
     total_sov = ws.cell(row=total_row, column=5)
-    total_sov.value = f"=SUM(E{gap}:E{permit_row})"
+    total_sov.value = (
+        f"=E{gap}+E{overhead_row}+E{profit_row}+E{contingency_row}+E{permits_bond_row}"
+    )
     total_sov.number_format = money_fmt
-    total_sov.font = Font(name="Calibri", bold=True, size=12)
+    total_sov.font = Font(name="Calibri", bold=True, size=12, color="FFFFFF")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=total_row, column=col).fill = navy_fill
         ws.cell(row=total_row, column=col).font = Font(
@@ -1605,8 +1843,8 @@ def build_excel_bytes(
         ws.cell(row=total_row, column=col).border = thin_border
     ws.row_dimensions[total_row].height = 32
 
-    # Freeze panes
-    ws.freeze_panes = "C3"
+    # Freeze panes (adjust for banner row)
+    ws.freeze_panes = f"C{header_row + 1}"
     ws.sheet_properties.tabColor = "1A2332"
 
     # ── TAB 2: Scope Details ──────────────────────────────────────────────

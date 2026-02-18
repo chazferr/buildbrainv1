@@ -1328,6 +1328,80 @@ def get_baseline_quantities(trade_name: str, extraction: dict) -> list[dict]:
              "material_quantity": int_door_count,
              "description": "Interior hollow core doors"},
         ],
+        "Gutters": [
+            {"work_item": "gutter_install", "quantity": 120,
+             "material_key": "gutter_ogee_5in", "material_quantity": 120,
+             "description": "Ogee gutters 5\" with leaf screens + downspouts"},
+        ],
+        "SITE WORK / CIVIL": [
+            {"work_item": None, "quantity": 0,
+             "material_key": None, "material_quantity": 0,
+             "description": "PLACEHOLDER \u2014 Civil scope requires sub quotes",
+             "override_amount": 148000,
+             "note": "\u26a0\ufe0f CIVIL SCOPE PLACEHOLDER $148,000 mid-point estimate. "
+                     "Based on: Sitework $45K + Paving $55K + Landscaping $22K + "
+                     "Fencing $8K + Site Concrete $18K. "
+                     "GET SUB QUOTES BEFORE BID. Range: $95,000\u2013$200,000."}
+        ],
+        "Conveying Equipment": [
+            {"work_item": None, "quantity": 0,
+             "material_key": None, "material_quantity": 0,
+             "description": "Ceiling lift system BR5 \u2014 structural + track install",
+             "override_amount": 15000,
+             "note": "\u26a0\ufe0f Ceiling lift placeholder $15,000. "
+                     "Midstate supplies equipment, GC installs. "
+                     "Range: $8,000\u2013$25,000. Get specialty sub quote."}
+        ],
+        "Specialties": [
+            {"work_item": None, "quantity": 0,
+             "material_key": None, "material_quantity": 0,
+             "description": "ADA bathroom accessories \u2014 grab bars, mirrors, hardware",
+             "override_amount": 4500,
+             "note": "Bobrick grab bars, Harney accessories, ADA mirror. "
+                     "Per spec A1.02 equipment plan."}
+        ],
+        "Countertops & Finishes": [
+            {"work_item": None, "quantity": 0,
+             "material_key": None, "material_quantity": 0,
+             "description": "Kitchen + bath countertops CT-1 Dolomite finish",
+             "override_amount": 5500,
+             "note": "CT-1 countertop Dolomite 12 UL Dick, kitchen + bath. "
+                     "Placeholder \u2014 verify LF with sub."}
+        ],
+        "Smart Home / Security": [
+            {"work_item": None, "quantity": 0,
+             "material_key": None, "material_quantity": 0,
+             "description": "ARMS system rough-in, smart locks, sensors, doorbell",
+             "override_amount": 12000,
+             "note": "\u26a0\ufe0f ADA Smart Home scope: ARMS panel, motion/door/flood "
+                     "sensors, smart locks, video doorbell, camera. "
+                     "Rough-in labor + materials. Range: $8,000\u2013$18,000."}
+        ],
+        "Structural Steel": [
+            {"work_item": None, "quantity": 0,
+             "material_key": None, "material_quantity": 0,
+             "description": "Simpson hardware, LVL beams, anchor bolts, metal connectors",
+             "override_amount": 6500,
+             "note": "Simpson H2.5A clips, LSTA24 straps, anchor bolts, "
+                     "(2) 1-3/4x11-7/8 LVL ridge beam. Per S1.01."}
+        ],
+        "Flashing & Waterproofing": [
+            {"work_item": None, "quantity": 0,
+             "material_key": None, "material_quantity": 0,
+             "description": "WR Grace Perm-A-Barrier, aluminum flashing, termite shield",
+             "override_amount": 4200,
+             "note": "WR Grace Perm-A-Barrier membrane flashing, .060 aluminum "
+                     "flashing, termite shield. Per A4.01 details."}
+        ],
+        "General Requirements": [
+            {"work_item": None, "quantity": 0,
+             "material_key": None, "material_quantity": 0,
+             "description": "Survey, temporary facilities, dumpsters, project management",
+             "override_amount": 8000,
+             "note": "Survey (James W. Seabrook CT PLS #1302), temp power, "
+                     "dumpsters, project signage, superintendent time. "
+                     "Placeholder \u2014 adjust per GC actual costs."}
+        ],
     }
 
     return TRADE_MAP.get(trade_name, [])
@@ -1907,12 +1981,18 @@ def build_excel_bytes(
         for r in buyout_rows
     )
     if not site_already_in_buyout:
-        # Add a SITE WORK / CIVIL placeholder row
+        # Add a SITE WORK / CIVIL placeholder row with pricing from TRADE_MAP
+        site_items = get_baseline_quantities("SITE WORK / CIVIL", _extraction_for_detection)
+        site_override = next((item.get("override_amount") for item in site_items
+                             if item.get("override_amount")), 0)
+        site_override_note = next((item.get("note") for item in site_items
+                                  if item.get("note") and item.get("override_amount")),
+                                 site_result["flag_note"])
         ws.cell(row=site_row_idx, column=1, value="02000").font = bold_font
         ws.cell(row=site_row_idx, column=2, value="SITE WORK / CIVIL").font = bold_font
         ws.cell(row=site_row_idx, column=3, value="See Scope Details tab").alignment = wrap_top
-        ws.cell(row=site_row_idx, column=5, value=0).number_format = money_fmt
-        ws.cell(row=site_row_idx, column=7, value=site_result["flag_note"]).alignment = wrap_top
+        ws.cell(row=site_row_idx, column=5, value=site_override).number_format = money_fmt
+        ws.cell(row=site_row_idx, column=7, value=site_override_note).alignment = wrap_top
         ws.cell(row=site_row_idx, column=7).font = Font(name="Calibri", size=9, italic=True)
         for col in range(1, NUM_COLS + 1):
             ws.cell(row=site_row_idx, column=col).fill = site_fill
@@ -1955,32 +2035,44 @@ def build_excel_bytes(
         if budget_val is None or budget_val == 0:
             work_items = get_baseline_quantities(trade_name, _extraction_for_detection)
             if work_items:
-                wage_regime = "CT_DOL_RESIDENTIAL"
-                if isinstance(project_type_result, dict) and "regime" in project_type_result:
-                    wage_regime = project_type_result["regime"]
+                # Check for override_amount (placeholder trades)
+                override = next((item.get("override_amount") for item in work_items
+                                if item.get("override_amount")), None)
+                override_note = next((item.get("note") for item in work_items
+                                     if item.get("note") and item.get("override_amount")), None)
 
-                trade_estimate = calculate_trade_estimate(
-                    trade_name=trade_name,
-                    work_items=work_items,
-                    wage_regime=wage_regime
-                )
-
-                # Apply ADA labor multiplier AFTER base calculation
-                if labor_multiplier != 1.0:
-                    adj_labor = trade_estimate["total_labor"] * labor_multiplier
-                    budget_val = trade_estimate["total_material"] + adj_labor
-                    note_val = (
-                        f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
-                        f"+ Labor: ${trade_estimate['total_labor']:,.0f} \u00d7 {labor_multiplier}x ADA "
-                        f"= ${budget_val:,.0f} | \u00b115% accuracy | Sub quote overrides this"
-                    )
+                if override is not None:
+                    # Placeholder trade — write directly, skip calculate_trade_estimate
+                    budget_val = override
+                    note_val = override_note
                 else:
-                    budget_val = trade_estimate["use_amount"]
-                    note_val = (
-                        f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
-                        f"+ Labor: ${trade_estimate['total_labor']:,.0f} "
-                        f"= ${budget_val:,.0f} | \u00b115% accuracy | Sub quote overrides this"
+                    # Normal trade — run the pricing engine
+                    wage_regime = "CT_DOL_RESIDENTIAL"
+                    if isinstance(project_type_result, dict) and "regime" in project_type_result:
+                        wage_regime = project_type_result["regime"]
+
+                    trade_estimate = calculate_trade_estimate(
+                        trade_name=trade_name,
+                        work_items=work_items,
+                        wage_regime=wage_regime
                     )
+
+                    # Apply ADA labor multiplier AFTER base calculation
+                    if labor_multiplier != 1.0:
+                        adj_labor = trade_estimate["total_labor"] * labor_multiplier
+                        budget_val = trade_estimate["total_material"] + adj_labor
+                        note_val = (
+                            f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
+                            f"+ Labor: ${trade_estimate['total_labor']:,.0f} \u00d7 {labor_multiplier}x ADA "
+                            f"= ${budget_val:,.0f} | \u00b115% accuracy | Sub quote overrides this"
+                        )
+                    else:
+                        budget_val = trade_estimate["use_amount"]
+                        note_val = (
+                            f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
+                            f"+ Labor: ${trade_estimate['total_labor']:,.0f} "
+                            f"= ${budget_val:,.0f} | \u00b115% accuracy | Sub quote overrides this"
+                        )
             else:
                 budget_val = 0
                 note_val = "\u26a0\ufe0f No pricing found \u2014 estimator must price this trade"

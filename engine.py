@@ -135,6 +135,16 @@ RULES:
 - QUANTITIES: If quantities (SF, LF, EA, CY, SY, etc.) are visible, capture them in quantity.
 - evidence must be a SHORT snippet (max ~80 chars) directly from the page.
 - Return ONLY valid JSON. No markdown code fences. No commentary outside the JSON.
+- SUBMISSION REQUIREMENTS — only extract items that meet at least ONE of:
+  * Has a specific deadline, date, or schedule constraint
+  * Involves money, retainage, bonds, or insurance amounts
+  * Is a license, certification, permit, or regulatory approval requirement
+  * Creates legal or schedule risk if missed (liquidated damages, inspections with teeth)
+  * Is explicitly marked mandatory, "shall", "required", or "must"
+  * Involves coordination with an outside authority (city, DOT, utility, engineer of record)
+  Do NOT extract: general best practices, standard boilerplate phrases like "contractor
+  shall verify all dimensions", informational notes with no legal consequence, or items
+  that are repeated verbatim from another page already processed.
 """
 
 RETRY_PROMPT = """\
@@ -1254,15 +1264,17 @@ def build_excel_bytes(
     # ── TAB 1: Buyout Summary ─────────────────────────────────────────────
     ws = wb.active
     ws.title = "Buyout Summary"
-    NUM_COLS = 5  # A through E
+    NUM_COLS = 7  # A through G
 
-    # Column layout: DIV | TRADE | SCOPE | SOV | NOTES
+    # Column layout: DIV | TRADE | SCOPE | LOW BIDDER | BUDGET / SOV | VARIANCE | NOTES
     col_headers = [
         ("A", "DIV", 7),
         ("B", "TRADE", 34),
         ("C", "SCOPE", 62),
-        ("D", "SOV", 18),
-        ("E", "NOTES", 36),
+        ("D", "LOW BIDDER", 22),
+        ("E", "BUDGET / SOV", 18),
+        ("F", "VARIANCE", 14),
+        ("G", "NOTES", 36),
     ]
 
     # Match SOV values from reference buyout if provided
@@ -1276,8 +1288,17 @@ def build_excel_bytes(
         sov_summary["bond"] = sov_data.get("bond")
         sov_summary["permit"] = sov_data.get("permit")
 
+    # Filter to only trades with pricing for Buyout Summary
+    buyout_rows = [
+        row for row in consolidated
+        if row.get("budget") is not None or row["trade"] in sov_matched
+    ]
+    # Safety fallback: if nothing has pricing, show everything
+    if not buyout_rows:
+        buyout_rows = consolidated
+
     # Row 1: title bar
-    ws.merge_cells("A1:E1")
+    ws.merge_cells("A1:G1")
     title_cell = ws["A1"]
     title_cell.value = "BuildBrain Buyout Summary"
     title_cell.font = title_font
@@ -1298,7 +1319,7 @@ def build_excel_bytes(
 
     # Data rows start at row 3
     data_start = 3
-    for i, row_data in enumerate(consolidated):
+    for i, row_data in enumerate(buyout_rows):
         r = data_start + i
         ws.cell(row=r, column=1, value=int(row_data["csi_division"])).font = bold_font
         ws.cell(row=r, column=2, value=row_data["trade"]).font = bold_font
@@ -1310,15 +1331,26 @@ def build_excel_bytes(
             brief += f" (+{len(scope_lines) - 3} more)"
         ws.cell(row=r, column=3, value=brief).alignment = wrap_top
 
-        # SOV (D): from reference buyout mapping
-        sov_cell = ws.cell(row=r, column=4)
+        # LOW BIDDER (D): vendor name of lowest bid
+        low_bidder_cell = ws.cell(row=r, column=4)
+        bids = row_data.get("bids", [])
+        if bids:
+            low_bidder_cell.value = bids[0][0]  # vendor name of lowest bid
+        low_bidder_cell.alignment = top_align
+
+        # BUDGET / SOV (E): from reference buyout or extracted budget
+        budget_cell = ws.cell(row=r, column=5)
         trade_name = row_data["trade"]
         if trade_name in sov_matched:
-            sov_cell.value = sov_matched[trade_name]
-        sov_cell.number_format = money_fmt
+            budget_cell.value = sov_matched[trade_name]
+        elif row_data.get("budget") is not None:
+            budget_cell.value = row_data["budget"]
+        budget_cell.number_format = money_fmt
 
-        # Notes (E): empty for user
-        ws.cell(row=r, column=5, value="").font = normal_font
+        # VARIANCE (F): blank for user
+        ws.cell(row=r, column=6, value="").font = normal_font
+        # NOTES (G): blank for user
+        ws.cell(row=r, column=7, value="").font = normal_font
 
         # Alternate row shading
         if i % 2 == 1:
@@ -1331,15 +1363,15 @@ def build_excel_bytes(
 
         ws.row_dimensions[r].height = max(30, min(len(scope_lines) * 18, 90))
 
-    data_end = data_start + len(consolidated) - 1
+    data_end = data_start + len(buyout_rows) - 1
 
     # ── Summary rows below data ──────────────────────────────────────────
     gap = data_end + 2
 
     # SUBTOTALS row
     ws.cell(row=gap, column=2, value="SUBTOTALS").font = bold_font
-    subtotal_cell = ws.cell(row=gap, column=4)
-    subtotal_cell.value = f"=SUM(D{data_start}:D{data_end})"
+    subtotal_cell = ws.cell(row=gap, column=5)
+    subtotal_cell.value = f"=SUM(E{data_start}:E{data_end})"
     subtotal_cell.number_format = money_fmt
     subtotal_cell.font = bold_font
     for col in range(1, NUM_COLS + 1):
@@ -1347,16 +1379,18 @@ def build_excel_bytes(
         ws.cell(row=gap, column=col).border = thin_border
     ws.row_dimensions[gap].height = 28
 
-    # GC OH&P = 38% row
+    # GC OH&P row
     ohp_row = gap + 1
     ws.cell(row=ohp_row, column=1, value=1).font = normal_font
-    ws.cell(row=ohp_row, column=2, value="GC OH&P = 38%").font = bold_font
-    ohp_cell = ws.cell(row=ohp_row, column=4)
+    ws.cell(row=ohp_row, column=2, value="GC OH&P").font = bold_font
+    ohp_cell = ws.cell(row=ohp_row, column=5)
     if sov_summary["ohp"] is not None:
         ohp_cell.value = sov_summary["ohp"]
     else:
-        ohp_cell.value = f"=D{gap}*0.38"
+        ohp_cell.value = f"=E{gap}*0.38"
     ohp_cell.number_format = money_fmt
+    # Rate metadata in NOTES col
+    ws.cell(row=ohp_row, column=7, value=0.38).number_format = '0%'
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=ohp_row, column=col).border = thin_border
     ws.row_dimensions[ohp_row].height = 28
@@ -1365,32 +1399,36 @@ def build_excel_bytes(
     bond_row = ohp_row + 1
     ws.cell(row=bond_row, column=1, value=1).font = normal_font
     ws.cell(row=bond_row, column=2, value="Bond Premium").font = bold_font
-    bond_cell = ws.cell(row=bond_row, column=4)
+    bond_cell = ws.cell(row=bond_row, column=5)
     if sov_summary["bond"] is not None:
         bond_cell.value = sov_summary["bond"]
+    else:
+        bond_cell.value = f"=E{gap}*0.005"
     bond_cell.number_format = money_fmt
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=bond_row, column=col).border = thin_border
     ws.row_dimensions[bond_row].height = 28
 
-    # Permit Fees row
+    # Permit row
     permit_row = bond_row + 1
     ws.cell(row=permit_row, column=1, value=1).font = normal_font
-    ws.cell(row=permit_row, column=2, value="Permit Fees").font = bold_font
-    permit_cell = ws.cell(row=permit_row, column=4)
+    ws.cell(row=permit_row, column=2, value="Permit - EST @ $35/1000").font = bold_font
+    permit_cell = ws.cell(row=permit_row, column=5)
     if sov_summary["permit"] is not None:
         permit_cell.value = sov_summary["permit"]
+    else:
+        permit_cell.value = f"=E{gap}/1000*35"
     permit_cell.number_format = money_fmt
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=permit_row, column=col).border = thin_border
     ws.row_dimensions[permit_row].height = 28
 
-    # CONTRACT TOTAL row
+    # TOTAL row
     total_row = permit_row + 1
-    ws.cell(row=total_row, column=2, value="CONTRACT TOTAL").font = Font(
+    ws.cell(row=total_row, column=2, value="TOTAL").font = Font(
         name="Calibri", bold=True, size=12)
-    total_sov = ws.cell(row=total_row, column=4)
-    total_sov.value = f"=SUM(D{gap}:D{permit_row})"
+    total_sov = ws.cell(row=total_row, column=5)
+    total_sov.value = f"=SUM(E{gap}:E{permit_row})"
     total_sov.number_format = money_fmt
     total_sov.font = Font(name="Calibri", bold=True, size=12)
     for col in range(1, NUM_COLS + 1):
@@ -1408,7 +1446,7 @@ def build_excel_bytes(
     ws2 = wb.create_sheet("Scope Details")
     ws2.sheet_properties.tabColor = "E8722A"
 
-    scope_headers = ["DIV", "TRADE", "SCOPE", "QUANTITIES", "BUDGET", "SOURCE PAGES"]
+    scope_headers = ["DIV", "TRADE", "SCOPE", "SOURCE PAGES"]
     for ci, h in enumerate(scope_headers, 1):
         cell = ws2.cell(row=1, column=ci, value=h)
         cell.font = header_font
@@ -1417,10 +1455,8 @@ def build_excel_bytes(
 
     ws2.column_dimensions["A"].width = 7
     ws2.column_dimensions["B"].width = 34
-    ws2.column_dimensions["C"].width = 90
-    ws2.column_dimensions["D"].width = 30
-    ws2.column_dimensions["E"].width = 18
-    ws2.column_dimensions["F"].width = 50
+    ws2.column_dimensions["C"].width = 110
+    ws2.column_dimensions["D"].width = 55
     ws2.row_dimensions[1].height = 28
 
     for i, row_data in enumerate(consolidated):
@@ -1430,17 +1466,10 @@ def build_excel_bytes(
         ws2.cell(row=r, column=2).font = bold_font
         scope_cell = ws2.cell(row=r, column=3, value=row_data["scope"])
         scope_cell.alignment = wrap_top
-        qty_cell = ws2.cell(row=r, column=4, value=row_data.get("quantities") or "")
-        qty_cell.alignment = wrap_top
-        budget_cell = ws2.cell(row=r, column=5)
-        if row_data.get("budget") is not None:
-            budget_cell.value = row_data["budget"]
-            budget_cell.number_format = money_fmt
-        budget_cell.alignment = top_align
-        ws2.cell(row=r, column=6, value=row_data["source_pages"]).alignment = wrap_top
+        ws2.cell(row=r, column=4, value=row_data["source_pages"]).alignment = wrap_top
         line_count = row_data["scope"].count("\n") + 1
         ws2.row_dimensions[r].height = max(30, line_count * 18)
-        for ci in range(1, 7):
+        for ci in range(1, 5):
             ws2.cell(row=r, column=ci).border = thin_border
 
     # ── TAB 3: Submission Requirements ────────────────────────────────────

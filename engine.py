@@ -1879,6 +1879,10 @@ def build_excel_bytes(
     amber_fill = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
     site_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
     blue_rate_font = Font(name="Calibri", bold=True, size=11, color="0000FF")
+    light_blue_fill = PatternFill(start_color="DDEEFF", end_color="DDEEFF", fill_type="solid")
+    dark_blue_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+    dark_green_fill = PatternFill(start_color="375623", end_color="375623", fill_type="solid")
+    project_total_fill = PatternFill(start_color="1F2D3D", end_color="1F2D3D", fill_type="solid")
 
     header_font = Font(name="Calibri", bold=True, color="FFFFFF", size=11)
     title_font = Font(name="Calibri", bold=True, color="FFFFFF", size=14)
@@ -2103,60 +2107,60 @@ def build_excel_bytes(
 
     data_end = data_start + len(buyout_rows) - 1
 
-    # Include the site row in the SUM range if it was added
-    sum_start = site_row_idx if not site_already_in_buyout else data_start
-
     # ── Summary rows below data ──────────────────────────────────────────
     gap = data_end + 2
 
-    # SUBTOTALS row — with "RATE" label in col G as header for editable rates below
-    ws.cell(row=gap, column=2, value="SUBTOTALS").font = bold_font
-    subtotal_cell = ws.cell(row=gap, column=5)
-    subtotal_cell.value = f"=SUM(E{sum_start}:E{data_end})"
-    subtotal_cell.number_format = money_fmt
-    subtotal_cell.font = bold_font
-    ws.cell(row=gap, column=7, value="RATE").font = Font(
+    # ── SECTION A: BUILDING TRADES ────────────────────────────────────
+    # Building subtotal excludes site row (row site_row_idx)
+    bldg_sub_row = gap
+    ws.cell(row=bldg_sub_row, column=2, value="BUILDING SUBTOTAL").font = bold_font
+    cell = ws.cell(row=bldg_sub_row, column=5)
+    cell.data_type = 'f'
+    cell.value = f"=SUM(E{data_start}:E{data_end})"
+    cell.number_format = money_fmt
+    cell.font = bold_font
+    ws.cell(row=bldg_sub_row, column=7, value="RATE").font = Font(
         name="Calibri", bold=True, size=10, color="666666")
-    ws.cell(row=gap, column=7).alignment = Alignment(horizontal="center")
+    ws.cell(row=bldg_sub_row, column=7).alignment = Alignment(horizontal="center")
     for col in range(1, NUM_COLS + 1):
-        ws.cell(row=gap, column=col).fill = summary_fill
-        ws.cell(row=gap, column=col).border = thin_border
-    ws.row_dimensions[gap].height = 28
+        ws.cell(row=bldg_sub_row, column=col).fill = light_blue_fill
+        ws.cell(row=bldg_sub_row, column=col).border = thin_border
+    ws.row_dimensions[bldg_sub_row].height = 28
 
-    # GC OVERHEAD row (rate 0.10)
-    overhead_row = gap + 1
-    ws.cell(row=overhead_row, column=1, value=1).font = normal_font
-    ws.cell(row=overhead_row, column=2, value="GC OVERHEAD").font = bold_font
-    overhead_cell = ws.cell(row=overhead_row, column=5)
-    overhead_cell.value = f"=E{gap}*G{overhead_row}"
-    overhead_cell.number_format = money_fmt
-    ws.cell(row=overhead_row, column=7, value=0.10).font = blue_rate_font
-    ws.cell(row=overhead_row, column=7).number_format = '0%'
+    # GC General Conditions (10%)
+    gc_cond_row = bldg_sub_row + 1
+    ws.cell(row=gc_cond_row, column=2, value="GC General Conditions").font = bold_font
+    cell = ws.cell(row=gc_cond_row, column=5)
+    cell.data_type = 'f'
+    cell.value = f"=E{bldg_sub_row}*G{gc_cond_row}"
+    cell.number_format = money_fmt
+    ws.cell(row=gc_cond_row, column=7, value=0.10).font = blue_rate_font
+    ws.cell(row=gc_cond_row, column=7).number_format = '0%'
     for col in range(1, NUM_COLS + 1):
-        ws.cell(row=overhead_row, column=col).border = thin_border
-    ws.row_dimensions[overhead_row].height = 28
+        ws.cell(row=gc_cond_row, column=col).border = thin_border
+    ws.row_dimensions[gc_cond_row].height = 28
 
-    # GC PROFIT row (rate 0.12, green background)
-    profit_row = overhead_row + 1
-    ws.cell(row=profit_row, column=1, value=1).font = normal_font
-    ws.cell(row=profit_row, column=2, value="GC PROFIT").font = bold_font
-    profit_cell = ws.cell(row=profit_row, column=5)
-    profit_cell.value = f"=E{gap}*G{profit_row}"
-    profit_cell.number_format = money_fmt
-    ws.cell(row=profit_row, column=7, value=0.12).font = blue_rate_font
-    ws.cell(row=profit_row, column=7).number_format = '0%'
+    # GC Profit (12%, green background)
+    gc_profit_row = gc_cond_row + 1
+    ws.cell(row=gc_profit_row, column=2, value="GC Profit").font = bold_font
+    cell = ws.cell(row=gc_profit_row, column=5)
+    cell.data_type = 'f'
+    cell.value = f"=E{bldg_sub_row}*G{gc_profit_row}"
+    cell.number_format = money_fmt
+    ws.cell(row=gc_profit_row, column=7, value=0.12).font = blue_rate_font
+    ws.cell(row=gc_profit_row, column=7).number_format = '0%'
     for col in range(1, NUM_COLS + 1):
-        ws.cell(row=profit_row, column=col).fill = green_fill
-        ws.cell(row=profit_row, column=col).border = thin_border
-    ws.row_dimensions[profit_row].height = 28
+        ws.cell(row=gc_profit_row, column=col).fill = green_fill
+        ws.cell(row=gc_profit_row, column=col).border = thin_border
+    ws.row_dimensions[gc_profit_row].height = 28
 
-    # CONTINGENCY row (rate 0.10, amber background)
-    contingency_row = profit_row + 1
-    ws.cell(row=contingency_row, column=1, value=1).font = normal_font
-    ws.cell(row=contingency_row, column=2, value="CONTINGENCY").font = bold_font
-    contingency_cell = ws.cell(row=contingency_row, column=5)
-    contingency_cell.value = f"=E{gap}*G{contingency_row}"
-    contingency_cell.number_format = money_fmt
+    # Contingency (10%, amber background)
+    contingency_row = gc_profit_row + 1
+    ws.cell(row=contingency_row, column=2, value="Contingency").font = bold_font
+    cell = ws.cell(row=contingency_row, column=5)
+    cell.data_type = 'f'
+    cell.value = f"=E{bldg_sub_row}*G{contingency_row}"
+    cell.number_format = money_fmt
     ws.cell(row=contingency_row, column=7, value=0.10).font = blue_rate_font
     ws.cell(row=contingency_row, column=7).number_format = '0%'
     for col in range(1, NUM_COLS + 1):
@@ -2164,39 +2168,113 @@ def build_excel_bytes(
         ws.cell(row=contingency_row, column=col).border = thin_border
     ws.row_dimensions[contingency_row].height = 28
 
-    # PERMITS + BOND row (rate 0.025)
+    # Permits + Bond (2.5%)
     permits_bond_row = contingency_row + 1
-    ws.cell(row=permits_bond_row, column=1, value=1).font = normal_font
-    ws.cell(row=permits_bond_row, column=2, value="PERMITS + BOND").font = bold_font
-    permits_bond_cell = ws.cell(row=permits_bond_row, column=5)
-    permits_bond_cell.value = f"=E{gap}*G{permits_bond_row}"
-    permits_bond_cell.number_format = money_fmt
+    ws.cell(row=permits_bond_row, column=2, value="Permits + Bond").font = bold_font
+    cell = ws.cell(row=permits_bond_row, column=5)
+    cell.data_type = 'f'
+    cell.value = f"=E{bldg_sub_row}*G{permits_bond_row}"
+    cell.number_format = money_fmt
     ws.cell(row=permits_bond_row, column=7, value=0.025).font = blue_rate_font
     ws.cell(row=permits_bond_row, column=7).number_format = '0.0%'
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=permits_bond_row, column=col).border = thin_border
     ws.row_dimensions[permits_bond_row].height = 28
 
-    # Blank spacer row
-    spacer_row = permits_bond_row + 1
-    ws.row_dimensions[spacer_row].height = 10
-
-    # PROJECT TOTAL row (dark navy, white bold — same style as old TOTAL row)
-    total_row = spacer_row + 1
-    ws.cell(row=total_row, column=2, value="PROJECT TOTAL").font = Font(
+    # BUILDING TOTAL row (dark blue background, white bold)
+    bldg_total_row = permits_bond_row + 1
+    ws.cell(row=bldg_total_row, column=2, value="BUILDING TOTAL").font = Font(
         name="Calibri", bold=True, size=12, color="FFFFFF")
-    total_sov = ws.cell(row=total_row, column=5)
-    total_sov.value = (
-        f"=E{gap}+E{overhead_row}+E{profit_row}+E{contingency_row}+E{permits_bond_row}"
-    )
-    total_sov.number_format = money_fmt
-    total_sov.font = Font(name="Calibri", bold=True, size=12, color="FFFFFF")
+    cell = ws.cell(row=bldg_total_row, column=5)
+    cell.data_type = 'f'
+    cell.value = f"=E{bldg_sub_row}+E{gc_cond_row}+E{gc_profit_row}+E{contingency_row}+E{permits_bond_row}"
+    cell.number_format = money_fmt
+    cell.font = Font(name="Calibri", bold=True, size=12, color="FFFFFF")
     for col in range(1, NUM_COLS + 1):
-        ws.cell(row=total_row, column=col).fill = navy_fill
-        ws.cell(row=total_row, column=col).font = Font(
+        ws.cell(row=bldg_total_row, column=col).fill = dark_blue_fill
+        ws.cell(row=bldg_total_row, column=col).font = Font(
             name="Calibri", bold=True, size=12, color="FFFFFF")
-        ws.cell(row=total_row, column=col).border = thin_border
-    ws.row_dimensions[total_row].height = 32
+        ws.cell(row=bldg_total_row, column=col).border = thin_border
+    ws.row_dimensions[bldg_total_row].height = 32
+
+    # Spacer between sections
+    spacer1_row = bldg_total_row + 1
+    ws.row_dimensions[spacer1_row].height = 10
+
+    # ── SECTION B: SITE WORK ─────────────────────────────────────────
+    site_sub_row = spacer1_row + 1
+    ws.cell(row=site_sub_row, column=2, value="SITE WORK SUBTOTAL").font = bold_font
+    cell = ws.cell(row=site_sub_row, column=5)
+    cell.data_type = 'f'
+    cell.value = f"=E{site_row_idx}"
+    cell.number_format = money_fmt
+    cell.font = bold_font
+    for col in range(1, NUM_COLS + 1):
+        ws.cell(row=site_sub_row, column=col).fill = site_fill
+        ws.cell(row=site_sub_row, column=col).border = thin_border
+    ws.row_dimensions[site_sub_row].height = 28
+
+    # GC Management Fee (5%)
+    site_fee_row = site_sub_row + 1
+    ws.cell(row=site_fee_row, column=2, value="GC Management Fee").font = bold_font
+    cell = ws.cell(row=site_fee_row, column=5)
+    cell.data_type = 'f'
+    cell.value = f"=E{site_sub_row}*G{site_fee_row}"
+    cell.number_format = money_fmt
+    ws.cell(row=site_fee_row, column=7, value=0.05).font = blue_rate_font
+    ws.cell(row=site_fee_row, column=7).number_format = '0%'
+    for col in range(1, NUM_COLS + 1):
+        ws.cell(row=site_fee_row, column=col).border = thin_border
+    ws.row_dimensions[site_fee_row].height = 28
+
+    # SITE TOTAL row (dark green background, white bold)
+    site_total_row = site_fee_row + 1
+    ws.cell(row=site_total_row, column=2, value="SITE TOTAL").font = Font(
+        name="Calibri", bold=True, size=12, color="FFFFFF")
+    cell = ws.cell(row=site_total_row, column=5)
+    cell.data_type = 'f'
+    cell.value = f"=E{site_sub_row}+E{site_fee_row}"
+    cell.number_format = money_fmt
+    cell.font = Font(name="Calibri", bold=True, size=12, color="FFFFFF")
+    for col in range(1, NUM_COLS + 1):
+        ws.cell(row=site_total_row, column=col).fill = dark_green_fill
+        ws.cell(row=site_total_row, column=col).font = Font(
+            name="Calibri", bold=True, size=12, color="FFFFFF")
+        ws.cell(row=site_total_row, column=col).border = thin_border
+    ws.row_dimensions[site_total_row].height = 32
+
+    # Explanatory note below SITE TOTAL
+    note_row = site_total_row + 1
+    ws.merge_cells(f"C{note_row}:G{note_row}")
+    note_cell = ws.cell(row=note_row, column=3)
+    note_cell.value = (
+        "Civil sub quotes are lump sum and include sub\u2019s overhead & profit. "
+        "GC management fee only (5%) applied to site scope. "
+        "Building trades include full GC overhead, profit, and contingency."
+    )
+    note_cell.font = Font(name="Calibri", size=9, italic=True, color="666666")
+    note_cell.alignment = wrap_top
+    ws.row_dimensions[note_row].height = 36
+
+    # Spacer before project total
+    spacer2_row = note_row + 1
+    ws.row_dimensions[spacer2_row].height = 10
+
+    # ── SECTION C: PROJECT TOTAL ─────────────────────────────────────
+    project_total_row = spacer2_row + 1
+    ws.cell(row=project_total_row, column=2, value="PROJECT TOTAL").font = Font(
+        name="Calibri", bold=True, size=14, color="FFFFFF")
+    cell = ws.cell(row=project_total_row, column=5)
+    cell.data_type = 'f'
+    cell.value = f"=E{bldg_total_row}+E{site_total_row}"
+    cell.number_format = money_fmt
+    cell.font = Font(name="Calibri", bold=True, size=14, color="FFFFFF")
+    for col in range(1, NUM_COLS + 1):
+        ws.cell(row=project_total_row, column=col).fill = project_total_fill
+        ws.cell(row=project_total_row, column=col).font = Font(
+            name="Calibri", bold=True, size=14, color="FFFFFF")
+        ws.cell(row=project_total_row, column=col).border = thin_border
+    ws.row_dimensions[project_total_row].height = 36
 
     # Freeze panes (adjust for banner row)
     ws.freeze_panes = f"C{header_row + 1}"
@@ -2306,6 +2384,9 @@ def build_excel_bytes(
         ws4.row_dimensions[r].height = max(26, min(int(max_len / 55) * 18 + 26, 70))
 
     # ── Save ──────────────────────────────────────────────────────────────
+    wb.calculation.calcMode = 'auto'
+    wb.calculation.calcCompleted = False
+
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()

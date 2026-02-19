@@ -2033,6 +2033,7 @@ def build_excel_bytes(
         ws.row_dimensions[site_row_idx].height = 36
         data_start = site_row_idx + 1
     for i, row_data in enumerate(buyout_rows):
+        labor_multiplier = 1.0  # default — overridden below if ADA detected
         r = data_start + i
         ws.cell(row=r, column=1, value=int(row_data["csi_division"])).font = bold_font
         ws.cell(row=r, column=2, value=row_data["trade"]).font = bold_font

@@ -1104,6 +1104,35 @@ def detect_project_type(extraction: dict) -> dict:
     }
 
 
+ADA_LABOR_MULTIPLIER_BY_TRADE = {
+    # Trades AFFECTED by ADA — apply premium
+    "Plumbing":               1.35,
+    "Electrical":             1.30,
+    "Smart Home / Security":  1.35,
+    "Conveying Equipment":    1.35,
+    "Flooring":               1.20,
+    "Specialties":            1.25,
+    "Countertops & Finishes": 1.20,
+    "Cabinets":               1.20,
+    "Doors/Hdwr/Finish Carp": 1.20,
+    "HVAC":                   1.15,
+    # Trades NOT affected by ADA — no premium
+    "Building Concrete":      1.0,
+    "Structural Steel":       1.0,
+    "Rough Carpentry":        1.0,
+    "Roofing":                1.0,
+    "Siding":                 1.0,
+    "Gutters":                1.0,
+    "Flashing & Waterproofing": 1.0,
+    "Insulation":             1.0,
+    "Drywall":                1.0,
+    "Painting":               1.0,
+    "Windows":                1.0,
+    "General Requirements":   1.0,
+    "SITE WORK / CIVIL":      1.0,
+}
+
+
 def get_baseline_quantities(trade_name: str, extraction: dict) -> list[dict]:
     """
     Maps a trade name to work items with quantities.
@@ -1864,7 +1893,7 @@ def build_excel_bytes(
         _raw_text_parts.append(r.requirement)
     _extraction_for_detection = {"raw_text": " ".join(_raw_text_parts)}
     project_type_result = detect_project_type(_extraction_for_detection)
-    labor_multiplier = project_type_result["labor_multiplier"]
+    global_ada_detected = project_type_result.get("project_type") == "ADA_ACCESSIBLE"
 
     site_result = _detect_site_scope(consolidated, trades)
 
@@ -2061,7 +2090,12 @@ def build_excel_bytes(
                         wage_regime=wage_regime
                     )
 
-                    # Apply ADA labor multiplier AFTER base calculation
+                    # Apply per-trade ADA labor multiplier AFTER base calculation
+                    if global_ada_detected:
+                        labor_multiplier = ADA_LABOR_MULTIPLIER_BY_TRADE.get(trade_name, 1.0)
+                    else:
+                        labor_multiplier = 1.0
+
                     if labor_multiplier != 1.0:
                         adj_labor = trade_estimate["total_labor"] * labor_multiplier
                         budget_val = trade_estimate["total_material"] + adj_labor
@@ -2074,7 +2108,7 @@ def build_excel_bytes(
                         budget_val = trade_estimate["use_amount"]
                         note_val = (
                             f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
-                            f"+ Labor: ${trade_estimate['total_labor']:,.0f} "
+                            f"+ Labor: ${trade_estimate['total_labor']:,.0f} \u00d7 1.0x standard "
                             f"= ${budget_val:,.0f} | \u00b115% accuracy | Sub quote overrides this"
                         )
             else:
@@ -2107,21 +2141,48 @@ def build_excel_bytes(
 
     data_end = data_start + len(buyout_rows) - 1
 
+    # ── Python-calculated summary values ─────────────────────────────────
+    # Collect all building trade E values (excludes site row)
+    building_vals = []
+    for r in range(data_start, data_end + 1):
+        v = ws.cell(row=r, column=5).value
+        if isinstance(v, (int, float)):
+            building_vals.append(v)
+    building_subtotal = sum(building_vals)
+
+    site_subtotal = ws.cell(row=site_row_idx, column=5).value or 0
+    if not isinstance(site_subtotal, (int, float)):
+        site_subtotal = 0
+
+    gc_oh_rate       = 0.10
+    gc_profit_rate   = 0.12
+    contingency_rate = 0.10
+    permits_rate     = 0.025
+    site_fee_rate    = 0.05
+
+    gc_oh          = round(building_subtotal * gc_oh_rate)
+    gc_profit      = round(building_subtotal * gc_profit_rate)
+    contingency    = round(building_subtotal * contingency_rate)
+    permits        = round(building_subtotal * permits_rate)
+    building_total = building_subtotal + gc_oh + gc_profit + contingency + permits
+
+    site_fee       = round(site_subtotal * site_fee_rate)
+    site_total     = site_subtotal + site_fee
+    project_total  = building_total + site_total
+
+    currency_fmt = '$#,##0'
+
     # ── Summary rows below data ──────────────────────────────────────────
     gap = data_end + 2
 
     # ── SECTION A: BUILDING TRADES ────────────────────────────────────
-    # Building subtotal excludes site row (row site_row_idx)
     bldg_sub_row = gap
     ws.cell(row=bldg_sub_row, column=2, value="BUILDING SUBTOTAL").font = bold_font
-    cell = ws.cell(row=bldg_sub_row, column=5)
-    cell.data_type = 'f'
-    cell.value = f"=SUM(E{data_start}:E{data_end})"
-    cell.number_format = money_fmt
-    cell.font = bold_font
-    ws.cell(row=bldg_sub_row, column=7, value="RATE").font = Font(
-        name="Calibri", bold=True, size=10, color="666666")
-    ws.cell(row=bldg_sub_row, column=7).alignment = Alignment(horizontal="center")
+    ws.cell(row=bldg_sub_row, column=5, value=building_subtotal).number_format = currency_fmt
+    ws.cell(row=bldg_sub_row, column=5).font = bold_font
+    ws.cell(row=bldg_sub_row, column=7,
+            value=f"Sum of {len(building_vals)} building trades").font = Font(
+        name="Calibri", size=9, italic=True, color="666666")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=bldg_sub_row, column=col).fill = light_blue_fill
         ws.cell(row=bldg_sub_row, column=col).border = thin_border
@@ -2130,12 +2191,10 @@ def build_excel_bytes(
     # GC General Conditions (10%)
     gc_cond_row = bldg_sub_row + 1
     ws.cell(row=gc_cond_row, column=2, value="GC General Conditions").font = bold_font
-    cell = ws.cell(row=gc_cond_row, column=5)
-    cell.data_type = 'f'
-    cell.value = f"=E{bldg_sub_row}*G{gc_cond_row}"
-    cell.number_format = money_fmt
-    ws.cell(row=gc_cond_row, column=7, value=0.10).font = blue_rate_font
-    ws.cell(row=gc_cond_row, column=7).number_format = '0%'
+    ws.cell(row=gc_cond_row, column=5, value=gc_oh).number_format = currency_fmt
+    ws.cell(row=gc_cond_row, column=7,
+            value=f"${building_subtotal:,.0f} \u00d7 {gc_oh_rate:.0%}").font = Font(
+        name="Calibri", size=9, italic=True, color="666666")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=gc_cond_row, column=col).border = thin_border
     ws.row_dimensions[gc_cond_row].height = 28
@@ -2143,12 +2202,10 @@ def build_excel_bytes(
     # GC Profit (12%, green background)
     gc_profit_row = gc_cond_row + 1
     ws.cell(row=gc_profit_row, column=2, value="GC Profit").font = bold_font
-    cell = ws.cell(row=gc_profit_row, column=5)
-    cell.data_type = 'f'
-    cell.value = f"=E{bldg_sub_row}*G{gc_profit_row}"
-    cell.number_format = money_fmt
-    ws.cell(row=gc_profit_row, column=7, value=0.12).font = blue_rate_font
-    ws.cell(row=gc_profit_row, column=7).number_format = '0%'
+    ws.cell(row=gc_profit_row, column=5, value=gc_profit).number_format = currency_fmt
+    ws.cell(row=gc_profit_row, column=7,
+            value=f"${building_subtotal:,.0f} \u00d7 {gc_profit_rate:.0%}").font = Font(
+        name="Calibri", size=9, italic=True, color="666666")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=gc_profit_row, column=col).fill = green_fill
         ws.cell(row=gc_profit_row, column=col).border = thin_border
@@ -2157,12 +2214,10 @@ def build_excel_bytes(
     # Contingency (10%, amber background)
     contingency_row = gc_profit_row + 1
     ws.cell(row=contingency_row, column=2, value="Contingency").font = bold_font
-    cell = ws.cell(row=contingency_row, column=5)
-    cell.data_type = 'f'
-    cell.value = f"=E{bldg_sub_row}*G{contingency_row}"
-    cell.number_format = money_fmt
-    ws.cell(row=contingency_row, column=7, value=0.10).font = blue_rate_font
-    ws.cell(row=contingency_row, column=7).number_format = '0%'
+    ws.cell(row=contingency_row, column=5, value=contingency).number_format = currency_fmt
+    ws.cell(row=contingency_row, column=7,
+            value=f"${building_subtotal:,.0f} \u00d7 {contingency_rate:.0%}").font = Font(
+        name="Calibri", size=9, italic=True, color="666666")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=contingency_row, column=col).fill = amber_fill
         ws.cell(row=contingency_row, column=col).border = thin_border
@@ -2171,12 +2226,10 @@ def build_excel_bytes(
     # Permits + Bond (2.5%)
     permits_bond_row = contingency_row + 1
     ws.cell(row=permits_bond_row, column=2, value="Permits + Bond").font = bold_font
-    cell = ws.cell(row=permits_bond_row, column=5)
-    cell.data_type = 'f'
-    cell.value = f"=E{bldg_sub_row}*G{permits_bond_row}"
-    cell.number_format = money_fmt
-    ws.cell(row=permits_bond_row, column=7, value=0.025).font = blue_rate_font
-    ws.cell(row=permits_bond_row, column=7).number_format = '0.0%'
+    ws.cell(row=permits_bond_row, column=5, value=permits).number_format = currency_fmt
+    ws.cell(row=permits_bond_row, column=7,
+            value=f"${building_subtotal:,.0f} \u00d7 {permits_rate:.1%}").font = Font(
+        name="Calibri", size=9, italic=True, color="666666")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=permits_bond_row, column=col).border = thin_border
     ws.row_dimensions[permits_bond_row].height = 28
@@ -2185,11 +2238,12 @@ def build_excel_bytes(
     bldg_total_row = permits_bond_row + 1
     ws.cell(row=bldg_total_row, column=2, value="BUILDING TOTAL").font = Font(
         name="Calibri", bold=True, size=12, color="FFFFFF")
-    cell = ws.cell(row=bldg_total_row, column=5)
-    cell.data_type = 'f'
-    cell.value = f"=E{bldg_sub_row}+E{gc_cond_row}+E{gc_profit_row}+E{contingency_row}+E{permits_bond_row}"
-    cell.number_format = money_fmt
-    cell.font = Font(name="Calibri", bold=True, size=12, color="FFFFFF")
+    ws.cell(row=bldg_total_row, column=5, value=building_total).number_format = currency_fmt
+    ws.cell(row=bldg_total_row, column=5).font = Font(
+        name="Calibri", bold=True, size=12, color="FFFFFF")
+    ws.cell(row=bldg_total_row, column=7,
+            value=f"${building_subtotal:,.0f} + markups").font = Font(
+        name="Calibri", size=9, italic=True, color="FFFFFF")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=bldg_total_row, column=col).fill = dark_blue_fill
         ws.cell(row=bldg_total_row, column=col).font = Font(
@@ -2204,11 +2258,8 @@ def build_excel_bytes(
     # ── SECTION B: SITE WORK ─────────────────────────────────────────
     site_sub_row = spacer1_row + 1
     ws.cell(row=site_sub_row, column=2, value="SITE WORK SUBTOTAL").font = bold_font
-    cell = ws.cell(row=site_sub_row, column=5)
-    cell.data_type = 'f'
-    cell.value = f"=E{site_row_idx}"
-    cell.number_format = money_fmt
-    cell.font = bold_font
+    ws.cell(row=site_sub_row, column=5, value=site_subtotal).number_format = currency_fmt
+    ws.cell(row=site_sub_row, column=5).font = bold_font
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=site_sub_row, column=col).fill = site_fill
         ws.cell(row=site_sub_row, column=col).border = thin_border
@@ -2217,12 +2268,10 @@ def build_excel_bytes(
     # GC Management Fee (5%)
     site_fee_row = site_sub_row + 1
     ws.cell(row=site_fee_row, column=2, value="GC Management Fee").font = bold_font
-    cell = ws.cell(row=site_fee_row, column=5)
-    cell.data_type = 'f'
-    cell.value = f"=E{site_sub_row}*G{site_fee_row}"
-    cell.number_format = money_fmt
-    ws.cell(row=site_fee_row, column=7, value=0.05).font = blue_rate_font
-    ws.cell(row=site_fee_row, column=7).number_format = '0%'
+    ws.cell(row=site_fee_row, column=5, value=site_fee).number_format = currency_fmt
+    ws.cell(row=site_fee_row, column=7,
+            value=f"${site_subtotal:,.0f} \u00d7 {site_fee_rate:.0%} GC mgmt fee").font = Font(
+        name="Calibri", size=9, italic=True, color="666666")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=site_fee_row, column=col).border = thin_border
     ws.row_dimensions[site_fee_row].height = 28
@@ -2231,11 +2280,9 @@ def build_excel_bytes(
     site_total_row = site_fee_row + 1
     ws.cell(row=site_total_row, column=2, value="SITE TOTAL").font = Font(
         name="Calibri", bold=True, size=12, color="FFFFFF")
-    cell = ws.cell(row=site_total_row, column=5)
-    cell.data_type = 'f'
-    cell.value = f"=E{site_sub_row}+E{site_fee_row}"
-    cell.number_format = money_fmt
-    cell.font = Font(name="Calibri", bold=True, size=12, color="FFFFFF")
+    ws.cell(row=site_total_row, column=5, value=site_total).number_format = currency_fmt
+    ws.cell(row=site_total_row, column=5).font = Font(
+        name="Calibri", bold=True, size=12, color="FFFFFF")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=site_total_row, column=col).fill = dark_green_fill
         ws.cell(row=site_total_row, column=col).font = Font(
@@ -2264,11 +2311,12 @@ def build_excel_bytes(
     project_total_row = spacer2_row + 1
     ws.cell(row=project_total_row, column=2, value="PROJECT TOTAL").font = Font(
         name="Calibri", bold=True, size=14, color="FFFFFF")
-    cell = ws.cell(row=project_total_row, column=5)
-    cell.data_type = 'f'
-    cell.value = f"=E{bldg_total_row}+E{site_total_row}"
-    cell.number_format = money_fmt
-    cell.font = Font(name="Calibri", bold=True, size=14, color="FFFFFF")
+    ws.cell(row=project_total_row, column=5, value=project_total).number_format = currency_fmt
+    ws.cell(row=project_total_row, column=5).font = Font(
+        name="Calibri", bold=True, size=14, color="FFFFFF")
+    ws.cell(row=project_total_row, column=7,
+            value=f"Building ${building_total:,.0f} + Site ${site_total:,.0f}").font = Font(
+        name="Calibri", size=9, italic=True, color="FFFFFF")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=project_total_row, column=col).fill = project_total_fill
         ws.cell(row=project_total_row, column=col).font = Font(
@@ -2384,9 +2432,6 @@ def build_excel_bytes(
         ws4.row_dimensions[r].height = max(26, min(int(max_len / 55) * 18 + 26, 70))
 
     # ── Save ──────────────────────────────────────────────────────────────
-    wb.calculation.calcMode = 'auto'
-    wb.calculation.calcCompleted = False
-
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()

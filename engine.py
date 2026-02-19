@@ -1979,7 +1979,7 @@ def build_excel_bytes(
     if project_type_result["project_type"] != "STANDARD_RESIDENTIAL":
         banner_text = (
             f"\u26a0\ufe0f PROJECT TYPE: {project_type_result['project_type'].replace('_', ' ')}  |  "
-            f"Labor Multiplier: {labor_multiplier}x  |  "
+            f"Labor Multiplier: per-trade (see Notes)  |  "
             f"{', '.join(project_type_result['trigger_items'][:3])}"
         )
         ws.merge_cells("A2:G2")

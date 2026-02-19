@@ -60,7 +60,7 @@ MATERIAL_DB = {
 
     # ── WINDOWS & DOORS ───────────────────────────────────
     "window_marvin_ultimate_dh_small":  {"unit": "EA", "price": 850.00, "note": "Marvin Signature Ultimate DH, 2'-0\"x3'-0\" approx"},
-    "window_marvin_ultimate_dh_med":    {"unit": "EA", "price": 1100.00,"note": "Marvin Signature Ultimate DH, 2'-0\"x4'-0\" approx"},
+    "window_marvin_ultimate_dh_med":    {"unit": "EA", "price": 700.00, "note": "Marvin Signature Ultimate DH, 2'-0\"x4'-0\" approx"},
     "window_marvin_ultimate_dh_large":  {"unit": "EA", "price": 1450.00,"note": "Marvin Signature Ultimate DH, 3'-0\"x5'-0\" approx"},
     "door_exterior_insulated_alum":     {"unit": "EA", "price": 1850.00,"note": "Insulated aluminum door + frame, per drawings"},
     "door_interior_hollow_core":        {"unit": "EA", "price": 185.00, "note": "Interior hollow core door pre-hung"},

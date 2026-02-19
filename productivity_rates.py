@@ -47,7 +47,7 @@ PRODUCTIVITY_RATES = {
     "plumbing_rough_per_fixture":   {"unit": "EA",  "hours": 8.00,  "trade": "plumber"},
     "plumbing_fixture_set":         {"unit": "EA",  "hours": 3.00,  "trade": "plumber"},
     # electrical
-    "electrical_rough_per_circuit": {"unit": "EA",  "hours": 4.00,  "trade": "electrician"},
+    "electrical_rough_per_circuit": {"unit": "EA",  "hours": 2.50,  "trade": "electrician"},
     "panel_install_200amp":         {"unit": "EA",  "hours": 16.00, "trade": "electrician"},
     "device_install":               {"unit": "EA",  "hours": 0.45,  "trade": "electrician"},
     "light_fixture_recessed":       {"unit": "EA",  "hours": 1.00,  "trade": "electrician"},

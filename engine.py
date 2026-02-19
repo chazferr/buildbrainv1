@@ -1104,35 +1104,6 @@ def detect_project_type(extraction: dict) -> dict:
     }
 
 
-ADA_LABOR_MULTIPLIER_BY_TRADE = {
-    # Trades AFFECTED by ADA — apply premium
-    "Plumbing":               1.35,
-    "Electrical":             1.30,
-    "Smart Home / Security":  1.35,
-    "Conveying Equipment":    1.35,
-    "Flooring":               1.20,
-    "Specialties":            1.25,
-    "Countertops & Finishes": 1.20,
-    "Cabinets":               1.20,
-    "Doors/Hdwr/Finish Carp": 1.20,
-    "HVAC":                   1.15,
-    # Trades NOT affected by ADA — no premium
-    "Building Concrete":      1.0,
-    "Structural Steel":       1.0,
-    "Rough Carpentry":        1.0,
-    "Roofing":                1.0,
-    "Siding":                 1.0,
-    "Gutters":                1.0,
-    "Flashing & Waterproofing": 1.0,
-    "Insulation":             1.0,
-    "Drywall":                1.0,
-    "Painting":               1.0,
-    "Windows":                1.0,
-    "General Requirements":   1.0,
-    "SITE WORK / CIVIL":      1.0,
-}
-
-
 def get_baseline_quantities(trade_name: str, extraction: dict) -> list[dict]:
     """
     Maps a trade name to work items with quantities.
@@ -1156,7 +1127,7 @@ def get_baseline_quantities(trade_name: str, extraction: dict) -> list[dict]:
     cabinet_lf    = extraction.get("cabinet_lf", 16)
     tile_sf       = extraction.get("tile_sf", 180)
     lvt_sf        = extraction.get("lvt_sf", 520)
-    electrical_circuits = extraction.get("electrical_circuits", 30)
+    electrical_circuits = extraction.get("electrical_circuits", 18)
     foundation_lf = extraction.get("foundation_lf", 116)
 
     # Interior wall SF estimate (1.8x footprint for residential)
@@ -1172,11 +1143,11 @@ def get_baseline_quantities(trade_name: str, extraction: dict) -> list[dict]:
              "description": "4\" slab on grade with WWM and vapor barrier"},
             {"work_item": "footing_continuous",   "quantity": foundation_lf,
              "material_key": "concrete_ready_mix_3000psi",
-             "material_quantity": foundation_lf * 0.74,  # CY per LF for 2'x1' footing
+             "material_quantity": foundation_lf * 0.37,  # CY per LF for 2'x1' footing
              "description": "Continuous footings 2'-0\" x 1'-0\""},
-            {"work_item": "foundation_waterproofing", "quantity": foundation_lf * 4,
+            {"work_item": "foundation_waterproofing", "quantity": foundation_lf * 1.5,
              "material_key": "foundation_wp_gcp_preprufe160",
-             "material_quantity": foundation_lf * 4,
+             "material_quantity": foundation_lf * 1.5,
              "description": "GCP Preprufe 160 foundation waterproofing"},
         ],
         "Rough Carpentry": [
@@ -1242,14 +1213,14 @@ def get_baseline_quantities(trade_name: str, extraction: dict) -> list[dict]:
              "description": "5-1/2\" PVC trim at windows, doors, corners"},
         ],
         "Insulation": [
-            {"work_item": "spray_foam_walls",     "quantity": ext_wall_sf,
+            {"work_item": None,                   "quantity": 0,
              "material_key": "spray_foam_closed_cell_r30",
              "material_quantity": ext_wall_sf,
-             "description": "R-30 closed cell spray foam exterior walls"},
-            {"work_item": "spray_foam_roof",      "quantity": roof_sq * 100,
+             "description": "R-30 closed cell spray foam exterior walls (sub labor-inclusive)"},
+            {"work_item": None,                   "quantity": 0,
              "material_key": "spray_foam_closed_cell_r60",
              "material_quantity": roof_sq * 100,
-             "description": "R-60 closed cell spray foam roof assembly"},
+             "description": "R-60 closed cell spray foam roof assembly (sub labor-inclusive)"},
             {"work_item": "rigid_insulation_foundation", "quantity": foundation_lf * 4,
              "material_key": "rigid_insulation_r10_2in",
              "material_quantity": foundation_lf * 4,
@@ -1893,7 +1864,6 @@ def build_excel_bytes(
         _raw_text_parts.append(r.requirement)
     _extraction_for_detection = {"raw_text": " ".join(_raw_text_parts)}
     project_type_result = detect_project_type(_extraction_for_detection)
-    global_ada_detected = project_type_result.get("project_type") == "ADA_ACCESSIBLE"
 
     site_result = _detect_site_scope(consolidated, trades)
 
@@ -2033,7 +2003,6 @@ def build_excel_bytes(
         ws.row_dimensions[site_row_idx].height = 36
         data_start = site_row_idx + 1
     for i, row_data in enumerate(buyout_rows):
-        labor_multiplier = 1.0  # default — overridden below if ADA detected
         r = data_start + i
         ws.cell(row=r, column=1, value=int(row_data["csi_division"])).font = bold_font
         ws.cell(row=r, column=2, value=row_data["trade"]).font = bold_font
@@ -2091,27 +2060,12 @@ def build_excel_bytes(
                         wage_regime=wage_regime
                     )
 
-                    # Apply per-trade ADA labor multiplier AFTER base calculation
-                    if global_ada_detected:
-                        labor_multiplier = ADA_LABOR_MULTIPLIER_BY_TRADE.get(trade_name, 1.0)
-                    else:
-                        labor_multiplier = 1.0
-
-                    if labor_multiplier != 1.0:
-                        adj_labor = trade_estimate["total_labor"] * labor_multiplier
-                        budget_val = trade_estimate["total_material"] + adj_labor
-                        note_val = (
-                            f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
-                            f"+ Labor: ${trade_estimate['total_labor']:,.0f} \u00d7 {labor_multiplier}x ADA "
-                            f"= ${budget_val:,.0f} | \u00b115% accuracy | Sub quote overrides this"
-                        )
-                    else:
-                        budget_val = trade_estimate["use_amount"]
-                        note_val = (
-                            f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
-                            f"+ Labor: ${trade_estimate['total_labor']:,.0f} \u00d7 1.0x standard "
-                            f"= ${budget_val:,.0f} | \u00b115% accuracy | Sub quote overrides this"
-                        )
+                    budget_val = trade_estimate["total_material"] + trade_estimate["total_labor"]
+                    note_val = (
+                        f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
+                        f"+ Labor: ${trade_estimate['total_labor']:,.0f} "
+                        f"= ${budget_val:,.0f} | \u00b115% accuracy | Sub quote overrides this"
+                    )
             else:
                 budget_val = 0
                 note_val = "\u26a0\ufe0f No pricing found \u2014 estimator must price this trade"
@@ -2431,6 +2385,213 @@ def build_excel_bytes(
         ws4.cell(row=r, column=6).alignment = wrap_top
         max_len = max(len(detail), len(ev))
         ws4.row_dimensions[r].height = max(26, min(int(max_len / 55) * 18 + 26, 70))
+
+    # ── TAB 5: Calculation Detail ───────────────────────────────────────
+    ws5 = wb.create_sheet("Calculation Detail")
+    ws5.sheet_properties.tabColor = "2E75B6"
+
+    calc_headers = [
+        ("A", "TRADE", 22), ("B", "LINE ITEM DESCRIPTION", 35),
+        ("C", "QUANTITY", 10), ("D", "UNIT", 8),
+        ("E", "UNIT COST (MAT)", 14), ("F", "MATERIAL TOTAL", 14),
+        ("G", "LABOR HRS/UNIT", 14), ("H", "WAGE RATE ($/HR)", 14),
+        ("I", "LABOR TOTAL", 14), ("J", "LINE TOTAL", 14),
+        ("K", "SOURCE", 25),
+    ]
+    for col_letter, label, width in calc_headers:
+        cell = ws5[f"{col_letter}1"]
+        cell.value = label
+        cell.font = header_font
+        cell.fill = navy_fill
+        cell.border = thin_border
+        ws5.column_dimensions[col_letter].width = width
+    ws5.row_dimensions[1].height = 30
+
+    # Row 2: explanatory note
+    ws5.merge_cells("A2:K2")
+    note = ws5["A2"]
+    note.value = (
+        "All quantities derived from uploaded drawings. "
+        "Wage rates: CT DOL Prevailing Wage ID# 25-6853. "
+        "Material prices: BuildBrain material database. "
+        "Labor hours: RS Means residential productivity rates. "
+        "This sheet is auto-generated \u2014 sub quotes override calculated baselines."
+    )
+    note.font = Font(name="Calibri", size=9, italic=True, color="666666")
+    note.alignment = wrap_top
+    ws5.row_dimensions[2].height = 32
+
+    calc_row = 3
+    grand_material = 0
+    grand_labor = 0
+
+    # Iterate trades that have baseline quantities
+    for row_data in buyout_rows:
+        t_name = row_data["trade"]
+        work_items = get_baseline_quantities(t_name, _extraction_for_detection)
+        if not work_items:
+            continue
+
+        # Check for override-only trades (skip detail for placeholders)
+        has_real_items = any(
+            item.get("work_item") or item.get("material_key")
+            for item in work_items
+            if not item.get("override_amount")
+        )
+        if not has_real_items:
+            # Placeholder trade — write one summary row
+            override_amt = next(
+                (item.get("override_amount") for item in work_items if item.get("override_amount")), 0
+            )
+            ws5.cell(row=calc_row, column=1, value=t_name).font = bold_font
+            ws5.cell(row=calc_row, column=2, value=work_items[0].get("description", "")).font = normal_font
+            ws5.cell(row=calc_row, column=10, value=override_amt).number_format = currency_fmt
+            ws5.cell(row=calc_row, column=11, value="Placeholder \u2014 get sub quote").font = Font(
+                name="Calibri", size=9, italic=True)
+            for c in range(1, 12):
+                ws5.cell(row=calc_row, column=c).border = thin_border
+            grand_material += override_amt
+            calc_row += 2  # blank row after
+            continue
+
+        trade_mat_total = 0
+        trade_labor_total = 0
+        first_row_of_trade = calc_row
+
+        for item in work_items:
+            if item.get("override_amount"):
+                continue
+
+            work_item_key = item.get("work_item")
+            qty = item.get("quantity", 0)
+            mat_key = item.get("material_key")
+            mat_qty = item.get("material_quantity", qty)
+            desc = item.get("description", "")
+
+            # Material calc
+            mat_unit_cost = 0
+            mat_total = 0
+            mat_unit = ""
+            if mat_key and mat_qty > 0:
+                mat_data = get_material_price(mat_key)
+                if mat_data:
+                    mat_unit_cost = mat_data["price"]
+                    mat_total = mat_qty * mat_unit_cost
+                    mat_unit = mat_data["unit"]
+                    trade_mat_total += mat_total
+
+            # Labor calc
+            labor_hrs_per_unit = 0
+            wage_rate = 0
+            labor_total = 0
+            labor_unit = ""
+            if work_item_key and qty > 0:
+                from productivity_rates import PRODUCTIVITY_RATES
+                prod = PRODUCTIVITY_RATES.get(work_item_key)
+                if prod:
+                    labor_hrs_per_unit = prod["hours"]
+                    labor_unit = prod["unit"]
+                    wage_rate = get_wage(prod["trade"])
+                    labor_total = qty * labor_hrs_per_unit * wage_rate
+                    trade_labor_total += labor_total
+
+            line_total = mat_total + labor_total
+            unit_label = labor_unit or mat_unit or ""
+
+            # Write row
+            if calc_row == first_row_of_trade:
+                ws5.cell(row=calc_row, column=1, value=t_name).font = bold_font
+            ws5.cell(row=calc_row, column=2, value=desc).font = normal_font
+            ws5.cell(row=calc_row, column=2).alignment = wrap_top
+            if qty > 0:
+                ws5.cell(row=calc_row, column=3, value=round(qty, 1)).number_format = '#,##0'
+            elif mat_qty > 0:
+                ws5.cell(row=calc_row, column=3, value=round(mat_qty, 1)).number_format = '#,##0'
+            ws5.cell(row=calc_row, column=4, value=unit_label)
+            if mat_unit_cost > 0:
+                ws5.cell(row=calc_row, column=5, value=round(mat_unit_cost, 2)).number_format = '$#,##0.00'
+            if mat_total > 0:
+                ws5.cell(row=calc_row, column=6, value=round(mat_total)).number_format = currency_fmt
+            if labor_hrs_per_unit > 0:
+                ws5.cell(row=calc_row, column=7, value=labor_hrs_per_unit).number_format = '0.000'
+            if wage_rate > 0:
+                ws5.cell(row=calc_row, column=8, value=round(wage_rate, 2)).number_format = '$#,##0.00'
+            if labor_total > 0:
+                ws5.cell(row=calc_row, column=9, value=round(labor_total)).number_format = currency_fmt
+            ws5.cell(row=calc_row, column=10, value=round(line_total)).number_format = currency_fmt
+            ws5.cell(row=calc_row, column=11, value="material_db + CT DOL wages").font = Font(
+                name="Calibri", size=9, italic=True)
+            for c in range(1, 12):
+                ws5.cell(row=calc_row, column=c).border = thin_border
+            calc_row += 1
+
+        # Trade subtotal row
+        ws5.cell(row=calc_row, column=2,
+                 value=f"TRADE SUBTOTAL \u2014 {t_name}").font = bold_font
+        ws5.cell(row=calc_row, column=6, value=round(trade_mat_total)).number_format = currency_fmt
+        ws5.cell(row=calc_row, column=6).font = bold_font
+        ws5.cell(row=calc_row, column=9, value=round(trade_labor_total)).number_format = currency_fmt
+        ws5.cell(row=calc_row, column=9).font = bold_font
+        trade_total = round(trade_mat_total + trade_labor_total)
+        ws5.cell(row=calc_row, column=10, value=trade_total).number_format = currency_fmt
+        ws5.cell(row=calc_row, column=10).font = bold_font
+        for c in range(1, 12):
+            ws5.cell(row=calc_row, column=c).fill = light_gray_fill
+            ws5.cell(row=calc_row, column=c).border = thin_border
+        calc_row += 2  # blank row between trades
+
+        grand_material += trade_mat_total
+        grand_labor += trade_labor_total
+
+    # ── Grand totals at bottom ──
+    grand_direct = round(grand_material + grand_labor)
+
+    ws5.cell(row=calc_row, column=2, value="PROJECT DIRECT COSTS").font = bold_font
+    ws5.cell(row=calc_row, column=6, value=round(grand_material)).number_format = currency_fmt
+    ws5.cell(row=calc_row, column=6).font = bold_font
+    ws5.cell(row=calc_row, column=9, value=round(grand_labor)).number_format = currency_fmt
+    ws5.cell(row=calc_row, column=9).font = bold_font
+    ws5.cell(row=calc_row, column=10, value=grand_direct).number_format = currency_fmt
+    ws5.cell(row=calc_row, column=10).font = bold_font
+    for c in range(1, 12):
+        ws5.cell(row=calc_row, column=c).fill = light_blue_fill
+        ws5.cell(row=calc_row, column=c).border = thin_border
+    calc_row += 1
+
+    # GC markups
+    markup_items = [
+        ("GC General Conditions (10%)", 0.10),
+        ("GC Profit (12%)", 0.12),
+        ("Contingency (10%)", 0.10),
+        ("Permits + Bond (2.5%)", 0.025),
+    ]
+    markup_total = 0
+    for label, rate in markup_items:
+        amt = round(grand_direct * rate)
+        markup_total += amt
+        ws5.cell(row=calc_row, column=2, value=label).font = normal_font
+        ws5.cell(row=calc_row, column=10, value=amt).number_format = currency_fmt
+        ws5.cell(row=calc_row, column=11,
+                 value=f"${grand_direct:,.0f} \u00d7 {rate:.1%}").font = Font(
+            name="Calibri", size=9, italic=True)
+        for c in range(1, 12):
+            ws5.cell(row=calc_row, column=c).border = thin_border
+        calc_row += 1
+
+    # BUILDING TOTAL
+    building_calc_total = grand_direct + markup_total
+    ws5.cell(row=calc_row, column=2, value="BUILDING TOTAL").font = Font(
+        name="Calibri", bold=True, size=12, color="FFFFFF")
+    ws5.cell(row=calc_row, column=10, value=building_calc_total).number_format = currency_fmt
+    ws5.cell(row=calc_row, column=10).font = Font(
+        name="Calibri", bold=True, size=12, color="FFFFFF")
+    for c in range(1, 12):
+        ws5.cell(row=calc_row, column=c).fill = navy_fill
+        ws5.cell(row=calc_row, column=c).font = Font(
+            name="Calibri", bold=True, size=12, color="FFFFFF")
+        ws5.cell(row=calc_row, column=c).border = thin_border
+
+    ws5.freeze_panes = "A3"
 
     # ── Save ──────────────────────────────────────────────────────────────
     buf = io.BytesIO()

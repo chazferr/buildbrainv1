@@ -2279,6 +2279,49 @@ def build_excel_bytes(
         ws.cell(row=project_total_row, column=col).border = thin_border
     ws.row_dimensions[project_total_row].height = 36
 
+    # ── Estimate band: LOW / HIGH ────────────────────────────────────
+    low_green_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
+    low_red_fill = PatternFill(start_color="FCE4D6", end_color="FCE4D6", fill_type="solid")
+    variance_note = "Reflects \u00b115% estimating variance for drawing-only takeoff"
+
+    low_row = project_total_row + 1
+    low_val = round(project_total * 0.85)
+    ws.cell(row=low_row, column=2, value="LOW ESTIMATE (\u221215%)").font = bold_font
+    ws.cell(row=low_row, column=5, value=low_val).number_format = currency_fmt
+    ws.cell(row=low_row, column=5).font = bold_font
+    ws.cell(row=low_row, column=7, value=variance_note).font = Font(
+        name="Calibri", size=9, italic=True)
+    for col in range(1, NUM_COLS + 1):
+        ws.cell(row=low_row, column=col).fill = low_green_fill
+        ws.cell(row=low_row, column=col).border = thin_border
+    ws.row_dimensions[low_row].height = 28
+
+    high_row = low_row + 1
+    high_val = round(project_total * 1.15)
+    ws.cell(row=high_row, column=2, value="HIGH ESTIMATE (+15%)").font = bold_font
+    ws.cell(row=high_row, column=5, value=high_val).number_format = currency_fmt
+    ws.cell(row=high_row, column=5).font = bold_font
+    ws.cell(row=high_row, column=7, value=variance_note).font = Font(
+        name="Calibri", size=9, italic=True)
+    for col in range(1, NUM_COLS + 1):
+        ws.cell(row=high_row, column=col).fill = low_red_fill
+        ws.cell(row=high_row, column=col).border = thin_border
+    ws.row_dimensions[high_row].height = 28
+
+    # Disclaimer note
+    disc_row = high_row + 2
+    ws.merge_cells(f"B{disc_row}:G{disc_row}")
+    disc_cell = ws.cell(row=disc_row, column=2)
+    disc_cell.value = (
+        "BuildBrain baseline calculated from CT DOL Prevailing Wage rates and "
+        "published material costs. Actual sub quotes will vary by market conditions, "
+        "project timing, and site-specific factors. This estimate is for budgeting "
+        "purposes only \u2014 obtain competitive sub bids before final pricing."
+    )
+    disc_cell.font = Font(name="Calibri", size=9, italic=True, color="888888")
+    disc_cell.alignment = wrap_top
+    ws.row_dimensions[disc_row].height = 40
+
     # Freeze panes (adjust for banner row)
     ws.freeze_panes = f"C{header_row + 1}"
     ws.sheet_properties.tabColor = "1A2332"

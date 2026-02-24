@@ -71,6 +71,7 @@ class TradeAndScope(BaseModel):
     source_pdf: str
     source_page: int
     evidence: str
+    addendum_number: Optional[int] = None
 
     @field_validator("source_page")
     @classmethod
@@ -83,6 +84,7 @@ class TradeAndScope(BaseModel):
 class PageExtraction(BaseModel):
     submission_requirements: list[SubmissionRequirement]
     trades_and_scope: list[TradeAndScope]
+    flags: list[str] = []
 
 
 # ─── Prompts ─────────────────────────────────────────────────────────────────
@@ -244,6 +246,133 @@ def dedup_trades(items: list[TradeAndScope]) -> list[TradeAndScope]:
             seen.add(key)
             result.append(item)
     return result
+
+
+# ─── Addenda detection & conflict resolution ─────────────────────────────
+
+
+_ADDENDUM_PATTERN = re.compile(
+    r'(?:addendum|add)[- ._]*(?:no\.?|number|#)?[- ._]*(\d+)',
+    re.IGNORECASE,
+)
+
+
+def detect_addendum_number(source_pdf: str, evidence: str, scope: str) -> Optional[int]:
+    """Try to detect an addendum number from PDF name, evidence, or scope text."""
+    for text in (source_pdf, evidence, scope):
+        if not text:
+            continue
+        m = _ADDENDUM_PATTERN.search(text)
+        if m:
+            return int(m.group(1))
+    return None
+
+
+def tag_addenda(trades: list[TradeAndScope]) -> list[TradeAndScope]:
+    """Tag each trade extraction with its addendum number (if detectable)."""
+    for t in trades:
+        if t.addendum_number is None:
+            num = detect_addendum_number(t.source_pdf, t.evidence, t.scope_description)
+            if num is not None:
+                t.addendum_number = num
+    return trades
+
+
+def detect_addenda_conflicts(
+    trades: list[TradeAndScope],
+    emit: Callable[[str], None],
+) -> list[dict]:
+    """
+    After all trades are extracted, detect specification conflicts between
+    base documents and addenda. Highest addendum number wins.
+
+    Returns a list of conflict finding dicts for the Flags tab.
+    """
+    # Group by trade + spec item (material/method keywords)
+    # We look for the same trade with different scope details from different sources
+    from collections import defaultdict
+
+    trade_specs: dict[str, list[TradeAndScope]] = defaultdict(list)
+    for t in trades:
+        # Normalize trade name for grouping
+        key = t.trade.strip().lower()
+        trade_specs[key].append(t)
+
+    findings = []
+    for trade_key, items in trade_specs.items():
+        # Only check trades with items from multiple sources or addenda
+        addendum_items = [i for i in items if i.addendum_number is not None]
+        base_items = [i for i in items if i.addendum_number is None]
+
+        if not addendum_items or not base_items:
+            continue
+
+        # Check for cost conflicts (different dollar amounts)
+        base_costs = [(i, i.estimated_cost) for i in base_items if i.estimated_cost]
+        add_costs = [(i, i.estimated_cost) for i in addendum_items if i.estimated_cost]
+
+        if base_costs and add_costs:
+            # Highest addendum number wins
+            winning = max(addendum_items, key=lambda x: x.addendum_number or 0)
+            for base_item, base_cost in base_costs:
+                if winning.estimated_cost and abs(winning.estimated_cost - base_cost) > 100:
+                    finding = {
+                        "severity": "HIGH",
+                        "flag": "Addendum cost override",
+                        "detail": (
+                            f"CONFLICT: {trade_key.title()} cost "
+                            f"${base_cost:,.0f} in {base_item.source_pdf} p.{base_item.source_page} "
+                            f"vs ${winning.estimated_cost:,.0f} in "
+                            f"Addendum {winning.addendum_number} "
+                            f"({winning.source_pdf} p.{winning.source_page}). "
+                            f"Addendum {winning.addendum_number} takes precedence. "
+                            f"Using ${winning.estimated_cost:,.0f}. Please verify."
+                        ),
+                        "source": f"Addendum {winning.addendum_number}",
+                    }
+                    findings.append(finding)
+                    emit(
+                        f"[ADDENDUM] {trade_key.title()}: "
+                        f"${base_cost:,.0f} -> ${winning.estimated_cost:,.0f} "
+                        f"(Addendum {winning.addendum_number} overrides)"
+                    )
+
+        # Check for scope/spec text conflicts (different materials, methods)
+        # Simple heuristic: if addendum scope mentions different materials
+        for add_item in addendum_items:
+            for base_item in base_items:
+                # Check if scope descriptions mention conflicting specifics
+                add_scope_lower = add_item.scope_description.lower()
+                base_scope_lower = base_item.scope_description.lower()
+
+                # Look for common spec keywords that differ
+                _spec_markers = ['revised', 'replaced', 'changed', 'deleted',
+                                 'in lieu of', 'substitute', 'modified']
+                if any(marker in add_scope_lower for marker in _spec_markers):
+                    finding = {
+                        "severity": "MEDIUM",
+                        "flag": "Addendum spec revision",
+                        "detail": (
+                            f"CONFLICT: {trade_key.title()} \u2014 "
+                            f"Base: \"{base_item.scope_description[:80]}\" "
+                            f"({base_item.source_pdf} p.{base_item.source_page}) "
+                            f"vs Addendum {add_item.addendum_number}: "
+                            f"\"{add_item.scope_description[:80]}\" "
+                            f"({add_item.source_pdf} p.{add_item.source_page}). "
+                            f"Addendum {add_item.addendum_number} takes precedence."
+                        ),
+                        "source": f"Addendum {add_item.addendum_number}",
+                    }
+                    findings.append(finding)
+                    emit(
+                        f"[ADDENDUM] {trade_key.title()}: spec revision in "
+                        f"Addendum {add_item.addendum_number}"
+                    )
+                    break  # One finding per addendum item is enough
+
+    if findings:
+        emit(f"Found {len(findings)} addenda conflict(s)")
+    return findings
 
 
 # ─── Supported file types ──────────────────────────────────────────────────
@@ -418,8 +547,40 @@ def process_text_page(
         }
     ]
 
-    for attempt in range(2):
+    SIMPLIFIED_PROMPT = """
+This is a construction document section.
+Extract ANY trades or work items visible.
+Return valid JSON only:
+{
+  "trades_and_scope": [
+    {"trade": "trade name", "scope": ["scope item"]}
+  ],
+  "submission_requirements": [],
+  "flags": []
+}
+If truly nothing is extractable, return:
+{"trades_and_scope": [], "submission_requirements": [], "flags": []}
+"""
+
+    for attempt in range(4):
         try:
+            # On attempts 3 and 4, use simplified prompt
+            if attempt >= 2:
+                messages = [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": f"--- DOCUMENT CONTENT ({file_name}, section {page_num}) ---\n\n"
+                                        f"{text_content}\n\n"
+                                        f"--- END DOCUMENT CONTENT ---\n\n"
+                                        f"{SIMPLIFIED_PROMPT}",
+                            },
+                        ],
+                    }
+                ]
+
             response = client.messages.create(
                 model=MODEL,
                 max_tokens=4096,
@@ -444,18 +605,21 @@ def process_text_page(
                 retry_text = RETRY_PROMPT.format(pdf_name=file_name, page_num=page_num)
                 messages.append({"role": "assistant", "content": raw_text})
                 messages.append({"role": "user", "content": retry_text})
-            else:
+            elif attempt == 3:
                 stats["failed_pages"].append(f"{file_name} section {page_num}")
-                return None
 
         except anthropic.APIError:
-            if attempt == 0:
+            if attempt < 3:
                 time.sleep(5)
             else:
                 stats["failed_pages"].append(f"{file_name} section {page_num}")
-                return None
 
-    return None
+    # Return empty but valid result — never lose a page silently
+    return PageExtraction(
+        trades_and_scope=[],
+        submission_requirements=[],
+        flags=[f"WARNING: Section {page_num} could not be parsed after 4 attempts — manual review required"]
+    )
 
 
 # ─── Trade consolidation ────────────────────────────────────────────────────
@@ -1104,36 +1268,53 @@ def detect_project_type(extraction: dict) -> dict:
     }
 
 
-def get_baseline_quantities(trade_name: str, extraction: dict) -> list[dict]:
+def get_baseline_quantities(trade_name: str, extraction: dict,
+                            project_quantities: dict = None) -> list[dict]:
     """
     Maps a trade name to work items with quantities.
-    Quantities are derived from standard residential takeoff logic
-    applied to project dimensions extracted from drawings.
+    Quantities are derived from project dimensions extracted from drawings
+    via extract_project_quantities(), with conservative fallbacks.
 
     Returns a list of work_item dicts for calculate_trade_estimate().
     Returns empty list if trade cannot be auto-priced.
     """
 
-    # Pull key dimensions from extraction — with fallbacks
-    footprint_sf = extraction.get("footprint_sf", 699)
-    perimeter_lf = extraction.get("perimeter_lf", 116)
-    ext_wall_sf   = extraction.get("ext_wall_sf", 973)
-    roof_sq       = extraction.get("roof_squares", 12.0)
-    window_count  = extraction.get("window_count", 13)
-    ext_door_count = extraction.get("ext_door_count", 5)
-    int_door_count = extraction.get("int_door_count", 4)
-    plumbing_fixtures = extraction.get("plumbing_fixtures", 6)
-    hvac_zones    = extraction.get("hvac_zones", 2)
-    cabinet_lf    = extraction.get("cabinet_lf", 16)
-    tile_sf       = extraction.get("tile_sf", 180)
-    lvt_sf        = extraction.get("lvt_sf", 520)
-    electrical_circuits = extraction.get("electrical_circuits", 18)
-    foundation_lf = extraction.get("foundation_lf", 116)
+    q = project_quantities or {}
 
-    # Interior wall SF estimate (1.8x footprint for residential)
-    int_wall_sf = footprint_sf * 1.8
-    # Total GWB = both sides of interior walls + one side exterior walls
-    gwb_sf = (int_wall_sf * 2) + ext_wall_sf + (footprint_sf * 1.1)  # ceiling
+    # Core dimensions — extracted or estimated
+    unit_count    = q.get('unit_count') or 1
+    floor_count   = q.get('floor_count') or 1
+    footprint_sf  = q.get('footprint_sf') or \
+                    (q.get('total_building_sf') or 699) / max(floor_count, 1)
+    total_sf      = q.get('total_building_sf') or \
+                    footprint_sf * floor_count
+    perimeter_lf  = q.get('perimeter_lf') or \
+                    (footprint_sf ** 0.5) * 4  # square approximation
+
+    # Scale envelope by total building SF not just footprint
+    floor_height  = q.get('floor_to_floor_height_ft') or 9
+    ext_wall_sf   = perimeter_lf * floor_count * floor_height
+    roof_sq       = (footprint_sf * 1.15) / 100     # 15% pitch factor
+
+    # Scale MEP by unit count
+    window_count      = q.get('window_count') or unit_count * 8
+    ext_door_count    = q.get('ext_door_count') or max(2, unit_count // 10)
+    int_door_count    = q.get('int_door_count') or unit_count * 4
+    plumbing_fixtures = q.get('plumbing_fixtures') or unit_count * 5
+    hvac_zones        = q.get('hvac_zones') or unit_count
+    electrical_circuits = (q.get('circuits_per_unit') or 18) * unit_count
+    electrical_panels = q.get('electrical_panels') or \
+                        max(1, unit_count // 42)
+
+    # Scale finishes by total SF
+    cabinet_lf    = unit_count * 16       # 16 LF per unit
+    tile_sf       = unit_count * 60       # 60 SF tile per unit
+    lvt_sf        = total_sf - tile_sf    # rest is LVT
+    foundation_lf = perimeter_lf
+
+    # Interior walls scale with total SF and unit count
+    int_wall_sf   = total_sf * 0.9        # 0.9x total SF
+    gwb_sf        = (int_wall_sf * 2) + ext_wall_sf + total_sf
 
     TRADE_MAP = {
         "Building Concrete": [
@@ -1396,11 +1577,11 @@ def get_baseline_quantities(trade_name: str, extraction: dict) -> list[dict]:
         "General Requirements": [
             {"work_item": None, "quantity": 0,
              "material_key": None, "material_quantity": 0,
-             "description": "Survey, temporary facilities, dumpsters, project management",
-             "override_amount": 8000,
-             "note": "Survey (James W. Seabrook CT PLS #1302), temp power, "
-                     "dumpsters, project signage, superintendent time. "
-                     "Placeholder \u2014 adjust per GC actual costs."}
+             "description": "General conditions, supervision, temp facilities",
+             "override_amount": None,  # calculated dynamically as % of direct cost
+             "note": "Calculated as % of direct building cost. "
+                     "Includes: superintendent, temp power, dumpsters, "
+                     "survey, project signage, insurance, small tools."}
         ],
     }
 
@@ -1493,8 +1674,45 @@ def process_page(
         }
     ]
 
-    for attempt in range(2):
+    SIMPLIFIED_PROMPT = """
+This is a construction drawing page.
+Extract ANY trades or work items visible.
+Return valid JSON only:
+{
+  "trades_and_scope": [
+    {"trade": "trade name", "scope": ["scope item"]}
+  ],
+  "submission_requirements": [],
+  "flags": []
+}
+If truly nothing is extractable, return:
+{"trades_and_scope": [], "submission_requirements": [], "flags": []}
+"""
+
+    for attempt in range(4):
         try:
+            # On attempts 3 and 4, use simplified prompt
+            if attempt >= 2:
+                messages = [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/png",
+                                    "data": b64_image,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": SIMPLIFIED_PROMPT,
+                            },
+                        ],
+                    }
+                ]
+
             response = client.messages.create(
                 model=MODEL,
                 max_tokens=4096,
@@ -1544,18 +1762,21 @@ def process_page(
                         "content": retry_text,
                     },
                 ]
-            else:
+            elif attempt == 3:
                 stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
-                return None
 
         except anthropic.APIError:
-            if attempt == 0:
+            if attempt < 3:
                 time.sleep(5)
             else:
                 stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
-                return None
 
-    return None
+    # Return empty but valid result — never lose a page silently
+    return PageExtraction(
+        trades_and_scope=[],
+        submission_requirements=[],
+        flags=[f"WARNING: Page {page_num} could not be parsed after 4 attempts — manual review required"]
+    )
 
 
 # ─── Orchestrator ────────────────────────────────────────────────────────────
@@ -1591,12 +1812,12 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
         per_file["api_calls"] += page_stats["api_calls"]
         per_file["failed_pages"].extend(page_stats["failed_pages"])
 
-        if extraction:
-            emit(f"{file_name} p.{page_num} OK (reqs={len(extraction.submission_requirements)}, trades={len(extraction.trades_and_scope)})")
-            reqs.extend(extraction.submission_requirements)
-            trades.extend(extraction.trades_and_scope)
+        if extraction.flags:
+            emit(f"\u26a0\ufe0f {file_name} p.{page_num} PARSE FAILED \u2014 flagged for manual review")
         else:
-            emit(f"{file_name} p.{page_num} SKIPPED")
+            emit(f"{file_name} p.{page_num} OK (reqs={len(extraction.submission_requirements)}, trades={len(extraction.trades_and_scope)})")
+        reqs.extend(extraction.submission_requirements)
+        trades.extend(extraction.trades_and_scope)
 
     doc.close()
     file_stats[file_name] = per_file
@@ -1630,9 +1851,31 @@ def _process_image(client, file_path, emit, global_stats, file_stats):
         {"type": "text", "text": prompt_text},
     ]}]
 
+    SIMPLIFIED_PROMPT = """
+This is a construction drawing image.
+Extract ANY trades or work items visible.
+Return valid JSON only:
+{
+  "trades_and_scope": [
+    {"trade": "trade name", "scope": ["scope item"]}
+  ],
+  "submission_requirements": [],
+  "flags": []
+}
+If truly nothing is extractable, return:
+{"trades_and_scope": [], "submission_requirements": [], "flags": []}
+"""
+
     extraction = None
-    for attempt in range(2):
+    for attempt in range(4):
         try:
+            # On attempts 3 and 4, use simplified prompt
+            if attempt >= 2:
+                messages = [{"role": "user", "content": [
+                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64_image}},
+                    {"type": "text", "text": SIMPLIFIED_PROMPT},
+                ]}]
+
             response = client.messages.create(model=MODEL, max_tokens=4096,
                                               temperature=TEMPERATURE, messages=messages)
             page_stats["input_tokens"] += response.usage.input_tokens
@@ -1646,13 +1889,20 @@ def _process_image(client, file_path, emit, global_stats, file_stats):
             if attempt == 0:
                 messages.append({"role": "assistant", "content": raw_text})
                 messages.append({"role": "user", "content": RETRY_PROMPT.format(pdf_name=file_name, page_num=1)})
-            else:
+            elif attempt == 3:
                 page_stats["failed_pages"].append(file_name)
         except anthropic.APIError:
-            if attempt == 0:
+            if attempt < 3:
                 time.sleep(5)
             else:
                 page_stats["failed_pages"].append(file_name)
+
+    if extraction is None:
+        extraction = PageExtraction(
+            trades_and_scope=[],
+            submission_requirements=[],
+            flags=[f"WARNING: {file_name} could not be parsed after 4 attempts — manual review required"]
+        )
 
     per_file["input_tokens"] = page_stats["input_tokens"]
     per_file["output_tokens"] = page_stats["output_tokens"]
@@ -1665,12 +1915,12 @@ def _process_image(client, file_path, emit, global_stats, file_stats):
     global_stats["failed_pages"].extend(per_file["failed_pages"])
 
     reqs, trades = [], []
-    if extraction:
-        emit(f"{file_name} OK (reqs={len(extraction.submission_requirements)}, trades={len(extraction.trades_and_scope)})")
-        reqs = list(extraction.submission_requirements)
-        trades = list(extraction.trades_and_scope)
+    reqs = list(extraction.submission_requirements)
+    trades = list(extraction.trades_and_scope)
+    if extraction.flags:
+        emit(f"\u26a0\ufe0f {file_name} PARSE FAILED \u2014 flagged for manual review")
     else:
-        emit(f"{file_name} SKIPPED")
+        emit(f"{file_name} OK (reqs={len(reqs)}, trades={len(trades)})")
     return reqs, trades
 
 
@@ -1721,12 +1971,12 @@ def _process_text_file(client, file_path, emit, global_stats, file_stats):
         per_file["api_calls"] += page_stats["api_calls"]
         per_file["failed_pages"].extend(page_stats["failed_pages"])
 
-        if extraction:
-            emit(f"{file_name} s.{section_num} OK (reqs={len(extraction.submission_requirements)}, trades={len(extraction.trades_and_scope)})")
-            reqs.extend(extraction.submission_requirements)
-            trades.extend(extraction.trades_and_scope)
+        if extraction.flags:
+            emit(f"\u26a0\ufe0f {file_name} s.{section_num} PARSE FAILED \u2014 flagged for manual review")
         else:
-            emit(f"{file_name} s.{section_num} SKIPPED")
+            emit(f"{file_name} s.{section_num} OK (reqs={len(extraction.submission_requirements)}, trades={len(extraction.trades_and_scope)})")
+        reqs.extend(extraction.submission_requirements)
+        trades.extend(extraction.trades_and_scope)
 
     file_stats[file_name] = per_file
     for k in ["input_tokens", "output_tokens", "api_calls"]:
@@ -1734,6 +1984,189 @@ def _process_text_file(client, file_path, emit, global_stats, file_stats):
     global_stats["total_pages"] += per_file["pages"]
     global_stats["failed_pages"].extend(per_file["failed_pages"])
     return reqs, trades
+
+
+def extract_project_quantities(trades: list, emit: Callable[[str], None], api_key: str,
+                               timeout_seconds: int = 60) -> dict:
+    """
+    Asks Claude to extract key project dimensions from all extracted trade data.
+    Returns a quantities dict that gets passed into get_baseline_quantities().
+    Times out after timeout_seconds and returns {} with a warning.
+    """
+    import concurrent.futures
+
+    def _do_extraction() -> dict:
+        return _extract_project_quantities_inner(trades, emit, api_key)
+
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(_do_extraction)
+            return future.result(timeout=timeout_seconds)
+    except concurrent.futures.TimeoutError:
+        emit(
+            f"[WARNING] Project quantity extraction timed out after {timeout_seconds}s "
+            f"({len(trades)} trades). Using conservative defaults. "
+            f"Results may be less accurate for this project."
+        )
+        return {}
+    except Exception as e:
+        emit(f"[WARNING] Project quantity extraction failed: {e}. Using conservative defaults.")
+        return {}
+
+
+def _extract_project_quantities_inner(trades: list, emit: Callable[[str], None], api_key: str) -> dict:
+    """Inner implementation of extract_project_quantities (no timeout wrapper)."""
+    # Compile all scope text from extractions
+    scope_text = []
+    for t in trades[:200]:
+        scope_text.append(f"{t.trade}: {t.scope_description} [{t.evidence}]")
+
+    combined = "\n".join(scope_text)
+
+    prompt = f"""You are analyzing construction documents.
+Extract these project quantities from the text below.
+Return ONLY valid JSON, no other text.
+
+{{
+  "project_type": "single_family" | "multi_family" | "commercial" | "mixed_use" | "warehouse" | "institutional" | "unknown",
+  "unit_count": <number of residential units, or 1 if single family>,
+  "floor_count": <number of stories above grade>,
+  "floor_to_floor_height_ft": <typical floor-to-floor height in feet, from section drawings or notes>,
+  "footprint_sf": <building footprint in SF, ground floor only>,
+  "total_building_sf": <total gross SF all floors>,
+  "perimeter_lf": <building perimeter in LF>,
+  "unit_avg_sf": <average unit size in SF>,
+  "window_count": <total windows>,
+  "ext_door_count": <exterior doors>,
+  "int_door_count": <interior doors per unit x units>,
+  "plumbing_fixtures": <total fixtures all units>,
+  "hvac_zones": <number of HVAC zones or units>,
+  "electrical_panels": <number of electrical panels>,
+  "circuits_per_unit": <estimated circuits per unit>,
+  "parking_spaces": <if applicable>,
+  "elevator_count": <number of elevators>,
+  "ada_units": <number of ADA accessible units>,
+  "confidence": "high" | "medium" | "low",
+  "notes": "brief explanation of how quantities were derived"
+}}
+
+If a value cannot be determined from the documents, use null — never guess.
+
+CONSTRUCTION DOCUMENTS TEXT:
+{combined}
+"""
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        text = response.content[0].text.strip()
+        text = text.replace('```json', '').replace('```', '').strip()
+        quantities = json.loads(text)
+
+        # Default floor height by project type if not extracted
+        if not quantities.get('floor_to_floor_height_ft'):
+            _ft_defaults = {
+                'single_family': 9, 'multi_family': 9,
+                'commercial': 12, 'mixed_use': 12,
+                'warehouse': 16, 'institutional': 14,
+                'unknown': 9,
+            }
+            pt = quantities.get('project_type', 'unknown')
+            quantities['floor_to_floor_height_ft'] = _ft_defaults.get(pt, 9)
+            emit(f"Floor height: {quantities['floor_to_floor_height_ft']}ft (default for {pt})")
+        else:
+            emit(f"Floor height: {quantities['floor_to_floor_height_ft']}ft (extracted from documents)")
+
+        emit(
+            f"Project quantities extracted: "
+            f"{quantities.get('project_type')} | "
+            f"{quantities.get('unit_count')} units | "
+            f"{quantities.get('total_building_sf')} SF | "
+            f"confidence: {quantities.get('confidence')}"
+        )
+        return quantities
+    except Exception as e:
+        emit(f"[WARNING] Could not extract quantities: {e}. Using conservative defaults.")
+        return {}
+
+
+def validate_project_quantities(pq: dict, emit: Callable[[str], None]) -> dict:
+    """
+    Validate extracted project quantities. Pop any field that fails
+    plausibility checks and log a warning. Returns the cleaned dict.
+    """
+    import math
+    findings = []
+
+    def _pop_bad(field, value, reason):
+        pq.pop(field, None)
+        msg = (f"Extracted {field} = {value} appeared unreasonable ({reason}) "
+               f"and was replaced with a conservative default. Please verify.")
+        findings.append(msg)
+        emit(f"[VALIDATION] {msg}")
+
+    # unit_count: 1–999
+    uc = pq.get('unit_count')
+    if uc is not None and (not isinstance(uc, (int, float)) or uc < 1 or uc > 999):
+        _pop_bad('unit_count', uc, "must be 1-999")
+
+    # floor_count: 1–80
+    fc = pq.get('floor_count')
+    if fc is not None and (not isinstance(fc, (int, float)) or fc < 1 or fc > 80):
+        _pop_bad('floor_count', fc, "must be 1-80")
+
+    # footprint_sf: cannot exceed total_building_sf
+    fp = pq.get('footprint_sf')
+    tsf = pq.get('total_building_sf')
+    if fp is not None and tsf is not None:
+        if isinstance(fp, (int, float)) and isinstance(tsf, (int, float)) and fp > tsf:
+            _pop_bad('footprint_sf', fp, f"exceeds total_building_sf={tsf}")
+
+    # total_building_sf: cross-check with footprint * floors
+    if tsf is not None and isinstance(tsf, (int, float)):
+        fp_check = pq.get('footprint_sf')
+        fc_check = pq.get('floor_count') or 1
+        if fp_check and isinstance(fp_check, (int, float)):
+            expected = fp_check * fc_check
+            if tsf < expected * 0.7 or tsf > expected * 1.3:
+                _pop_bad('total_building_sf', tsf,
+                         f"inconsistent with footprint={fp_check} x floors={fc_check} = {expected}")
+        else:
+            # Standalone check by project type
+            pt = pq.get('project_type', 'unknown')
+            max_sf = 2_000_000 if pt in ('commercial', 'warehouse', 'institutional', 'mixed_use') else 500_000
+            if tsf > max_sf:
+                _pop_bad('total_building_sf', tsf, f"exceeds {max_sf:,} for {pt}")
+
+    # perimeter_lf: sanity vs footprint
+    pl = pq.get('perimeter_lf')
+    fp_for_perim = pq.get('footprint_sf')
+    if (pl is not None and fp_for_perim is not None
+            and isinstance(pl, (int, float)) and isinstance(fp_for_perim, (int, float))
+            and fp_for_perim > 0):
+        max_perim = 4 * math.sqrt(fp_for_perim) * 2
+        if pl > max_perim:
+            _pop_bad('perimeter_lf', pl, f"exceeds 2x square perimeter for {fp_for_perim} SF")
+
+    # window_count: vs unit_count
+    wc = pq.get('window_count')
+    uc_check = pq.get('unit_count') or 1
+    if wc is not None and isinstance(wc, (int, float)) and wc > uc_check * 20:
+        _pop_bad('window_count', wc, f"exceeds {uc_check} units x 20")
+
+    # floor_to_floor_height_ft: 7–30
+    fh = pq.get('floor_to_floor_height_ft')
+    if fh is not None and (not isinstance(fh, (int, float)) or fh < 7 or fh > 30):
+        _pop_bad('floor_to_floor_height_ft', fh, "must be 7-30 ft")
+
+    if findings:
+        pq.setdefault('_validation_findings', []).extend(findings)
+
+    return pq
 
 
 def process_files(
@@ -1801,6 +2234,11 @@ def process_files(
     all_requirements = dedup_requirements(all_requirements)
     all_trades = dedup_trades(all_trades)
 
+    # Tag addenda and detect conflicts
+    emit("Scanning for addenda...")
+    all_trades = tag_addenda(all_trades)
+    addenda_findings = detect_addenda_conflicts(all_trades, emit)
+
     # Compute costs
     input_cost = (global_stats["input_tokens"] / 1_000_000) * INPUT_RATE
     output_cost = (global_stats["output_tokens"] / 1_000_000) * OUTPUT_RATE
@@ -1817,6 +2255,7 @@ def process_files(
         "num_requirements": len(all_requirements),
         "num_trades": len(consolidated),
         "num_raw_trade_items": len(all_trades),
+        "addenda_findings": addenda_findings,
     }
 
     emit(f"Done! {len(all_requirements)} requirements, {len(consolidated)} trades extracted.")
@@ -1835,6 +2274,9 @@ def build_excel_bytes(
     requirements: list[SubmissionRequirement],
     trades: list[TradeAndScope],
     sov_data: Optional[dict] = None,
+    failed_pages: Optional[list[str]] = None,
+    project_quantities: Optional[dict] = None,
+    addenda_findings: Optional[list[dict]] = None,
 ) -> bytes:
     """Build the Excel workbook in memory and return it as bytes.
 
@@ -1929,7 +2371,8 @@ def build_excel_bytes(
         row for row in consolidated
         if row.get("budget") is not None
         or row["trade"] in sov_matched
-        or get_baseline_quantities(row["trade"], _extraction_for_detection)
+        or get_baseline_quantities(row["trade"], _extraction_for_detection,
+                                   project_quantities=project_quantities)
     ]
     # Safety fallback: if nothing has pricing, show everything
     if not buyout_rows:
@@ -1985,7 +2428,8 @@ def build_excel_bytes(
     )
     if not site_already_in_buyout:
         # Add a SITE WORK / CIVIL placeholder row with pricing from TRADE_MAP
-        site_items = get_baseline_quantities("SITE WORK / CIVIL", _extraction_for_detection)
+        site_items = get_baseline_quantities("SITE WORK / CIVIL", _extraction_for_detection,
+                                             project_quantities=project_quantities)
         site_override = next((item.get("override_amount") for item in site_items
                              if item.get("override_amount")), 0)
         site_override_note = next((item.get("note") for item in site_items
@@ -2026,54 +2470,104 @@ def build_excel_bytes(
         budget_val = None
         note_val = None
 
-        # Tier 1: SOV match from uploaded reference
-        if trade_name in sov_matched:
-            budget_val = sov_matched[trade_name]
-
-        # Tier 2: Claude extracted dollar amount from PDFs
-        if budget_val is None and row_data.get("budget") is not None:
-            budget_val = row_data["budget"]
-
-        # Tier 3: Calculate baseline using wage rates + material DB
-        if budget_val is None or budget_val == 0:
-            work_items = get_baseline_quantities(trade_name, _extraction_for_detection)
-            if work_items:
-                # Check for override_amount (placeholder trades)
-                override = next((item.get("override_amount") for item in work_items
-                                if item.get("override_amount")), None)
-                override_note = next((item.get("note") for item in work_items
-                                     if item.get("note") and item.get("override_amount")), None)
-
-                if override is not None:
-                    # Placeholder trade — write directly, skip calculate_trade_estimate
-                    budget_val = override
-                    note_val = override_note
-                else:
-                    # Normal trade — run the pricing engine
-                    wage_regime = "CT_DOL_RESIDENTIAL"
-                    if isinstance(project_type_result, dict) and "regime" in project_type_result:
-                        wage_regime = project_type_result["regime"]
-
-                    trade_estimate = calculate_trade_estimate(
-                        trade_name=trade_name,
-                        work_items=work_items,
-                        wage_regime=wage_regime
-                    )
-
-                    budget_val = trade_estimate["total_material"] + trade_estimate["total_labor"]
-                    note_val = (
-                        f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
-                        f"+ Labor: ${trade_estimate['total_labor']:,.0f} "
-                        f"= ${budget_val:,.0f} | \u00b115% accuracy | Sub quote overrides this"
-                    )
-            else:
-                budget_val = 0
-                note_val = "\u26a0\ufe0f No pricing found \u2014 estimator must price this trade"
+        # General Requirements is calculated AFTER all other trades — defer it
+        if trade_name == "General Requirements":
+            budget_val = 0  # placeholder, recalculated below
+            note_val = "Calculated as % of direct building cost (see below)"
+            ws.cell(row=r, column=5, value=0).number_format = money_fmt
         else:
-            note_val = "Extracted from documents or SOV match"
+            # Tier 1: SOV match from uploaded reference
+            if trade_name in sov_matched:
+                budget_val = sov_matched[trade_name]
 
-        # Write to column E (always, never blank)
-        ws.cell(row=r, column=5, value=round(budget_val) if budget_val else 0).number_format = money_fmt
+            # Tier 2: Claude extracted dollar amount from PDFs
+            if budget_val is None and row_data.get("budget") is not None:
+                extracted_budget = row_data["budget"]
+                if isinstance(extracted_budget, (int, float)) and extracted_budget > 500000:
+                    # Likely a project total or contract amount — do not use
+                    budget_val = None
+                    note_val = (
+                        f"\u26a0\ufe0f LARGE DOLLAR AMOUNT FOUND IN DOCUMENTS: "
+                        f"${extracted_budget:,.0f} \u2014 likely a contract total "
+                        f"or budget figure, NOT a trade sub quote. "
+                        f"Do not use as pricing. Get sub quotes."
+                    )
+                else:
+                    budget_val = extracted_budget
+
+            # Tier 3: Calculate baseline using wage rates + material DB
+            if budget_val is None or budget_val == 0:
+                work_items = get_baseline_quantities(trade_name, _extraction_for_detection,
+                                                     project_quantities=project_quantities)
+                if work_items:
+                    # Check for override_amount (placeholder trades)
+                    override = next((item.get("override_amount") for item in work_items
+                                    if item.get("override_amount")), None)
+                    override_note = next((item.get("note") for item in work_items
+                                         if item.get("note") and item.get("override_amount")), None)
+
+                    if override is not None:
+                        # Placeholder trade — write directly, skip calculate_trade_estimate
+                        budget_val = override
+                        note_val = override_note
+                    else:
+                        # Normal trade — run the pricing engine
+                        wage_regime = "CT_DOL_RESIDENTIAL"
+                        if isinstance(project_type_result, dict) and "regime" in project_type_result:
+                            wage_regime = project_type_result["regime"]
+
+                        trade_estimate = calculate_trade_estimate(
+                            trade_name=trade_name,
+                            work_items=work_items,
+                            wage_regime=wage_regime
+                        )
+
+                        budget_val = trade_estimate["total_material"] + trade_estimate["total_labor"]
+                        note_val = (
+                            f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
+                            f"+ Labor: ${trade_estimate['total_labor']:,.0f} "
+                            f"= ${budget_val:,.0f} | \u00b115% accuracy | Sub quote overrides this"
+                        )
+                else:
+                    budget_val = 0
+                    note_val = "\u26a0\ufe0f No pricing found \u2014 estimator must price this trade"
+            elif note_val is None:
+                note_val = "Extracted from documents or SOV match"
+
+            # Low-end floor safeguard — flag suspiciously low extracted costs
+            _MIN_COST_PER_SF = {
+                'building concrete': 3.0, 'site concrete': 3.0,
+                'structural steel': 4.0,
+                'hvac': 5.0,
+                'electrical': 4.0,
+                'plumbing': 2.5,
+                'roofing': 2.0,
+                'insulation': 1.5,
+                'drywall': 2.0,
+                'flooring': 1.5,
+                'painting': 0.75,
+            }
+            _pq_for_floor = project_quantities or {}
+            _total_sf_for_floor = _pq_for_floor.get('total_building_sf') or 0
+            if (budget_val and isinstance(budget_val, (int, float))
+                    and budget_val > 0 and _total_sf_for_floor > 0):
+                _trade_lower = trade_name.lower()
+                _min_rate = next(
+                    (v for k, v in _MIN_COST_PER_SF.items() if k in _trade_lower),
+                    1.0
+                )
+                _floor_min = _min_rate * _total_sf_for_floor * 0.10
+                if budget_val < _floor_min:
+                    _floor_warning = (
+                        f"\u26a0\ufe0f LOW COST FLAG: Extracted ${budget_val:,.0f} "
+                        f"appears low for {_total_sf_for_floor:,.0f} SF project. "
+                        f"Expected minimum ~${_floor_min:,.0f} "
+                        f"({_min_rate}/SF x 10%). Using extracted value \u2014 verify."
+                    )
+                    note_val = _floor_warning + (" | " + note_val if note_val else "")
+
+            # Write to column E (always, never blank)
+            ws.cell(row=r, column=5, value=round(budget_val) if budget_val else 0).number_format = money_fmt
 
         # VARIANCE (F): blank for user
         ws.cell(row=r, column=6, value="").font = normal_font
@@ -2095,6 +2589,39 @@ def build_excel_bytes(
         ws.row_dimensions[r].height = max(30, min(len(scope_lines) * 18, 90))
 
     data_end = data_start + len(buyout_rows) - 1
+
+    # ── Recalculate General Requirements as % of other direct costs ────
+    _pq = project_quantities or {}
+    _gr_unit_count = _pq.get('unit_count') or 1
+    if _gr_unit_count >= 50:
+        _gr_rate = 0.05
+    elif _gr_unit_count >= 10:
+        _gr_rate = 0.06
+    else:
+        _gr_rate = 0.08
+
+    # Sum all non-GR trade values written so far
+    _other_trades_total = 0
+    _gr_row = None
+    for _ri in range(data_start, data_end + 1):
+        _trade_cell = ws.cell(row=_ri, column=2).value
+        _val = ws.cell(row=_ri, column=5).value
+        if _trade_cell == "General Requirements":
+            _gr_row = _ri
+        elif isinstance(_val, (int, float)):
+            _other_trades_total += _val
+
+    if _gr_row is not None:
+        _gr_budget = round(_other_trades_total * _gr_rate)
+        ws.cell(row=_gr_row, column=5, value=_gr_budget).number_format = money_fmt
+        _gr_note = (
+            f"General Requirements: {_gr_rate:.0%} of "
+            f"${_other_trades_total:,.0f} direct cost = "
+            f"${_gr_budget:,.0f} | "
+            f"Adjust based on project duration and GC overhead structure"
+        )
+        ws.cell(row=_gr_row, column=7, value=_gr_note).font = Font(
+            name="Calibri", size=9, italic=True)
 
     # ── Python-calculated summary values ─────────────────────────────────
     # Collect all building trade E values (excludes site row)
@@ -2471,7 +2998,8 @@ def build_excel_bytes(
     # Iterate trades that have baseline quantities
     for row_data in buyout_rows:
         t_name = row_data["trade"]
-        work_items = get_baseline_quantities(t_name, _extraction_for_detection)
+        work_items = get_baseline_quantities(t_name, _extraction_for_detection,
+                                             project_quantities=project_quantities)
         if not work_items:
             continue
 
@@ -2635,6 +3163,63 @@ def build_excel_bytes(
         ws5.cell(row=calc_row, column=c).border = thin_border
 
     ws5.freeze_panes = "A3"
+
+    # ── TAB 6: Flags ─────────────────────────────────────────────────────
+    _all_flags = []
+
+    # Failed pages
+    for page_ref in (failed_pages or []):
+        _all_flags.append({
+            "severity": "HIGH",
+            "flag": "Page could not be parsed",
+            "detail": f"{page_ref} failed extraction after 4 attempts. Review manually for missed scope.",
+            "source": page_ref,
+        })
+
+    # Addenda conflicts
+    for finding in (addenda_findings or []):
+        _all_flags.append(finding)
+
+    # Validation findings from project quantities
+    _pq_val = project_quantities or {}
+    for vf in _pq_val.get('_validation_findings', []):
+        _all_flags.append({
+            "severity": "MEDIUM",
+            "flag": "Quantity validation",
+            "detail": vf,
+            "source": "Project quantities",
+        })
+
+    if _all_flags:
+        ws6 = wb.create_sheet("Flags")
+        ws6.sheet_properties.tabColor = "FF0000"
+
+        flag_headers = ["Severity", "Flag", "Detail", "Source"]
+        flag_widths = [12, 30, 70, 30]
+        for ci, (h, w) in enumerate(zip(flag_headers, flag_widths), 1):
+            cell = ws6.cell(row=1, column=ci, value=h)
+            cell.font = header_font
+            cell.fill = PatternFill(start_color="C00000", end_color="C00000", fill_type="solid")
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = thin_border
+            ws6.column_dimensions[get_column_letter(ci)].width = w
+        ws6.row_dimensions[1].height = 28
+
+        _severity_colors = {"HIGH": "C00000", "MEDIUM": "E67E22", "LOW": "2980B9"}
+        for ri, flag in enumerate(_all_flags, 2):
+            sev = flag.get("severity", "MEDIUM")
+            sev_color = _severity_colors.get(sev, "666666")
+            ws6.cell(row=ri, column=1, value=sev).font = Font(
+                name="Calibri", bold=True, size=11, color=sev_color)
+            ws6.cell(row=ri, column=1).alignment = Alignment(horizontal="center", vertical="top")
+            ws6.cell(row=ri, column=2, value=flag.get("flag", "")).font = bold_font
+            ws6.cell(row=ri, column=3, value=flag.get("detail", ""))
+            ws6.cell(row=ri, column=3).alignment = wrap_top
+            ws6.cell(row=ri, column=4, value=flag.get("source", "")).alignment = top_align
+            for c in range(1, 5):
+                ws6.cell(row=ri, column=c).border = thin_border
+
+        ws6.freeze_panes = "A2"
 
     # ── Save ──────────────────────────────────────────────────────────────
     buf = io.BytesIO()

@@ -21,7 +21,9 @@ from queue import Empty, Queue
 from dotenv import load_dotenv
 from flask import Flask, Response, render_template, request, jsonify, send_file
 
-from engine import build_excel_bytes, process_files, parse_sov_from_buyout, SUPPORTED_EXTENSIONS
+from engine import (build_excel_bytes, process_files, parse_sov_from_buyout,
+                    extract_project_quantities, validate_project_quantities,
+                    SUPPORTED_EXTENSIONS)
 
 # ─── Load environment ────────────────────────────────────────────────────────
 load_dotenv()
@@ -137,10 +139,10 @@ def stream(job_id):
         q = job["queue"]
         while True:
             try:
-                msg = q.get(timeout=60)
+                msg = q.get(timeout=10)
             except Empty:
-                # Send keepalive
-                yield ":\n\n"
+                # Send keepalive heartbeat every 10s to prevent proxy/browser timeouts
+                yield ": heartbeat\n\n"
                 continue
 
             if msg is None:
@@ -214,8 +216,20 @@ def _run_extraction(job_id: str):
             except Exception as e:
                 on_progress(f"[WARNING] Could not parse buyout: {e}")
 
+        # Extract project quantities from all trade data
+        on_progress("Extracting project quantities from documents...")
+        project_quantities = extract_project_quantities(trades, on_progress, API_KEY)
+        project_quantities = validate_project_quantities(project_quantities, on_progress)
+        on_progress(f"Project type: {project_quantities.get('project_type', 'unknown')}")
+        on_progress(f"Units: {project_quantities.get('unit_count', 'unknown')}")
+        on_progress(f"Total SF: {project_quantities.get('total_building_sf', 'unknown')}")
+        on_progress(f"Confidence: {project_quantities.get('confidence', 'unknown')}")
+
         on_progress("Building Excel workbook...")
-        excel_bytes = build_excel_bytes(requirements, trades, sov_data=sov_data)
+        excel_bytes = build_excel_bytes(requirements, trades, sov_data=sov_data,
+                                        failed_pages=stats.get("failed_pages", []),
+                                        project_quantities=project_quantities,
+                                        addenda_findings=stats.get("addenda_findings", []))
 
         job["excel_bytes"] = excel_bytes
         job["stats"] = stats

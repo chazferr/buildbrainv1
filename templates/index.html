@@ -371,6 +371,140 @@
         }
 
         .buyout-section .buyout-remove:hover { opacity: 1; }
+
+        /* Pre-check confirmation card */
+        .precheck-section {
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .precheck-section.active { display: block; }
+
+        .precheck-card {
+            background: var(--card);
+            border: 2px solid var(--orange);
+            border-radius: 10px;
+            padding: 1.5rem;
+        }
+
+        .precheck-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--navy);
+            margin-bottom: 0.25rem;
+        }
+
+        .precheck-subtitle {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .precheck-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .precheck-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .precheck-field.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .precheck-field label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .precheck-field input,
+        .precheck-field select {
+            padding: 0.5rem 0.65rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            color: var(--text);
+            background: var(--bg);
+            transition: border-color 0.15s;
+        }
+
+        .precheck-field input:focus,
+        .precheck-field select:focus {
+            outline: none;
+            border-color: var(--orange);
+        }
+
+        .precheck-field .confidence-badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .confidence-high { background: #e2efda; color: #27ae60; }
+        .confidence-medium { background: #fff3cd; color: #b8860b; }
+        .confidence-low { background: #fce4d6; color: #e74c3c; }
+
+        .precheck-warning {
+            margin-top: 0.75rem;
+            padding: 0.6rem 0.85rem;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            color: #856404;
+        }
+
+        .precheck-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            margin-top: 1.25rem;
+        }
+
+        .precheck-confirm-btn {
+            background: var(--orange);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .precheck-confirm-btn:hover { background: var(--orange-hover); }
+
+        .precheck-back-btn {
+            background: none;
+            border: 1.5px solid var(--border);
+            padding: 0.75rem 1.5rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.15s;
+        }
+
+        .precheck-back-btn:hover {
+            border-color: var(--text-muted);
+            color: var(--text);
+        }
     </style>
 </head>
 <body>
@@ -408,6 +542,65 @@
     <!-- Submit -->
     <div class="submit-section" id="submitSection" style="display:none;">
         <button class="submit-btn" id="submitBtn">Submit Bid</button>
+    </div>
+
+    <!-- Pre-check confirmation -->
+    <div class="precheck-section" id="precheckSection">
+        <div class="precheck-card">
+            <div class="precheck-header">Project Pre-Check</div>
+            <div class="precheck-subtitle">Review and adjust the detected project info before running full analysis.</div>
+            <div class="precheck-grid">
+                <div class="precheck-field full-width">
+                    <label>Project Name</label>
+                    <input type="text" id="pc_project_name" placeholder="Not detected">
+                </div>
+                <div class="precheck-field full-width">
+                    <label>Project Address</label>
+                    <input type="text" id="pc_project_address" placeholder="Not detected">
+                </div>
+                <div class="precheck-field">
+                    <label>Project Type</label>
+                    <select id="pc_project_type">
+                        <option value="single_family">Single Family</option>
+                        <option value="multi_family">Multi-Family</option>
+                        <option value="commercial">Commercial</option>
+                        <option value="mixed_use">Mixed Use</option>
+                        <option value="unknown">Unknown</option>
+                    </select>
+                </div>
+                <div class="precheck-field">
+                    <label>Construction Type</label>
+                    <select id="pc_construction_type">
+                        <option value="new_construction">New Construction</option>
+                        <option value="renovation">Renovation (1.35x)</option>
+                        <option value="gut_rehabilitation">Gut Rehabilitation (1.55x)</option>
+                        <option value="addition">Addition (1.20x)</option>
+                        <option value="unknown">Unknown</option>
+                    </select>
+                </div>
+                <div class="precheck-field">
+                    <label>Unit Count</label>
+                    <input type="number" id="pc_unit_count" min="1" placeholder="--">
+                </div>
+                <div class="precheck-field">
+                    <label>Floor Count</label>
+                    <input type="number" id="pc_floor_count" min="1" placeholder="--">
+                </div>
+                <div class="precheck-field">
+                    <label>Total Building SF</label>
+                    <input type="number" id="pc_total_building_sf" min="1" placeholder="--">
+                </div>
+                <div class="precheck-field">
+                    <label>Confidence</label>
+                    <span class="confidence-badge" id="pc_confidence">--</span>
+                </div>
+            </div>
+            <div class="precheck-warning" id="pc_warning" style="display:none;"></div>
+            <div class="precheck-actions">
+                <button class="precheck-back-btn" id="precheckBack">Back</button>
+                <button class="precheck-confirm-btn" id="precheckConfirm">Confirm &amp; Run Full Analysis</button>
+            </div>
+        </div>
     </div>
 
     <!-- Progress -->
@@ -450,6 +643,7 @@
     let selectedFiles = [];
     let buyoutFile = null;
     let currentJobId = null;
+    let confirmedPrecheck = null;  // stores confirmed pre-check values
 
     // Elements
     const dropzone = document.getElementById('dropzone');
@@ -461,6 +655,11 @@
     const buyoutRemove = document.getElementById('buyoutRemove');
     const submitSection = document.getElementById('submitSection');
     const submitBtn = document.getElementById('submitBtn');
+    const precheckSection = document.getElementById('precheckSection');
+    const precheckBack = document.getElementById('precheckBack');
+    const precheckConfirm = document.getElementById('precheckConfirm');
+    const pcWarning = document.getElementById('pc_warning');
+    const pcConfidence = document.getElementById('pc_confidence');
     const progressSection = document.getElementById('progressSection');
     const progressLog = document.getElementById('progressLog');
     const progressSpinner = document.getElementById('progressSpinner');
@@ -563,15 +762,120 @@
         submitSection.style.display = selectedFiles.length > 0 ? '' : 'none';
     }
 
-    // Submit
+    // Submit — first run pre-check, then confirm, then full upload
     submitBtn.addEventListener('click', async () => {
         if (selectedFiles.length === 0) return;
 
+        // Check if any PDFs exist for pre-check
+        const hasPDFs = selectedFiles.some(f => f.name.toLowerCase().endsWith('.pdf'));
+
+        if (!hasPDFs) {
+            // No PDFs — skip pre-check, go straight to upload
+            runFullUpload();
+            return;
+        }
+
         submitBtn.disabled = true;
+        submitBtn.textContent = 'Scanning...';
+
+        try {
+            // Send only PDFs to pre-check
+            const pcForm = new FormData();
+            for (const f of selectedFiles) {
+                if (f.name.toLowerCase().endsWith('.pdf')) {
+                    pcForm.append('pdfs', f);
+                }
+            }
+
+            const pcResp = await fetch('/api/pre-check', { method: 'POST', body: pcForm });
+            const pcData = await pcResp.json();
+
+            if (pcData.error && !pcData.project_name) {
+                // Pre-check failed — skip to upload
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Bid';
+                runFullUpload();
+                return;
+            }
+
+            // Populate pre-check card
+            populatePrecheck(pcData);
+
+            // Show pre-check card, hide upload UI
+            dropzone.style.display = 'none';
+            fileList.style.display = 'none';
+            buyoutSection.style.display = 'none';
+            submitSection.style.display = 'none';
+            precheckSection.classList.add('active');
+
+        } catch (err) {
+            // Pre-check network error — fall through to upload
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Bid';
+            runFullUpload();
+        }
+    });
+
+    function populatePrecheck(data) {
+        document.getElementById('pc_project_name').value = data.project_name || '';
+        document.getElementById('pc_project_address').value = data.project_address || '';
+        document.getElementById('pc_project_type').value = data.project_type || 'unknown';
+        document.getElementById('pc_construction_type').value = data.construction_type || 'unknown';
+        document.getElementById('pc_unit_count').value = data.unit_count || '';
+        document.getElementById('pc_floor_count').value = data.floor_count || '';
+        document.getElementById('pc_total_building_sf').value = data.total_building_sf || '';
+
+        // Confidence badge
+        const conf = (data.confidence || 'low').toLowerCase();
+        pcConfidence.textContent = conf;
+        pcConfidence.className = 'confidence-badge confidence-' + conf;
+
+        // Complexity warning
+        if (data.complexity_warning) {
+            pcWarning.textContent = data.complexity_warning;
+            pcWarning.style.display = '';
+        } else {
+            pcWarning.style.display = 'none';
+        }
+    }
+
+    function readPrecheckValues() {
+        return {
+            confirmed_project_name: document.getElementById('pc_project_name').value,
+            confirmed_project_address: document.getElementById('pc_project_address').value,
+            confirmed_project_type: document.getElementById('pc_project_type').value,
+            confirmed_construction_type: document.getElementById('pc_construction_type').value,
+            confirmed_unit_count: document.getElementById('pc_unit_count').value,
+            confirmed_floor_count: document.getElementById('pc_floor_count').value,
+            confirmed_total_building_sf: document.getElementById('pc_total_building_sf').value,
+        };
+    }
+
+    // Pre-check back button
+    precheckBack.addEventListener('click', () => {
+        precheckSection.classList.remove('active');
+        dropzone.style.display = '';
+        fileList.style.display = '';
+        buyoutSection.style.display = '';
+        submitSection.style.display = '';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Bid';
+    });
+
+    // Pre-check confirm button
+    precheckConfirm.addEventListener('click', () => {
+        confirmedPrecheck = readPrecheckValues();
+        precheckSection.classList.remove('active');
+        runFullUpload();
+    });
+
+    // Full upload with optional confirmed values
+    async function runFullUpload() {
         dropzone.style.display = 'none';
         fileList.style.display = 'none';
         buyoutSection.style.display = 'none';
         submitSection.style.display = 'none';
+        precheckSection.classList.remove('active');
         progressSection.classList.add('active');
         progressLog.innerHTML = '';
         resultsSection.classList.remove('active');
@@ -579,13 +883,19 @@
 
         addLogEntry('Uploading files...');
 
-        // Upload files
         const formData = new FormData();
         for (const f of selectedFiles) {
             formData.append('pdfs', f);
         }
         if (buyoutFile) {
             formData.append('buyout', buyoutFile);
+        }
+
+        // Append confirmed pre-check values if available
+        if (confirmedPrecheck) {
+            for (const [key, val] of Object.entries(confirmedPrecheck)) {
+                if (val) formData.append(key, val);
+            }
         }
 
         try {
@@ -614,26 +924,23 @@
             });
 
             evtSource.addEventListener('error', (e) => {
-                // Check if it's a custom error event or connection error
                 if (e.data) {
                     const data = JSON.parse(e.data);
                     evtSource.close();
                     showError(data.error);
                 } else {
-                    // SSE connection error — might just be stream ending
                     evtSource.close();
                 }
             });
 
             evtSource.onerror = () => {
-                // Connection dropped
                 evtSource.close();
             };
 
         } catch (err) {
             showError(err.message);
         }
-    });
+    }
 
     function addLogEntry(text) {
         const div = document.createElement('div');
@@ -677,6 +984,7 @@
         selectedFiles = [];
         buyoutFile = null;
         currentJobId = null;
+        confirmedPrecheck = null;
         dropzone.style.display = '';
         fileList.style.display = '';
         fileList.innerHTML = '';
@@ -685,6 +993,8 @@
         buyoutRemove.style.display = 'none';
         submitSection.style.display = 'none';
         submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Bid';
+        precheckSection.classList.remove('active');
         progressSection.classList.remove('active');
         resultsSection.classList.remove('active');
         errorCard.classList.remove('active');

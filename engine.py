@@ -1986,6 +1986,107 @@ def _process_text_file(client, file_path, emit, global_stats, file_stats):
     return reqs, trades
 
 
+def classify_project_complexity(project_info: dict, page_texts: list) -> dict:
+    """
+    Detects construction type from document keywords.
+    Adds construction_type, complexity_multiplier, and
+    complexity_warning to the project_info dict.
+    """
+    GUT_REHAB_KEYWORDS = [
+        "gut rehabilitation", "gut rehab", "full gut",
+        "strip to studs", "abatement", "hazmat",
+        "lead paint", "asbestos", "complete gut"
+    ]
+    RENOVATION_KEYWORDS = [
+        "renovation", "rehab", "rehabilitation",
+        "existing building", "existing structure",
+        "selective demo", "selective demolition",
+        "infill", "adaptive reuse", "historic",
+        "occupied", "phased construction",
+        "alteration", "alterations", "retrofit",
+        "upgrade", "modernization"
+    ]
+    ADDITION_KEYWORDS = [
+        "addition", "expansion", "new wing",
+        "building addition", "annex"
+    ]
+
+    all_text = " ".join(page_texts).lower()
+    triggered_keywords = []
+    detected_type = project_info.get("construction_type") or "unknown"
+
+    if detected_type in ("unknown", None):
+        for kw in GUT_REHAB_KEYWORDS:
+            if kw in all_text:
+                triggered_keywords.append(kw)
+                detected_type = "gut_rehabilitation"
+                break
+
+        if detected_type in ("unknown", None):
+            for kw in RENOVATION_KEYWORDS:
+                if kw in all_text:
+                    triggered_keywords.append(kw)
+                    detected_type = "renovation"
+                    break
+
+        if detected_type in ("unknown", None):
+            for kw in ADDITION_KEYWORDS:
+                if kw in all_text:
+                    triggered_keywords.append(kw)
+                    detected_type = "addition"
+                    break
+
+    COMPLEXITY_CONFIG = {
+        "new_construction": {
+            "multiplier": 1.0,
+            "warning": None,
+        },
+        "renovation": {
+            "multiplier": 1.35,
+            "warning": (
+                "\u26a0\ufe0f RENOVATION PROJECT: All costs include 1.35x "
+                "renovation premium. Actual costs depend heavily "
+                "on existing conditions. Sub quotes required "
+                "before bid. Walk the site first."
+            ),
+        },
+        "gut_rehabilitation": {
+            "multiplier": 1.55,
+            "warning": (
+                "\u26a0\ufe0f GUT REHABILITATION: All costs include 1.55x "
+                "gut rehab premium. Significant unknowns exist. "
+                "Do NOT bid without site walk, sub quotes, and "
+                "existing conditions survey."
+            ),
+        },
+        "addition": {
+            "multiplier": 1.20,
+            "warning": (
+                "\u26a0\ufe0f BUILDING ADDITION: All costs include 1.20x "
+                "addition premium for tie-in complexity, "
+                "phasing, and existing structure interface."
+            ),
+        },
+        "unknown": {
+            "multiplier": 1.0,
+            "warning": (
+                "\u26a0\ufe0f CONSTRUCTION TYPE UNKNOWN: Could not determine "
+                "if this is new construction or renovation. "
+                "Verify before using this estimate."
+            ),
+        },
+    }
+
+    config = COMPLEXITY_CONFIG.get(detected_type, COMPLEXITY_CONFIG["unknown"])
+
+    project_info["construction_type"] = detected_type
+    project_info["complexity_multiplier"] = config["multiplier"]
+    project_info["complexity_warning"] = config["warning"]
+    project_info["construction_type_keywords"] = triggered_keywords
+
+    return project_info
+
+
 def extract_project_quantities(trades: list, emit: Callable[[str], None], api_key: str,
                                timeout_seconds: int = 60) -> dict:
     """
@@ -2566,6 +2667,19 @@ def build_excel_bytes(
                     )
                     note_val = _floor_warning + (" | " + note_val if note_val else "")
 
+            # ── Apply complexity multiplier (renovation/gut rehab/addition) ──
+            _complexity_mult = (project_quantities or {}).get('complexity_multiplier', 1.0)
+            if (budget_val and isinstance(budget_val, (int, float))
+                    and budget_val > 0 and _complexity_mult != 1.0):
+                _pre_mult = budget_val
+                budget_val = round(budget_val * _complexity_mult)
+                _mult_label = (project_quantities or {}).get('construction_type', 'unknown')
+                _mult_note = (
+                    f"Complexity adj: ${_pre_mult:,.0f} x {_complexity_mult:.2f} "
+                    f"({_mult_label}) = ${budget_val:,.0f}"
+                )
+                note_val = _mult_note + (" | " + note_val if note_val else "")
+
             # Write to column E (always, never blank)
             ws.cell(row=r, column=5, value=round(budget_val) if budget_val else 0).number_format = money_fmt
 
@@ -2796,8 +2910,11 @@ def build_excel_bytes(
     ws.cell(row=project_total_row, column=5, value=project_total).number_format = currency_fmt
     ws.cell(row=project_total_row, column=5).font = Font(
         name="Calibri", bold=True, size=14, color="FFFFFF")
-    ws.cell(row=project_total_row, column=7,
-            value=f"Building ${building_total:,.0f} + Site ${site_total:,.0f}").font = Font(
+    _pt_note = f"Building ${building_total:,.0f} + Site ${site_total:,.0f}"
+    _pt_complexity_warn = (project_quantities or {}).get('complexity_warning')
+    if _pt_complexity_warn:
+        _pt_note += f" | {_pt_complexity_warn}"
+    ws.cell(row=project_total_row, column=7, value=_pt_note).font = Font(
         name="Calibri", size=9, italic=True, color="FFFFFF")
     for col in range(1, NUM_COLS + 1):
         ws.cell(row=project_total_row, column=col).fill = project_total_fill

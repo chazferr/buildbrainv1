@@ -23,7 +23,7 @@ from flask import Flask, Response, render_template, request, jsonify, send_file
 
 from engine import (build_excel_bytes, process_files, parse_sov_from_buyout,
                     extract_project_quantities, validate_project_quantities,
-                    SUPPORTED_EXTENSIONS)
+                    classify_project_complexity, SUPPORTED_EXTENSIONS)
 
 # ─── Load environment ────────────────────────────────────────────────────────
 load_dotenv()
@@ -104,6 +104,16 @@ def upload():
             buyout_file.save(str(buyout_dest))
             buyout_path = buyout_dest
 
+    # Read confirmed pre-check values (if user went through pre-check flow)
+    confirmed_values = {}
+    for key in ("confirmed_project_name", "confirmed_project_address",
+                "confirmed_project_type", "confirmed_construction_type",
+                "confirmed_unit_count", "confirmed_floor_count",
+                "confirmed_total_building_sf"):
+        val = request.form.get(key)
+        if val:
+            confirmed_values[key] = val
+
     # Initialize job
     progress_queue: Queue = Queue()
     jobs[job_id] = {
@@ -115,6 +125,7 @@ def upload():
         "file_paths": saved_paths,
         "buyout_path": buyout_path,
         "job_dir": job_dir,
+        "confirmed_values": confirmed_values,
     }
 
     # Start extraction in background thread
@@ -186,6 +197,90 @@ def download(job_id):
     )
 
 
+@app.route("/api/pre-check", methods=["POST"])
+def pre_check():
+    """Read first 3 pages of each PDF and return project dimensions immediately."""
+    import anthropic
+    import base64
+    import fitz  # PyMuPDF
+
+    files = request.files.getlist("pdfs")
+    if not files:
+        return jsonify({"error": "No files uploaded"}), 400
+
+    page_texts = []
+    for f in files:
+        try:
+            f.seek(0)
+            doc = fitz.open(stream=f.read(), filetype="pdf")
+            pages_to_read = min(3, len(doc))
+            for i in range(pages_to_read):
+                page = doc[i]
+                text = page.get_text() or ""
+                if text.strip():
+                    page_texts.append(
+                        f"[File: {f.filename}, Page {i + 1}]\n{text[:2000]}"
+                    )
+            doc.close()
+        except Exception as e:
+            page_texts.append(f"[File: {f.filename} — could not read: {e}]")
+
+    if not page_texts:
+        return jsonify({"error": "No readable content in first pages"}), 400
+
+    combined = "\n\n".join(page_texts[:12])
+
+    prompt = (
+        "You are analyzing construction document cover sheets.\n"
+        "Extract project information and return ONLY valid JSON.\n"
+        "No explanation, no markdown, just the JSON object.\n\n"
+        "{\n"
+        '  "project_name": "name of the project",\n'
+        '  "project_address": "full address",\n'
+        '  "owner": "owner name",\n'
+        '  "architect": "architect name",\n'
+        '  "project_type": "single_family" | "multi_family" | '
+        '"commercial" | "mixed_use" | "unknown",\n'
+        '  "construction_type": "new_construction" | "renovation" | '
+        '"gut_rehabilitation" | "addition" | "unknown",\n'
+        '  "unit_count": "<integer or null>",\n'
+        '  "floor_count": "<integer or null>",\n'
+        '  "total_building_sf": "<integer or null>",\n'
+        '  "bid_date": "date string or null",\n'
+        '  "confidence": "high" | "medium" | "low",\n'
+        '  "notes": "brief note on what was found or missing"\n'
+        "}\n\n"
+        "If a field cannot be determined, use null.\n"
+        "Do not guess — only extract what is explicitly stated.\n\n"
+        f"DOCUMENT PAGES:\n{combined}"
+    )
+
+    try:
+        client = anthropic.Anthropic(api_key=API_KEY)
+        response = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=800,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.content[0].text.strip()
+        text = text.replace("```json", "").replace("```", "").strip()
+        result = json.loads(text)
+
+        # Run construction type classifier on result
+        result = classify_project_complexity(result, page_texts)
+
+        return jsonify(result)
+
+    except json.JSONDecodeError:
+        return jsonify({
+            "error": "Could not parse project info",
+            "raw": text[:500],
+            "confidence": "low",
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # ─── Background worker ──────────────────────────────────────────────────────
 
 
@@ -219,6 +314,47 @@ def _run_extraction(job_id: str):
         # Extract project quantities from all trade data
         on_progress("Extracting project quantities from documents...")
         project_quantities = extract_project_quantities(trades, on_progress, API_KEY)
+
+        # Merge confirmed pre-check values (user overrides from UI)
+        confirmed = job.get("confirmed_values", {})
+        if confirmed:
+            on_progress("Applying user-confirmed project values...")
+            _CONFIRM_MAP = {
+                "confirmed_project_type": "project_type",
+                "confirmed_construction_type": "construction_type",
+                "confirmed_unit_count": "unit_count",
+                "confirmed_floor_count": "floor_count",
+                "confirmed_total_building_sf": "total_building_sf",
+                "confirmed_project_name": "project_name",
+                "confirmed_project_address": "project_address",
+            }
+            _INT_FIELDS = {"unit_count", "floor_count", "total_building_sf"}
+            for ckey, pkey in _CONFIRM_MAP.items():
+                cval = confirmed.get(ckey)
+                if cval and cval != "unknown":
+                    if pkey in _INT_FIELDS:
+                        try:
+                            project_quantities[pkey] = int(cval)
+                        except (ValueError, TypeError):
+                            pass
+                    else:
+                        project_quantities[pkey] = cval
+
+            # Recalculate complexity multiplier based on confirmed construction_type
+            ctype = project_quantities.get("construction_type", "new_construction")
+            _MULT_MAP = {
+                "new_construction": 1.0,
+                "renovation": 1.35,
+                "gut_rehabilitation": 1.55,
+                "addition": 1.20,
+            }
+            project_quantities["complexity_multiplier"] = _MULT_MAP.get(ctype, 1.0)
+            if project_quantities["complexity_multiplier"] != 1.0:
+                project_quantities["complexity_warning"] = (
+                    f"{ctype.replace('_', ' ').title()} project — "
+                    f"{project_quantities['complexity_multiplier']:.2f}x multiplier applied"
+                )
+
         project_quantities = validate_project_quantities(project_quantities, on_progress)
         on_progress(f"Project type: {project_quantities.get('project_type', 'unknown')}")
         on_progress(f"Units: {project_quantities.get('unit_count', 'unknown')}")

@@ -197,41 +197,113 @@ def download(job_id):
     )
 
 
+def get_precheck_page_limit(filename: str) -> int:
+    """
+    Returns how many pages to read from a file during pre-check.
+    Based on file type detected from filename.
+    """
+    name_lower = filename.lower()
+
+    # RFP documents — 10 pages
+    RFP_KEYWORDS = [
+        "rfp", "request for proposal", "request for qualifications",
+        "rfq", "bid document", "bid package", "invitation to bid",
+        "itb", "solicitation",
+    ]
+
+    # Drawing sets / plans — 10 pages
+    DRAWING_KEYWORDS = [
+        "const", "construction set", "drawing", "drawings",
+        "plans", "plan set", "architectural", "arch",
+        "structural", "mep", "civil", "survey",
+        "a0", "a1", "s1", "c1", "g0", "g1",
+        "floor plan", "site plan", "elevation",
+    ]
+
+    # Addenda — 5 pages
+    ADDENDUM_KEYWORDS = [
+        "addendum", "addenda", "add-", "add ",
+        "amendment", "bulletin", "clarification",
+    ]
+
+    # Specs, wage rates, other supporting docs — 5 pages (default)
+
+    for kw in RFP_KEYWORDS:
+        if kw in name_lower:
+            return 10
+
+    for kw in DRAWING_KEYWORDS:
+        if kw in name_lower:
+            return 10
+
+    for kw in ADDENDUM_KEYWORDS:
+        if kw in name_lower:
+            return 5
+
+    return 5  # default for all other files
+
+
 @app.route("/api/pre-check", methods=["POST"])
 def pre_check():
-    """Read first 3 pages of each PDF and return project dimensions immediately."""
+    """Read pages from each PDF (smart limit by file type) and return project dimensions."""
     import anthropic
-    import base64
-    import fitz  # PyMuPDF
+    import io
+    from pypdf import PdfReader
 
     files = request.files.getlist("pdfs")
     if not files:
         return jsonify({"error": "No files uploaded"}), 400
 
     page_texts = []
+    total_pages_read = 0
+    MAX_TOTAL_PAGES = 30  # hard cap across all files combined
+
     for f in files:
+        if total_pages_read >= MAX_TOTAL_PAGES:
+            break
         try:
             f.seek(0)
-            doc = fitz.open(stream=f.read(), filetype="pdf")
-            pages_to_read = min(3, len(doc))
+            reader = PdfReader(io.BytesIO(f.read()))
+
+            page_limit = get_precheck_page_limit(f.filename)
+            pages_to_read = min(
+                page_limit,
+                len(reader.pages),
+                MAX_TOTAL_PAGES - total_pages_read,
+            )
+
             for i in range(pages_to_read):
-                page = doc[i]
-                text = page.get_text() or ""
+                page = reader.pages[i]
+                text = page.extract_text() or ""
                 if text.strip():
                     page_texts.append(
-                        f"[File: {f.filename}, Page {i + 1}]\n{text[:2000]}"
+                        f"[File: {f.filename}, Page {i + 1} of "
+                        f"{len(reader.pages)}]\n{text[:2000]}"
                     )
-            doc.close()
+                    total_pages_read += 1
+
+            # Log what was read
+            print(f"Pre-check: {f.filename} — "
+                  f"read {pages_to_read} of {len(reader.pages)} pages "
+                  f"(limit: {page_limit})")
+
         except Exception as e:
-            page_texts.append(f"[File: {f.filename} — could not read: {e}]")
+            page_texts.append(
+                f"[File: {f.filename} — could not read: {e}]"
+            )
 
     if not page_texts:
         return jsonify({"error": "No readable content in first pages"}), 400
 
-    combined = "\n\n".join(page_texts[:12])
+    combined = "\n\n".join(page_texts)
 
     prompt = (
         "You are analyzing construction document cover sheets.\n"
+        "The first documents are likely RFPs or drawing sets.\n"
+        "Prioritize project dimensions from these.\n"
+        "If construction type says 'existing', 'rehabilitation',\n"
+        "'renovation', or references an existing building,\n"
+        "classify as renovation not new construction.\n\n"
         "Extract project information and return ONLY valid JSON.\n"
         "No explanation, no markdown, just the JSON object.\n\n"
         "{\n"

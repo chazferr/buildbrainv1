@@ -4123,3 +4123,277 @@ def build_excel_bytes(
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+def build_results_json(
+    requirements: list[SubmissionRequirement],
+    trades: list[TradeAndScope],
+    sov_data: Optional[dict] = None,
+    failed_pages: Optional[list[str]] = None,
+    project_quantities: Optional[dict] = None,
+    addenda_findings: Optional[list[dict]] = None,
+) -> dict:
+    """Build a JSON-serializable dict of all results for the in-browser viewer.
+
+    Returns dict with keys: buyout_summary, scope_details, flags, scalars, totals.
+    """
+    consolidated = consolidate_trades(trades)
+
+    # Build raw text for detection helpers
+    _raw_text_parts = []
+    for t in trades:
+        _raw_text_parts.extend([t.trade, t.scope_description, t.evidence])
+        if t.vendor_name:
+            _raw_text_parts.append(t.vendor_name)
+    for r in requirements:
+        _raw_text_parts.extend([r.category, r.requirement])
+    _extraction_for_detection = {"raw_text": " ".join(_raw_text_parts)}
+
+    project_type_result = detect_project_type(_extraction_for_detection)
+    site_result = _detect_site_scope(consolidated, trades)
+    rate_profile = _match_rate_profile(_RATE_TABLES, project_quantities)
+
+    pq = project_quantities or {}
+
+    # ── Buyout Summary rows ──────────────────────────────────
+    sov_matched = {}
+    if sov_data:
+        sov_matched = _match_sov_to_trades(consolidated, sov_data.get("trade_sov", {}))
+
+    buyout_rows = []
+    building_subtotal = 0
+
+    # Site work row
+    site_items = get_baseline_quantities("SITE WORK / CIVIL", _extraction_for_detection,
+                                         project_quantities=pq)
+    site_override = next((item.get("override_amount") for item in site_items
+                         if item.get("override_amount")), 0)
+    site_override_note = next((item.get("note") for item in site_items
+                              if item.get("note") and item.get("override_amount")),
+                             site_result.get("flag_note", ""))
+    site_budget = site_override
+
+    # Rate table override for sitework
+    _rt_bv, _rt_nv = _apply_rate_table_override("SITE WORK / CIVIL", rate_profile, pq)
+    if _rt_bv is not None:
+        site_budget = _rt_bv
+        site_override_note = _rt_nv
+
+    site_row = {
+        "div": "02000",
+        "trade": "SITE WORK / CIVIL",
+        "scope_brief": "See Scope Details tab",
+        "low_bidder": None,
+        "budget": site_budget,
+        "notes": site_override_note,
+        "is_site": True,
+    }
+
+    # Build trade rows
+    for row_data in consolidated:
+        trade_name = row_data["trade"]
+        budget_val = None
+        note_val = None
+
+        if trade_name == "General Requirements":
+            budget_val = 0  # recalculated below
+            note_val = "Calculated as % of direct building cost"
+        else:
+            # Tier 1: SOV
+            if trade_name in sov_matched:
+                budget_val = sov_matched[trade_name]
+                note_val = "Matched from reference buyout SOV"
+
+            # Tier 2: Extracted from docs
+            if budget_val is None and row_data.get("budget") is not None:
+                extracted = row_data["budget"]
+                if isinstance(extracted, (int, float)) and extracted > 500000:
+                    budget_val = None
+                    note_val = f"\u26a0\ufe0f Large amount ${extracted:,.0f} found \u2014 likely contract total, not trade cost"
+                else:
+                    budget_val = extracted
+                    note_val = "Extracted from documents"
+
+            # Tier 3: Rate table or material_db
+            if budget_val is None or budget_val == 0:
+                work_items = get_baseline_quantities(trade_name, _extraction_for_detection,
+                                                     project_quantities=pq)
+                if work_items:
+                    override = next((item.get("override_amount") for item in work_items
+                                    if item.get("override_amount")), None)
+                    override_note = next((item.get("note") for item in work_items
+                                         if item.get("note") and item.get("override_amount")), None)
+
+                    if override is not None:
+                        budget_val = override
+                        note_val = override_note
+                    else:
+                        wage_regime = "CT_DOL_RESIDENTIAL"
+                        if isinstance(project_type_result, dict) and "regime" in project_type_result:
+                            wage_regime = project_type_result["regime"]
+                        trade_estimate = calculate_trade_estimate(
+                            trade_name=trade_name, work_items=work_items, wage_regime=wage_regime)
+                        budget_val = trade_estimate["total_material"] + trade_estimate["total_labor"]
+                        note_val = (
+                            f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
+                            f"+ Labor: ${trade_estimate['total_labor']:,.0f}"
+                        )
+
+                    # Rate table override
+                    _rt_bv, _rt_nv = _apply_rate_table_override(trade_name, rate_profile, pq)
+                    if _rt_bv is not None:
+                        budget_val = _rt_bv
+                        note_val = _rt_nv
+                else:
+                    budget_val = 0
+                    note_val = "\u26a0\ufe0f No pricing found \u2014 estimator must price"
+
+            # Sitework floor safeguard
+            if trade_name in ("Sitework", "SITE WORK / CIVIL", "Paving & Striping", "Landscaping"):
+                _tsf = pq.get('total_building_sf') or 1000
+                _min_site = _tsf * 5
+                if budget_val is not None and budget_val < _min_site:
+                    budget_val = None
+
+            # Complexity multiplier
+            _complexity_mult = pq.get('complexity_multiplier', 1.0)
+            if (budget_val and isinstance(budget_val, (int, float))
+                    and budget_val > 0 and _complexity_mult != 1.0):
+                _pre = budget_val
+                budget_val = round(budget_val * _complexity_mult)
+                _label = pq.get('construction_type', 'unknown')
+                note_val = f"Complexity adj: ${_pre:,.0f} \u00d7 {_complexity_mult:.2f} ({_label})" + (f" | {note_val}" if note_val else "")
+
+        budget_val = round(budget_val) if budget_val else 0
+
+        # Scope brief
+        scope_lines = row_data["scope"].split("\n")
+        brief = "; ".join(line.split(". ", 1)[-1] for line in scope_lines[:3])
+        if len(scope_lines) > 3:
+            brief += f" (+{len(scope_lines) - 3} more)"
+
+        bids = row_data.get("bids", [])
+        low_bidder = bids[0][0] if bids else None
+
+        buyout_rows.append({
+            "div": row_data["csi_division"],
+            "trade": trade_name,
+            "scope_brief": brief,
+            "low_bidder": low_bidder,
+            "budget": budget_val,
+            "notes": note_val or "",
+            "is_site": False,
+        })
+
+        if trade_name != "General Requirements":
+            building_subtotal += budget_val
+
+    # Recalculate General Requirements
+    _gr_unit_count = pq.get('unit_count') or 1
+    _gr_rate = 0.05 if _gr_unit_count >= 50 else (0.06 if _gr_unit_count >= 10 else 0.08)
+    for row in buyout_rows:
+        if row["trade"] == "General Requirements":
+            row["budget"] = round(building_subtotal * _gr_rate)
+            row["notes"] = f"General Requirements: {_gr_rate:.0%} of ${building_subtotal:,.0f} direct cost"
+            building_subtotal += row["budget"]
+            break
+
+    # GC Markups
+    _gc = rate_profile.get('gc_markups', {})
+    gc_conditions_pct = _gc.get('conditions_pct', 0.10)
+    gc_profit_pct = _gc.get('profit_pct', 0.12)
+    contingency_pct = _gc.get('contingency_pct', 0.10)
+    permits_pct = _gc.get('permits_bond_pct', 0.025)
+
+    gc_conditions = round(building_subtotal * gc_conditions_pct)
+    gc_profit = round(building_subtotal * gc_profit_pct)
+    contingency = round(building_subtotal * contingency_pct)
+    permits = round(building_subtotal * permits_pct)
+    building_total = building_subtotal + gc_conditions + gc_profit + contingency + permits
+
+    site_fee = round(site_budget * 0.05)
+    site_total = site_budget + site_fee
+    project_total = building_total + site_total
+
+    totals = {
+        "building_subtotal": building_subtotal,
+        "gc_conditions": gc_conditions,
+        "gc_conditions_pct": gc_conditions_pct,
+        "gc_profit": gc_profit,
+        "gc_profit_pct": gc_profit_pct,
+        "contingency": contingency,
+        "contingency_pct": contingency_pct,
+        "permits": permits,
+        "permits_pct": permits_pct,
+        "building_total": building_total,
+        "site_subtotal": site_budget,
+        "site_fee": site_fee,
+        "site_total": site_total,
+        "project_total": project_total,
+        "low_estimate": round(project_total * 0.85),
+        "high_estimate": round(project_total * 1.15),
+    }
+
+    # ── Scope Details ────────────────────────────────────────
+    scope_details = []
+    for row_data in consolidated:
+        scope_details.append({
+            "div": row_data["csi_division"],
+            "trade": row_data["trade"],
+            "scope_items": row_data["scope"].split("\n"),
+            "sources": row_data["source_pages"],
+            "quantities": row_data.get("quantities"),
+        })
+
+    # ── Flags ────────────────────────────────────────────────
+    flags = []
+    for page_ref in (failed_pages or []):
+        flags.append({
+            "severity": "HIGH",
+            "flag": "Page could not be parsed",
+            "detail": f"{page_ref} failed extraction after 4 attempts.",
+            "source": page_ref,
+        })
+    for finding in (addenda_findings or []):
+        flags.append(finding)
+    for vf in pq.get('_validation_findings', []):
+        flags.append({
+            "severity": "MEDIUM",
+            "flag": "Quantity validation",
+            "detail": vf,
+            "source": "Project quantities",
+        })
+
+    # ── Scalars ──────────────────────────────────────────────
+    confidence = pq.get('_confidence', {})
+    scalars = []
+    scalar_display = [
+        ('project_name', 'Project Name'),
+        ('project_address', 'Project Address'),
+        ('project_type', 'Project Type'),
+        ('construction_type', 'Construction Type'),
+        ('unit_count', 'Unit Count'),
+        ('floor_count', 'Floor Count'),
+        ('total_building_sf', 'Total Building SF'),
+        ('footprint_sf', 'Footprint SF'),
+        ('perimeter_lf', 'Perimeter LF'),
+        ('roof_type', 'Roof Type'),
+    ]
+    for key, label in scalar_display:
+        val = pq.get(key)
+        conf = confidence.get(key, 'low')
+        scalars.append({
+            "key": key,
+            "label": label,
+            "value": val if val is not None else "",
+            "confidence": conf,
+        })
+
+    return {
+        "site_row": site_row,
+        "buyout_rows": buyout_rows,
+        "totals": totals,
+        "scope_details": scope_details,
+        "flags": flags,
+        "scalars": scalars,
+    }

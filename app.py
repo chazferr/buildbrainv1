@@ -21,7 +21,7 @@ from queue import Empty, Queue
 from dotenv import load_dotenv
 from flask import Flask, Response, render_template, request, jsonify, send_file
 
-from engine import (build_excel_bytes, process_files, parse_sov_from_buyout,
+from engine import (build_excel_bytes, build_results_json, process_files, parse_sov_from_buyout,
                     extract_project_quantities, validate_project_quantities,
                     classify_project_complexity, SUPPORTED_EXTENSIONS)
 
@@ -255,6 +255,20 @@ def download(job_id):
         as_attachment=True,
         download_name="buildbrain_output.xlsx",
     )
+
+
+@app.route("/api/results/<job_id>")
+def results_data(job_id):
+    """Return extraction results as JSON for the in-browser viewer."""
+    job = jobs.get(job_id)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    if job["status"] != "done":
+        return jsonify({"error": "Job not complete"}), 409
+    results = job.get("results_json")
+    if not results:
+        return jsonify({"error": "No results available"}), 404
+    return jsonify(results)
 
 
 def get_precheck_page_limit(filename: str) -> int:
@@ -569,7 +583,16 @@ def _run_extraction(job_id: str):
                                         addenda_findings=stats.get("addenda_findings", []),
                                         progress_callback=on_progress)
 
+        on_progress("Building results view...")
+        results_json = build_results_json(
+            requirements, trades, sov_data=sov_data,
+            failed_pages=stats.get("failed_pages", []),
+            project_quantities=project_quantities,
+            addenda_findings=stats.get("addenda_findings", []),
+        )
+
         job["excel_bytes"] = excel_bytes
+        job["results_json"] = results_json
         job["stats"] = stats
         job["status"] = "done"
 

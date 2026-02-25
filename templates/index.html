@@ -293,6 +293,129 @@
 
         .download-btn:hover { opacity: 0.9; }
 
+        /* Results viewer tabs */
+        .results-tabs {
+            display: flex;
+            gap: 0;
+            margin: 1.25rem 0 0 0;
+            border-bottom: 2px solid var(--border);
+        }
+        .results-tabs button {
+            background: none;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        .results-tabs button.active {
+            color: var(--navy);
+            border-bottom-color: var(--navy);
+        }
+        .results-tabs button:hover { color: var(--text); }
+
+        .tab-panel { display: none; padding: 1rem 0; }
+        .tab-panel.active { display: block; }
+
+        /* Buyout table */
+        .buyout-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        .buyout-table th {
+            background: var(--navy);
+            color: white;
+            padding: 0.5rem 0.6rem;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        .buyout-table th:nth-child(4),
+        .buyout-table td:nth-child(4) { text-align: right; }
+        .buyout-table td {
+            padding: 0.4rem 0.6rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        .buyout-table tr:hover td { background: rgba(26,35,50,0.03); }
+        .buyout-table .site-row td { background: #FFF8F0; }
+        .buyout-table .summary-row td {
+            font-weight: 700;
+            border-top: 2px solid var(--navy);
+            background: #F0F4FA;
+        }
+        .buyout-table .markup-row td { color: var(--text-muted); font-size: 0.78rem; }
+        .buyout-table .total-row td {
+            background: var(--navy);
+            color: white;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        .buyout-table .notes-cell {
+            max-width: 300px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.3;
+        }
+
+        /* Scope details */
+        .scope-trade { margin-bottom: 0.75rem; }
+        .scope-trade-header {
+            font-weight: 600;
+            color: var(--navy);
+            padding: 0.4rem 0;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+        }
+        .scope-trade-header:hover { color: var(--orange); }
+        .scope-items {
+            padding: 0.3rem 0 0.3rem 1.2rem;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            color: var(--text-muted);
+        }
+        .scope-items li { margin-bottom: 0.15rem; }
+
+        /* Flags */
+        .flag-item {
+            padding: 0.5rem 0.75rem;
+            border-left: 3px solid var(--border);
+            margin-bottom: 0.5rem;
+            font-size: 0.82rem;
+            background: var(--bg);
+            border-radius: 0 6px 6px 0;
+        }
+        .flag-item.HIGH { border-left-color: #dc3545; }
+        .flag-item.MEDIUM { border-left-color: #ffc107; }
+        .flag-item.LOW { border-left-color: #17a2b8; }
+        .flag-severity { font-weight: 700; margin-right: 0.5rem; font-size: 0.75rem; }
+
+        /* Scalars */
+        .scalars-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .scalars-table th {
+            background: var(--navy);
+            color: white;
+            padding: 0.5rem 0.6rem;
+            text-align: left;
+        }
+        .scalars-table td {
+            padding: 0.45rem 0.6rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .conf-high { color: #28a745; font-weight: 600; }
+        .conf-medium { color: #ffc107; font-weight: 600; }
+        .conf-low { color: #dc3545; font-weight: 600; }
+
         /* Error */
         .error-card {
             background: #fdf0ef;
@@ -747,9 +870,19 @@
         <div class="results-card">
             <div class="results-header">&#10003; Extraction Complete</div>
             <div class="stats-grid" id="statsGrid"></div>
-            <div style="text-align:center;">
+            <div style="text-align:center; margin-bottom:0.5rem;">
                 <button class="download-btn" id="downloadBtn">&#11015; Download Excel</button>
             </div>
+            <div class="results-tabs" id="resultsTabs">
+                <button class="active" data-tab="buyout">Buyout Summary</button>
+                <button data-tab="scope">Scope Details</button>
+                <button data-tab="flags">Flags</button>
+                <button data-tab="scalars">Scalars</button>
+            </div>
+            <div class="tab-panel active" id="tab-buyout"></div>
+            <div class="tab-panel" id="tab-scope"></div>
+            <div class="tab-panel" id="tab-flags"></div>
+            <div class="tab-panel" id="tab-scalars"></div>
         </div>
         <div style="text-align:center;">
             <span class="reset-link" id="resetLink">Process more files</span>
@@ -1203,6 +1336,100 @@
             <div class="stat-box"><div class="value">${((stats.input_tokens || 0) + (stats.output_tokens || 0)).toLocaleString()}</div><div class="label">Total Tokens</div></div>
             <div class="stat-box"><div class="value">${stats.api_calls || 0}</div><div class="label">API Calls</div></div>
         `;
+
+        // Fetch and render results viewer
+        if (currentJobId) {
+            fetch('/api/results/' + currentJobId)
+                .then(r => r.json())
+                .then(data => renderResultsViewer(data))
+                .catch(err => console.error('Results viewer error:', err));
+        }
+    }
+
+    // Tab switching
+    document.getElementById('resultsTabs').addEventListener('click', e => {
+        const btn = e.target.closest('button[data-tab]');
+        if (!btn) return;
+        document.querySelectorAll('.results-tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+
+    function fmt(n) { return n != null ? '$' + Math.round(n).toLocaleString() : '—'; }
+
+    function renderResultsViewer(data) {
+        // ── Buyout Summary ──
+        const t = data.totals;
+        let rows = '';
+
+        // Site row first
+        if (data.site_row) {
+            const s = data.site_row;
+            rows += `<tr class="site-row"><td>${escapeHtml(s.div)}</td><td>${escapeHtml(s.trade)}</td>
+                <td>${s.low_bidder || ''}</td><td>${fmt(s.budget)}</td>
+                <td class="notes-cell">${escapeHtml(s.notes || '')}</td></tr>`;
+        }
+
+        // Trade rows
+        (data.buyout_rows || []).forEach(r => {
+            rows += `<tr><td>${escapeHtml(r.div)}</td><td>${escapeHtml(r.trade)}</td>
+                <td>${r.low_bidder || ''}</td><td>${fmt(r.budget)}</td>
+                <td class="notes-cell">${escapeHtml(r.notes || '')}</td></tr>`;
+        });
+
+        // Summary rows
+        rows += `<tr class="summary-row"><td></td><td>BUILDING SUBTOTAL</td><td></td><td>${fmt(t.building_subtotal)}</td><td></td></tr>`;
+        rows += `<tr class="markup-row"><td></td><td>GC Conditions (${(t.gc_conditions_pct*100).toFixed(0)}%)</td><td></td><td>${fmt(t.gc_conditions)}</td><td></td></tr>`;
+        rows += `<tr class="markup-row"><td></td><td>GC Profit (${(t.gc_profit_pct*100).toFixed(0)}%)</td><td></td><td>${fmt(t.gc_profit)}</td><td></td></tr>`;
+        rows += `<tr class="markup-row"><td></td><td>Contingency (${(t.contingency_pct*100).toFixed(0)}%)</td><td></td><td>${fmt(t.contingency)}</td><td></td></tr>`;
+        rows += `<tr class="markup-row"><td></td><td>Permits + Bond (${(t.permits_pct*100).toFixed(1)}%)</td><td></td><td>${fmt(t.permits)}</td><td></td></tr>`;
+        rows += `<tr class="total-row"><td></td><td>BUILDING TOTAL</td><td></td><td>${fmt(t.building_total)}</td><td></td></tr>`;
+        rows += `<tr class="markup-row"><td></td><td>Site Fee (5%)</td><td></td><td>${fmt(t.site_fee)}</td><td></td></tr>`;
+        rows += `<tr class="total-row"><td></td><td>PROJECT TOTAL</td><td></td><td>${fmt(t.project_total)}</td>
+            <td class="notes-cell" style="color:white;font-size:0.78rem;">Range: ${fmt(t.low_estimate)} - ${fmt(t.high_estimate)}</td></tr>`;
+
+        document.getElementById('tab-buyout').innerHTML = `
+            <div style="overflow-x:auto;"><table class="buyout-table">
+            <thead><tr><th>DIV</th><th>Trade</th><th>Low Bidder</th><th>Budget</th><th>Notes</th></tr></thead>
+            <tbody>${rows}</tbody></table></div>`;
+
+        // ── Scope Details ──
+        let scopeHtml = '';
+        (data.scope_details || []).forEach(sd => {
+            const items = (sd.scope_items || []).filter(s => s.trim()).map(s => `<li>${escapeHtml(s)}</li>`).join('');
+            scopeHtml += `<div class="scope-trade">
+                <div class="scope-trade-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+                    ${escapeHtml(sd.div)} &mdash; ${escapeHtml(sd.trade)} (${sd.scope_items.length} items)
+                </div>
+                <ul class="scope-items" style="display:none;">${items}</ul>
+            </div>`;
+        });
+        document.getElementById('tab-scope').innerHTML = scopeHtml || '<p style="color:var(--text-muted);">No scope details available.</p>';
+
+        // ── Flags ──
+        let flagsHtml = '';
+        (data.flags || []).forEach(f => {
+            flagsHtml += `<div class="flag-item ${f.severity || ''}">
+                <span class="flag-severity">${f.severity || 'INFO'}</span>
+                <strong>${escapeHtml(f.flag || '')}</strong>
+                <div style="margin-top:0.2rem;">${escapeHtml(f.detail || '')}</div>
+                ${f.source ? '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.15rem;">Source: '+escapeHtml(f.source)+'</div>' : ''}
+            </div>`;
+        });
+        document.getElementById('tab-flags').innerHTML = flagsHtml || '<p style="color:var(--text-muted);">No flags raised.</p>';
+
+        // ── Scalars ──
+        let scalarRows = '';
+        (data.scalars || []).forEach(s => {
+            const confClass = s.confidence === 'high' ? 'conf-high' : s.confidence === 'medium' ? 'conf-medium' : 'conf-low';
+            const val = typeof s.value === 'number' ? s.value.toLocaleString() : (s.value || '—');
+            scalarRows += `<tr><td>${escapeHtml(s.label)}</td><td>${escapeHtml(String(val))}</td>
+                <td class="${confClass}">${s.confidence}</td></tr>`;
+        });
+        document.getElementById('tab-scalars').innerHTML = `
+            <table class="scalars-table"><thead><tr><th>Scalar</th><th>Value</th><th>Confidence</th></tr></thead>
+            <tbody>${scalarRows}</tbody></table>`;
     }
 
     function showError(msg) {

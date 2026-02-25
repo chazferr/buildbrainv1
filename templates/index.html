@@ -57,9 +57,9 @@ body{font-family:var(--sans);background:var(--gray-50);color:var(--gray-900);dis
 .lp-proj-addr{font-size:.72rem;color:rgba(255,255,255,.4);margin-bottom:.5rem}
 .status-badge{display:inline-block;padding:.15rem .5rem;border-radius:3px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
 .status-processing{background:rgba(245,158,11,.15);color:var(--amber)}
-.status-review{background:rgba(232,119,34,.15);color:var(--orange)}
+.status-review{background:var(--gray-200);color:var(--gray-700)}
 .status-complete{background:rgba(16,185,129,.15);color:var(--green)}
-.lp-progress-text{font-size:.72rem;color:rgba(255,255,255,.45);margin-top:.35rem;font-family:var(--mono)}
+.lp-progress-text{font-size:.72rem;color:rgba(255,255,255,.6);margin-top:.35rem;font-family:var(--mono)}
 
 /* Confirmed scalars */
 .scalar-compact{width:100%}
@@ -165,16 +165,15 @@ body{font-family:var(--sans);background:var(--gray-50);color:var(--gray-900);dis
 .ext-card-src{font-size:.65rem;color:var(--gray-400);margin-top:.4rem;font-family:var(--mono)}
 
 /* ═══ TAB: SCALARS ═══ */
-.sg-banner{padding:.6rem .85rem;background:#fef3c7;border:1px solid var(--amber);border-radius:6px;font-size:.82rem;color:#92400e;margin-bottom:1rem}
-.sg-banner-critical{background:#fee2e2;border-color:var(--red);color:#991b1b}
+.sg-banner{padding:10px 16px;background:var(--gray-50);border:none;border-left:3px solid var(--orange);border-radius:0;font-size:.82rem;color:var(--gray-700);margin-bottom:1rem;line-height:1.5}
 .sg-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;max-width:680px}
 .sg-field{display:flex;flex-direction:column;gap:.2rem}
 .sg-field.full{grid-column:1/-1}
 .sg-field label{font-size:.72rem;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;gap:.35rem}
-.sg-field label .sg-conf-badge{font-size:.58rem;padding:.08rem .3rem;border-radius:2px;font-weight:700}
-.sg-conf-badge.high{background:#d1fae5;color:#059669}.sg-conf-badge.medium{background:#fef3c7;color:#d97706}.sg-conf-badge.low{background:#fee2e2;color:#dc2626}
+.sg-field label .sg-conf-dot{display:inline-block;width:7px;height:7px;border-radius:50%}
+.sg-conf-dot.high{background:var(--green)}.sg-conf-dot.medium{background:var(--amber)}.sg-conf-dot.low{border:1.5px solid var(--gray-400);background:none}
 .sg-field input,.sg-field select{padding:.45rem .6rem;border:1px solid var(--gray-200);border-radius:5px;font-size:.88rem;font-family:var(--sans);color:var(--gray-900);background:var(--gray-50)}
-.sg-field input.low-conf{border-color:var(--red);background:#fff5f5}
+.sg-field input.low-conf,.sg-field select.low-conf{border:1px solid var(--gray-200);border-left:3px solid var(--amber);background:#fffbf5}
 .sg-field input:focus,.sg-field select:focus{outline:none;border-color:var(--orange)}
 .sg-group-hdr{grid-column:1/-1;font-size:.82rem;font-weight:700;color:var(--gray-900);border-bottom:2px solid var(--gray-200);padding-bottom:.35rem;margin-top:.5rem}
 .sg-actions{margin-top:1.25rem}
@@ -563,8 +562,9 @@ function onScalarsReady(data){
 
 function buildScalarsTab(data){
     let h='';
-    if(data.tsf_missing_warning) h+=`<div class="sg-banner sg-banner-critical">${esc(data.tsf_missing_warning)}</div>`;
-    else if(data.gate_required) h+='<div class="sg-banner">One or more values have low confidence. Please verify before generating.</div>';
+    const _hasLow=(data.scalars||[]).some(s=>s.confidence==='low');
+    if(_hasLow||data.tsf_missing_warning||data.gate_required)
+        h+='<div class="sg-banner">Some dimensions need your input before pricing runs. Fields marked with \u25CB are estimated \u2014 verify before confirming.</div>';
     else if(data.complexity_warning) h+=`<div class="sg-banner">${esc(data.complexity_warning)}</div>`;
 
     h+='<div class="sg-grid" id="sgGrid">';
@@ -574,7 +574,7 @@ function buildScalarsTab(data){
     function field(s){
         const fw=fullKeys.includes(s.key)?' full':'';
         const lo=s.confidence==='low'?' low-conf':'';
-        const badge=`<span class="sg-conf-badge ${s.confidence}">${s.confidence}</span>`;
+        const badge=`<span class="sg-conf-dot ${s.confidence}"></span>`;
         let inp;
         if(_SEL_OPTS[s.key]){
             const opts=_SEL_OPTS[s.key].map(o=>`<option value="${o.v}"${o.v===String(s.value)?' selected':''}>${o.l}</option>`).join('');
@@ -813,7 +813,7 @@ function buildExportTab(data,stats){
 function buildReadOnlyScalarsTab(data){
     let h='<div class="sg-grid">';
     (data.scalars||[]).forEach(s=>{
-        const badge=`<span class="sg-conf-badge ${s.confidence}">${s.confidence}</span>`;
+        const badge=`<span class="sg-conf-dot ${s.confidence}"></span>`;
         const v=typeof s.value==='number'?s.value.toLocaleString():String(s.value||'\u2014');
         h+=`<div class="sg-field"><label>${esc(s.label)} ${badge}</label><input type="text" value="${esc(v)}" readonly style="background:var(--gray-100);cursor:default"></div>`;
     });

@@ -11,3 +11,35 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://10.0.0.18:5000
 Press CTRL+C to quit
 127.0.0.1 - - [25/Feb/2026 14:32:36] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:32:48] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:33:19] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:35:01] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:35:31] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:35:48] "POST /api/upload HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:35:49] "GET /api/stream/8aaab30bb4ed HTTP/1.1" 200 -
+Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
+Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
+Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
+Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
+[VISION] Site Drawings.pdf p.1 — image size: 2327KB raw, 3102KB base64
+[VISION] Site Drawings.pdf p.2 — image size: 3265KB raw, 4354KB base64
+[VISION] Site Drawings.pdf p.3 — image size: 2325KB raw, 3101KB base64
+[CLASSIFY] p.2 detected as CAD drawing (chars=6341, avg_line=14, digit_ratio=0.03, short_ratio=0.62, vectors=975, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.3 detected as CAD drawing (chars=2968, avg_line=9, digit_ratio=0.20, short_ratio=0.73, vectors=28012, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.4 detected as CAD drawing (chars=7354, avg_line=14, digit_ratio=0.04, short_ratio=0.52, vectors=6794, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.5 detected as CAD drawing (chars=3152, avg_line=12, digit_ratio=0.14, short_ratio=0.60, vectors=31738, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.6 detected as CAD drawing (chars=2081, avg_line=8, digit_ratio=0.18, short_ratio=0.81, vectors=11199, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.7 detected as CAD drawing (chars=4837, avg_line=16, digit_ratio=0.09, short_ratio=0.39, vectors=62728, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.8 detected as CAD drawing (chars=7212, avg_line=13, digit_ratio=0.09, short_ratio=0.64, vectors=15683, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.9 detected as CAD drawing (chars=4267, avg_line=12, digit_ratio=0.14, short_ratio=0.57, vectors=44939, signals=3/5 [short_lines, short_ratio, vectors])
+[VISION] Midstate House Drawings.pdf p.2 — image size: 1374KB raw, 1832KB base64
+[VISION] Midstate House Drawings.pdf p.3 — image size: 1460KB raw, 1946KB base64
+[VISION] Midstate House Drawings.pdf p.4 — image size: 1794KB raw, 2393KB base64
+[VISION] Midstate House Drawings.pdf p.6 — image size: 1244KB raw, 1659KB base64
+[VISION] Midstate House Drawings.pdf p.5 — image size: 1733KB raw, 2311KB base64
+[VISION] Midstate House Drawings.pdf p.7 — image size: 2156KB raw, 2875KB base64
+[VISION] Midstate House Drawings.pdf p.8 — image size: 2084KB raw, 2778KB base64
+[VISION] Midstate House Drawings.pdf p.9 — image size: 1870KB raw, 2494KB base64
+127.0.0.1 - - [25/Feb/2026 14:38:04] "POST /api/confirm-scalars HTTP/1.1" 200 -
+[RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
+[EXCEL TOTALS] building_sub=153,800 site_sub=190,000 GC=34,605 (22.5%) project_total=387,905

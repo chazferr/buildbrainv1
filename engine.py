@@ -1914,12 +1914,14 @@ If truly nothing is extractable, return:
 
 
 def _classify_page(doc: fitz.Document, page_idx: int) -> str:
-    """Classify a PDF page as 'text', 'mixed', or 'image' to choose extraction method.
+    """Classify a PDF page to choose extraction method.
 
     Returns:
-        'text'  — page is mostly text, use native text extraction (cheapest)
-        'mixed' — page has text + some images/tables, use text + Vision for images
-        'image' — page is mostly images/drawings, use Vision API (most expensive)
+        'text'           — mostly text, use native text extraction (cheapest)
+        'mixed'          — text + images/tables, use Vision API
+        'image_drawing'  — drawings/floor plans with embedded images, use Vision API
+        'image_scanned'  — scanned page, no extractable text, use Vision API
+                           (future: route to OCR tier like Document AI instead)
     """
     page = doc.load_page(page_idx)
     text = page.get_text("text").strip()
@@ -1942,11 +1944,14 @@ def _classify_page(doc: fitz.Document, page_idx: int) -> str:
             pass
     image_fraction = image_area / page_area if page_area > 0 else 0
 
-    # Decision logic
+    # We distinguish scanned vs drawing so we can track when adding
+    # a dedicated OCR tier (Google Document AI / Textract) is worth it.
+    # Both go to Vision API today, but scanned text pages are the ones
+    # where a cheap OCR service would replace Vision in the future.
     if char_count < 50 and image_count > 0:
-        return "image"   # Drawing, floor plan, diagram
+        return "image_drawing"   # Drawing, floor plan, diagram — needs Vision
     elif char_count < 50 and image_count == 0:
-        return "image"   # Scanned page with no extractable text — need OCR/Vision
+        return "image_scanned"   # Scanned page, no embedded text — needs Vision (OCR candidate)
     elif image_fraction > 0.4:
         return "mixed"   # Text page with significant drawings/tables
     else:
@@ -2033,8 +2038,11 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
             emit(f"Processing {file_name} — Page {page_num}/{num_pages} [TEXT]...")
             extraction = _extract_text_page(client, page_text, file_name, page_num, page_stats)
         else:
-            # Tier 2/3: Vision API for image-heavy or mixed pages
-            emit(f"Processing {file_name} — Page {page_num}/{num_pages} [{page_type.upper()}]...")
+            # Tier 2 (future: OCR for scanned) / Tier 3 (Vision for drawings)
+            # Both go to Vision API today — we track them separately to know
+            # when adding a cheap OCR service pays for itself
+            label = "SCAN" if page_type == "image_scanned" else page_type.upper().replace("IMAGE_", "")
+            emit(f"Processing {file_name} — Page {page_num}/{num_pages} [{label}]...")
             try:
                 png_bytes = render_page_to_png(doc, page_idx)
             except Exception as e:
@@ -2064,9 +2072,16 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
 
     _tp = per_file.get('text_pages', 0)
     _mp = per_file.get('mixed_pages', 0)
-    _ip = per_file.get('image_pages', 0)
-    emit(f"  {file_name}: {_tp} text / {_mp} mixed / {_ip} image pages "
+    _id = per_file.get('image_drawing_pages', 0)
+    _is = per_file.get('image_scanned_pages', 0)
+    emit(f"  📊 {file_name}: {_tp} text / {_mp} mixed / {_id} drawing / {_is} scanned pages "
          f"(Vision calls saved: {_tp})")
+    # Track scanned pages — when this number is consistently high across projects,
+    # adding a dedicated OCR tier (Google Document AI @ $1.50/1000 pages) will
+    # replace Vision for these pages and cut cost further.
+    if _is > 5:
+        emit(f"  💡 {file_name}: {_is} scanned pages hit Vision API — "
+             f"OCR tier (Document AI) would save ~${_is * 0.05:.2f} on this file")
 
     return reqs, trades
 

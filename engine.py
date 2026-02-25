@@ -689,6 +689,9 @@ _BUYOUT_TRADES: list[tuple[int, str, str, list[str]]] = [
     (24, "15", "HVAC",                  ["hvac", "mechanical", "mini-split", "mitsubishi",
                                            "air condition", "heating", "duct", "ventilat",
                                            "continuous vent"]),
+    (28, "15", "Fire Sprinkler",        ["sprinkler", "fire protect", "fire suppress",
+                                           "nfpa 13", "nfpa13", "wet pipe", "dry pipe",
+                                           "fire suppression", "standpipe"]),
     # Cabinets after Plumbing so "Plumbing/Kitchen" doesn't match "kitchen" first
     (21, "13", "Cabinets",              ["cabinet", "kitchen", "furnish", "appliance",
                                            "express kitchen"]),
@@ -738,6 +741,7 @@ def _classify_trade(raw_trade: str, raw_csi: str) -> tuple[int, str, str]:
         12: (21, "13", "Cabinets"),
         13: (21, "13", "Cabinets"),
         14: (22, "14", "Conveying Equipment"),
+        21: (28, "15", "Fire Sprinkler"),
         22: (23, "15", "Plumbing"),
         23: (24, "15", "HVAC"),
         26: (25, "16", "Electrical"),
@@ -1291,13 +1295,33 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
     perimeter_lf  = q.get('perimeter_lf') or \
                     (footprint_sf ** 0.5) * 4  # square approximation
 
+    # Project type detection for system routing
+    project_type = q.get('project_type', 'unknown')
+    is_multifamily = project_type in ('multi_family', 'mixed_use', 'commercial', 'institutional')
+    is_commercial = project_type in ('commercial', 'mixed_use', 'institutional')
+
+    # Unit type for per-unit scaling
+    unit_type = q.get('unit_type', 'standard')
+    if unit_type == 'standard' and unit_count > 15:
+        unit_type = 'sro'  # likely SRO/studio if high unit count in small building
+
     # Scale envelope by total building SF not just footprint
     floor_height  = q.get('floor_to_floor_height_ft') or 9
     ext_wall_sf   = perimeter_lf * floor_count * floor_height
     roof_sq       = (footprint_sf * 1.15) / 100     # 15% pitch factor
 
-    # Scale MEP by unit count
-    window_count      = q.get('window_count') or unit_count * 8
+    # Scale MEP by unit count — Fix 8: window count by project type
+    if is_multifamily:
+        # SRO/studio: 2-3 windows, standard 1BR: 4-5, 2BR+: 6-8
+        if unit_type == 'sro' or unit_count > 15:
+            _win_per_unit = 3
+        elif unit_count > 6:
+            _win_per_unit = 5
+        else:
+            _win_per_unit = 8
+        window_count = q.get('window_count') or (unit_count * _win_per_unit)
+    else:
+        window_count = q.get('window_count') or unit_count * 8
     ext_door_count    = q.get('ext_door_count') or max(2, unit_count // 10)
     int_door_count    = q.get('int_door_count') or unit_count * 4
     plumbing_fixtures = q.get('plumbing_fixtures') or unit_count * 5
@@ -1312,9 +1336,23 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
     lvt_sf        = total_sf - tile_sf    # rest is LVT
     foundation_lf = perimeter_lf
 
-    # Interior walls scale with total SF and unit count
-    int_wall_sf   = total_sf * 0.9        # 0.9x total SF
-    gwb_sf        = (int_wall_sf * 2) + ext_wall_sf + total_sf
+    # Interior walls scale with total SF and unit count — Fix 4 & 5
+    if is_multifamily:
+        # Multi-unit: unit separation walls (fire-rated), corridors, shafts
+        avg_unit_perimeter = (total_sf / max(unit_count, 1)) ** 0.5 * 4
+        unit_separation_sf = unit_count * avg_unit_perimeter * floor_height
+        corridor_wall_sf = total_sf * 0.15 * floor_height  # 15% of floor is corridor
+        shaft_wall_sf = floor_count * 4 * 30 * floor_height  # elevator + stair shafts
+        int_wall_sf = (total_sf * 0.6) + unit_separation_sf + corridor_wall_sf + shaft_wall_sf
+    else:
+        int_wall_sf = total_sf * 0.9        # 0.9x total SF (residential)
+
+    if is_multifamily:
+        # Multi-unit: both sides of walls + ceiling + fire-rated corridor ceilings
+        common_area_ceiling_sf = total_sf * 0.25  # corridors, lobbies, common areas
+        gwb_sf = (int_wall_sf * 2) + ext_wall_sf + total_sf + (common_area_ceiling_sf * 1.5)
+    else:
+        gwb_sf = (int_wall_sf * 2) + ext_wall_sf + total_sf
 
     TRADE_MAP = {
         "Building Concrete": [
@@ -1353,28 +1391,49 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
              "material_quantity": ext_wall_sf,
              "description": "1/2\" CDX wall sheathing"},
         ],
-        "Roofing": [
-            {"work_item": "shingle_install",      "quantity": roof_sq,
-             "material_key": "shingles_certainteed_xt25",
-             "material_quantity": roof_sq,
-             "description": "CertainTeed XT-25 Nickel Gray shingles"},
-            {"work_item": "ice_water_shield_install", "quantity": roof_sq * 0.25,
-             "material_key": "ice_water_shield_grace",
-             "material_quantity": roof_sq * 0.25,
-             "description": "Grace Ice & Water Shield at rakes/ridges/eaves"},
-            {"work_item": "felt_install",         "quantity": roof_sq * 0.75,
-             "material_key": "felt_underlayment_30lb",
-             "material_quantity": roof_sq * 0.75,
-             "description": "30 lb felt underlayment"},
-            {"work_item": "drip_edge_install",    "quantity": perimeter_lf,
-             "material_key": "drip_edge_aluminum",
-             "material_quantity": perimeter_lf,
-             "description": "Aluminum drip edge"},
-            {"work_item": "gutter_install",       "quantity": perimeter_lf,
-             "material_key": "gutter_ogee_5in",
-             "material_quantity": perimeter_lf,
-             "description": "5\" ogee gutters with leaf screens"},
-        ],
+        "Roofing": (
+            # EPDM/TPO flat roof for multifamily/commercial
+            [
+                {"work_item": None, "quantity": 0,
+                 "material_key": None, "material_quantity": 0,
+                 "description": (
+                     f"EPDM flat roof system: "
+                     f"{footprint_sf / 100:.1f} squares"
+                 ),
+                 "override_amount": round(footprint_sf * 4.50),
+                 "note": (
+                     f"\u26a0\ufe0f COMMERCIAL ROOFING: EPDM flat roof | "
+                     f"${4.50}/SF \u00d7 {footprint_sf:,.0f} SF = "
+                     f"${round(footprint_sf * 4.50):,.0f} | "
+                     f"Includes membrane, insulation board, flashing, edge metal. "
+                     f"Range: $3.50-6.00/SF for EPDM/TPO. "
+                     f"GET ROOFING SUB QUOTE."
+                 )},
+            ] if (is_multifamily or floor_count >= 3) else
+            # Residential asphalt shingle (existing logic)
+            [
+                {"work_item": "shingle_install",      "quantity": roof_sq,
+                 "material_key": "shingles_certainteed_xt25",
+                 "material_quantity": roof_sq,
+                 "description": "CertainTeed XT-25 Nickel Gray shingles"},
+                {"work_item": "ice_water_shield_install", "quantity": roof_sq * 0.25,
+                 "material_key": "ice_water_shield_grace",
+                 "material_quantity": roof_sq * 0.25,
+                 "description": "Grace Ice & Water Shield at rakes/ridges/eaves"},
+                {"work_item": "felt_install",         "quantity": roof_sq * 0.75,
+                 "material_key": "felt_underlayment_30lb",
+                 "material_quantity": roof_sq * 0.75,
+                 "description": "30 lb felt underlayment"},
+                {"work_item": "drip_edge_install",    "quantity": perimeter_lf,
+                 "material_key": "drip_edge_aluminum",
+                 "material_quantity": perimeter_lf,
+                 "description": "Aluminum drip edge"},
+                {"work_item": "gutter_install",       "quantity": perimeter_lf,
+                 "material_key": "gutter_ogee_5in",
+                 "material_quantity": perimeter_lf,
+                 "description": "5\" ogee gutters with leaf screens"},
+            ]
+        ),
         "Siding": [
             {"work_item": "siding_install",       "quantity": ext_wall_sf,
              "material_key": "siding_certainteed_mainstreet_d4",
@@ -1441,24 +1500,54 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
              "material_quantity": perimeter_lf * 3,
              "description": "Exterior PVC trim paint"},
         ],
-        "Plumbing": [
-            {"work_item": "plumbing_rough_per_fixture", "quantity": plumbing_fixtures,
-             "material_key": "plumbing_rough_pipe_per_fix",
-             "material_quantity": plumbing_fixtures,
-             "description": "Supply + drain rough-in per fixture"},
-            {"work_item": "plumbing_fixture_set", "quantity": 1,
-             "material_key": "toilet_penguin_254",
-             "material_quantity": 1,
-             "description": "Penguin 254 toilet per spec"},
-            {"work_item": "plumbing_fixture_set", "quantity": 1,
-             "material_key": "tub_sterling_ensemble_ada",
-             "material_quantity": 1,
-             "description": "Sterling Ensemble ADA tub per spec"},
-            {"work_item": "plumbing_fixture_set", "quantity": 1,
-             "material_key": "shower_set_miseno_mia",
-             "material_quantity": 1,
-             "description": "Miseno Mia shower set per spec"},
-        ],
+        "Plumbing": (
+            # Commercial/multifamily distribution model
+            [
+                {"work_item": None, "quantity": 0,
+                 "material_key": None, "material_quantity": 0,
+                 "description": (
+                     f"Commercial plumbing: {max(1, unit_count // 4)} riser stacks + "
+                     f"{unit_count} unit rough-ins + {plumbing_fixtures} fixtures"
+                 ),
+                 "override_amount": round(
+                     # Riser stacks
+                     max(1, unit_count // 4) * 8500 +
+                     # Unit rough-in (supply + drain per unit)
+                     unit_count * 4200 +
+                     # Fixture allowance
+                     plumbing_fixtures * 350 +
+                     # Commercial space allowance (if mixed use)
+                     (total_sf * 0.20 * 12 if is_commercial else 0)
+                 ),
+                 "note": (
+                     f"\u26a0\ufe0f COMMERCIAL PLUMBING: "
+                     f"{max(1, unit_count // 4)} riser stacks + "
+                     f"{unit_count} unit rough-ins + "
+                     f"{plumbing_fixtures} fixtures. "
+                     f"Includes distribution, waste/vent stacks, water heater. "
+                     f"GET PLUMBING SUB QUOTE."
+                 )},
+            ] if (is_multifamily and total_sf > 4000) else
+            # Residential per-fixture model (existing logic)
+            [
+                {"work_item": "plumbing_rough_per_fixture", "quantity": plumbing_fixtures,
+                 "material_key": "plumbing_rough_pipe_per_fix",
+                 "material_quantity": plumbing_fixtures,
+                 "description": "Supply + drain rough-in per fixture"},
+                {"work_item": "plumbing_fixture_set", "quantity": 1,
+                 "material_key": "toilet_penguin_254",
+                 "material_quantity": 1,
+                 "description": "Penguin 254 toilet per spec"},
+                {"work_item": "plumbing_fixture_set", "quantity": 1,
+                 "material_key": "tub_sterling_ensemble_ada",
+                 "material_quantity": 1,
+                 "description": "Sterling Ensemble ADA tub per spec"},
+                {"work_item": "plumbing_fixture_set", "quantity": 1,
+                 "material_key": "shower_set_miseno_mia",
+                 "material_quantity": 1,
+                 "description": "Miseno Mia shower set per spec"},
+            ]
+        ),
         "Electrical": [
             {"work_item": "panel_install_200amp", "quantity": 1,
              "material_key": "panel_200amp",
@@ -1477,12 +1566,34 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
              "material_quantity": 12,
              "description": "Lithonia WF6 LED recessed lights"},
         ],
-        "HVAC": [
-            {"work_item": "mini_split_zone_install", "quantity": hvac_zones,
-             "material_key": "mitsubishi_mini_split_zone",
-             "material_quantity": hvac_zones,
-             "description": "Mitsubishi mini-split zones"},
-        ],
+        "HVAC": (
+            # Commercial RTU + ductwork system
+            [
+                {"work_item": None, "quantity": 0,
+                 "material_key": None, "material_quantity": 0,
+                 "description": (
+                     f"Commercial HVAC: "
+                     f"{max(1, round(total_sf / 4000))} RTU units + "
+                     f"supply/return ductwork distribution"
+                 ),
+                 "override_amount": round(total_sf * 45),
+                 "note": (
+                     f"\u26a0\ufe0f COMMERCIAL HVAC: ${45}/SF \u00d7 {total_sf:,.0f} SF = "
+                     f"${round(total_sf * 45):,.0f} | "
+                     f"Includes RTU units, ductwork, controls, startup. "
+                     f"Range: $35-55/SF depending on system type. "
+                     f"RTU vs VRF vs fan coil significantly affects cost. "
+                     f"GET HVAC SUB QUOTE."
+                 )},
+            ] if is_multifamily else
+            # Residential mini-split system (existing logic)
+            [
+                {"work_item": "mini_split_zone_install", "quantity": hvac_zones,
+                 "material_key": "mitsubishi_mini_split_zone",
+                 "material_quantity": hvac_zones,
+                 "description": "Mitsubishi mini-split zones"},
+            ]
+        ),
         "Cabinets": [
             {"work_item": "gwb_hang",             "quantity": 0,
              "material_key": "cabinets_express_rta_per_ln",
@@ -1497,7 +1608,27 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
             {"work_item": "window_install",       "quantity": window_count,
              "material_key": "window_marvin_ultimate_dh_med",
              "material_quantity": window_count,
-             "description": "Marvin Ultimate windows per schedule (13 EA)"},
+             "description": (
+                 f"{'Multifamily' if is_multifamily else 'Residential'} windows "
+                 f"— {window_count} EA"
+                 f"{' | Note: multifamily windows often bid material-only. Verify install is included.' if is_multifamily else ''}"
+             )},
+        ],
+        "Fire Sprinkler": [
+            {"work_item": None, "quantity": 0,
+             "material_key": None, "material_quantity": 0,
+             "description": "Fire sprinkler system per NFPA 13",
+             "override_amount": round(
+                 total_sf * (5.50 if is_multifamily else 3.25)
+             ),
+             "note": (
+                 f"\u26a0\ufe0f FIRE SPRINKLER: "
+                 f"{'NFPA 13 commercial' if is_multifamily else 'NFPA 13R residential'} "
+                 f"wet pipe system | "
+                 f"${5.50 if is_multifamily else 3.25}/SF \u00d7 {total_sf:,.0f} SF | "
+                 f"Range: $4.50-6.50/SF commercial, $2.50-4.00/SF residential. "
+                 f"GET FIRE PROTECTION SUB QUOTE."
+             )},
         ],
         "Doors/Hdwr/Finish Carp": [
             {"work_item": "door_install_exterior", "quantity": ext_door_count,
@@ -2634,6 +2765,34 @@ def build_excel_bytes(
                     note_val = "\u26a0\ufe0f No pricing found \u2014 estimator must price this trade"
             elif note_val is None:
                 note_val = "Extracted from documents or SOV match"
+
+            # Sitework floor safeguard — $102 extraction artifact
+            if trade_name in ("Sitework", "SITE WORK / CIVIL",
+                              "Paving & Striping", "Landscaping"):
+                _pq = project_quantities or {}
+                _tsf = _pq.get('total_building_sf') or 1000
+                _min_site = _tsf * 5  # absolute minimum $5/SF
+                if budget_val is not None and budget_val < _min_site:
+                    budget_val = None  # force to Tier 3 placeholder
+
+            # If sitework has no pricing after all tiers, use placeholder
+            if trade_name in ("Sitework", "SITE WORK / CIVIL") and \
+               (budget_val is None or budget_val == 0):
+                _pq = project_quantities or {}
+                _tsf = _pq.get('total_building_sf') or 1000
+                _pt = _pq.get('project_type', 'unknown')
+                if _pt in ('multi_family', 'mixed_use', 'commercial'):
+                    _site_rate = 25.00  # urban infill
+                else:
+                    _site_rate = 15.00  # suburban residential
+                budget_val = round(_tsf * _site_rate)
+                note_val = (
+                    f"\u26a0\ufe0f SITEWORK PLACEHOLDER: ${_site_rate}/SF \u00d7 "
+                    f"{_tsf:,.0f} SF = ${budget_val:,.0f} | "
+                    f"Includes grading, utilities, paving, landscaping. "
+                    f"Urban infill range: $15-35/SF. "
+                    f"GET CIVIL SUB QUOTE before bid."
+                )
 
             # Low-end floor safeguard — flag suspiciously low extracted costs
             _MIN_COST_PER_SF = {

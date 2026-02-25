@@ -51,19 +51,26 @@ def _load_rate_tables():
 def _match_rate_profile(rate_tables: dict, project_quantities: dict) -> dict:
     """Find the best matching rate profile for this project.
     Returns the quotes dict from the best match, or empty dict.
-    Single-family always returns empty dict (preserves residential pricing)."""
+
+    Simple rule:
+      - single_family -> empty dict (use material_db pricing)
+      - anything else (multi_family, mixed_use, commercial, etc.) -> best matching profile
+    """
     if not rate_tables or 'profiles' not in rate_tables:
         return {}
 
     pq = project_quantities or {}
     pt = pq.get('project_type', 'single_family')
+
+    # Single family -> material_db pricing, no rate table
+    if pt == 'single_family':
+        print(f"[RATE TABLE] project_type=single_family -> using material_db pricing")
+        return {}
+
+    # Non-single-family -> find best matching profile
     floors = pq.get('floor_count', 1) or 1
     units = pq.get('unit_count', 1) or 1
     total_sf = pq.get('total_building_sf', 0) or 0
-
-    # Single family never matches commercial profiles
-    if pt == 'single_family':
-        return {}
 
     best_match = None
     best_score = -1
@@ -72,11 +79,12 @@ def _match_rate_profile(rate_tables: dict, project_quantities: dict) -> dict:
         chars = profile.get('characteristics', {})
         score = 0
 
-        # Project type match (required)
+        # Project type match (bonus, not required -- any commercial profile
+        # is better than falling back to material_db)
         if pt in chars.get('project_type', []):
             score += 10
         else:
-            continue
+            score += 1  # still usable, just not ideal match
 
         # Floor count in range
         if chars.get('floor_count_min', 0) <= floors <= chars.get('floor_count_max', 999):
@@ -86,8 +94,8 @@ def _match_rate_profile(rate_tables: dict, project_quantities: dict) -> dict:
         if chars.get('unit_count_min', 0) <= units <= chars.get('unit_count_max', 9999):
             score += 5
 
-        # SF in range
-        if chars.get('total_sf_min', 0) <= total_sf <= chars.get('total_sf_max', 99999999):
+        # SF in range (don't gate on this -- SF extraction is unreliable)
+        if total_sf > 0 and chars.get('total_sf_min', 0) <= total_sf <= chars.get('total_sf_max', 99999999):
             score += 3
 
         if score > best_score:
@@ -95,7 +103,11 @@ def _match_rate_profile(rate_tables: dict, project_quantities: dict) -> dict:
             best_match = profile
 
     if best_match:
+        pid = best_match.get('id', 'unknown')
+        print(f"[RATE TABLE] project_type={pt} -> matched profile '{pid}' (score={best_score})")
         return best_match.get('quotes', {})
+
+    print(f"[RATE TABLE] project_type={pt} -> no profiles in rate_tables.json, falling back to material_db")
     return {}
 
 
@@ -2817,11 +2829,17 @@ def validate_project_quantities(pq: dict, emit: Callable[[str], None]) -> dict:
     if tsf is not None and isinstance(tsf, (int, float)):
         fp_check = pq.get('footprint_sf')
         fc_check = pq.get('floor_count') or 1
-        if fp_check and isinstance(fp_check, (int, float)):
+        if fp_check and isinstance(fp_check, (int, float)) and fc_check > 1:
             expected = fp_check * fc_check
             if tsf < expected * 0.7 or tsf > expected * 1.3:
-                _pop_bad('total_building_sf', tsf,
-                         f"inconsistent with footprint={fp_check} x floors={fc_check} = {expected}")
+                # Replace with corrected value instead of deleting
+                corrected = round(expected)
+                msg = (f"Extracted total_building_sf = {tsf} inconsistent with "
+                       f"footprint={fp_check} x floors={fc_check} = {expected}. "
+                       f"Auto-corrected to {corrected}. Please verify.")
+                findings.append(msg)
+                emit(f"[VALIDATION] {msg}")
+                pq['total_building_sf'] = corrected
         else:
             # Standalone check by project type
             pt = pq.get('project_type', 'unknown')

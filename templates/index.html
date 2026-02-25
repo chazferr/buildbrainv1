@@ -4,13 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BuildBrain</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
             --navy: #1a2332;
             --navy-light: #243447;
+            --navy-border: #2e4054;
             --orange: #e8722a;
             --orange-hover: #d4641f;
             --bg: #f4f6f9;
@@ -26,37 +27,42 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
             color: var(--text);
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* Header */
+        /* ─── Header ─── */
         header {
             background: var(--navy);
             color: white;
-            padding: 1rem 2rem;
+            padding: 0.65rem 1.25rem;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.6rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            flex-shrink: 0;
+            z-index: 100;
         }
 
         header .logo {
-            width: 36px;
-            height: 36px;
+            width: 30px;
+            height: 30px;
             background: var(--orange);
-            border-radius: 6px;
+            border-radius: 5px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 800;
-            font-size: 1.1rem;
+            font-size: 0.95rem;
         }
 
         header h1 {
-            font-size: 1.4rem;
+            font-size: 1.15rem;
             font-weight: 700;
             letter-spacing: -0.02em;
         }
@@ -65,82 +71,111 @@
 
         header .subtitle {
             margin-left: auto;
-            font-size: 0.85rem;
-            color: rgba(255,255,255,0.5);
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.4);
         }
 
-        /* Main content */
-        main {
-            max-width: 720px;
-            margin: 2rem auto;
-            padding: 0 1.5rem;
+        /* ─── App Layout: Three panels ─── */
+        .app-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
         }
 
-        /* Drop zone */
+        /* ─── Left Panel: Upload ─── */
+        .left-panel {
+            width: 260px;
+            min-width: 260px;
+            background: var(--navy);
+            color: rgba(255,255,255,0.85);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--navy-border);
+            overflow: hidden;
+        }
+
+        .left-panel-header {
+            padding: 1rem 1rem 0.5rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(255,255,255,0.4);
+        }
+
+        .left-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 0.75rem 0.75rem;
+        }
+
+        /* Dropzone (compact, in sidebar) */
         .dropzone {
-            border: 2.5px dashed var(--border);
-            border-radius: 12px;
-            padding: 3rem 2rem;
+            border: 2px dashed rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 1.25rem 0.75rem;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s;
-            background: var(--card);
+            margin-bottom: 0.5rem;
         }
 
         .dropzone:hover,
         .dropzone.dragover {
             border-color: var(--orange);
-            background: #fef5ee;
+            background: rgba(232,114,42,0.08);
         }
 
         .dropzone .icon {
-            font-size: 3rem;
-            margin-bottom: 0.75rem;
-            opacity: 0.5;
+            font-size: 1.8rem;
+            margin-bottom: 0.4rem;
+            opacity: 0.4;
         }
 
         .dropzone h2 {
-            font-size: 1.1rem;
+            font-size: 0.82rem;
             font-weight: 600;
-            margin-bottom: 0.4rem;
+            margin-bottom: 0.2rem;
+            color: rgba(255,255,255,0.8);
         }
 
         .dropzone p {
-            font-size: 0.85rem;
-            color: var(--text-muted);
+            font-size: 0.68rem;
+            color: rgba(255,255,255,0.35);
+            line-height: 1.3;
         }
 
-        /* File list */
+        /* File list (sidebar) */
         .file-list {
-            margin-top: 1rem;
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.35rem;
         }
 
         .file-item {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.6rem 1rem;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.9rem;
+            gap: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            background: var(--navy-light);
+            border: 1px solid var(--navy-border);
+            border-radius: 6px;
+            font-size: 0.78rem;
         }
 
-        .file-item .file-icon { opacity: 0.4; }
+        .file-item .file-icon { opacity: 0.35; font-size: 0.85rem; }
 
         .file-item .file-name {
             flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            color: rgba(255,255,255,0.8);
         }
 
         .file-item .file-size {
-            color: var(--text-muted);
-            font-size: 0.8rem;
+            color: rgba(255,255,255,0.35);
+            font-size: 0.7rem;
         }
 
         .file-item .remove-btn {
@@ -148,45 +183,151 @@
             border: none;
             color: var(--error);
             cursor: pointer;
-            font-size: 1.1rem;
-            padding: 0 0.25rem;
-            opacity: 0.6;
+            font-size: 1rem;
+            padding: 0 0.15rem;
+            opacity: 0.5;
             transition: opacity 0.15s;
         }
 
         .file-item .remove-btn:hover { opacity: 1; }
 
-        /* Submit button */
+        /* Buyout reference (sidebar) */
+        .buyout-section {
+            margin-top: 0.5rem;
+            background: var(--navy-light);
+            border: 1.5px dashed rgba(255,255,255,0.12);
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.78rem;
+        }
+
+        .buyout-section:hover {
+            border-color: var(--orange);
+            background: rgba(232,114,42,0.06);
+        }
+
+        .buyout-section .buyout-icon { font-size: 1rem; opacity: 0.4; }
+
+        .buyout-section .buyout-text h3 {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .buyout-section .buyout-text p {
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.3);
+        }
+
+        .buyout-section .buyout-file-name {
+            margin-left: auto;
+            font-size: 0.72rem;
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        .buyout-section .buyout-remove {
+            background: none;
+            border: none;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 1rem;
+            opacity: 0.5;
+            padding: 0;
+        }
+
+        .buyout-section .buyout-remove:hover { opacity: 1; }
+
+        /* Submit button (sidebar) */
         .submit-section {
-            margin-top: 1.5rem;
-            text-align: center;
+            padding: 0.75rem;
+            border-top: 1px solid var(--navy-border);
+            flex-shrink: 0;
         }
 
         .submit-btn {
+            width: 100%;
             background: var(--orange);
             color: white;
             border: none;
-            padding: 0.85rem 2.5rem;
-            font-size: 1rem;
+            padding: 0.65rem 1rem;
+            font-size: 0.88rem;
             font-weight: 600;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
             transition: background 0.15s;
+            font-family: inherit;
         }
 
         .submit-btn:hover:not(:disabled) { background: var(--orange-hover); }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .submit-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        /* ─── Center Panel: Work Area ─── */
+        .center-panel {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
+
+        .center-content {
+            flex: 1;
+            padding: 1.5rem;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Idle state */
+        .idle-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .idle-state .idle-icon {
+            font-size: 3.5rem;
+            opacity: 0.25;
+            margin-bottom: 1rem;
+        }
+
+        .idle-state h2 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.4rem;
+        }
+
+        .idle-state p {
+            font-size: 0.88rem;
+            max-width: 360px;
+            line-height: 1.5;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid var(--border);
+            border-top-color: var(--orange);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Progress section */
-        .progress-section {
-            margin-top: 1.5rem;
-            display: none;
-        }
-
+        .progress-section { display: none; }
         .progress-section.active { display: block; }
 
         .progress-card {
@@ -204,482 +345,21 @@
             margin-bottom: 0.75rem;
         }
 
-        .spinner {
-            width: 18px;
-            height: 18px;
-            border: 2.5px solid var(--border);
-            border-top-color: var(--orange);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
         .progress-log {
-            max-height: 220px;
+            max-height: 300px;
             overflow-y: auto;
-            font-size: 0.82rem;
-            font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+            font-size: 0.8rem;
+            font-family: 'IBM Plex Mono', 'Consolas', monospace;
             color: var(--text-muted);
             line-height: 1.6;
             padding: 0.5rem 0;
         }
 
         .progress-log .entry { padding: 0.1rem 0; }
-
         .progress-log .entry:last-child { color: var(--text); font-weight: 500; }
 
-        /* Results section */
-        .results-section {
-            margin-top: 1.5rem;
-            display: none;
-        }
-
-        .results-section.active { display: block; }
-
-        .results-card {
-            background: var(--card);
-            border: 1px solid var(--border-light);
-            border-top: none;
-            border-radius: 0 0 var(--radius) var(--radius);
-            padding: 0 1.25rem 1.25rem;
-        }
-
-        .download-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: var(--success);
-            color: white;
-            border: none;
-            padding: 0.75rem 2rem;
-            font-size: 0.95rem;
-            font-weight: 600;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: opacity 0.15s;
-        }
-
-        .download-btn:hover { opacity: 0.9; }
-
-        /* Results viewer tabs */
-        .results-tabs {
-            display: flex;
-            gap: 0;
-            margin: 0;
-            padding-top: 0.5rem;
-            border-bottom: 2px solid var(--border);
-        }
-        .results-tabs button {
-            background: none;
-            border: none;
-            padding: 0.6rem 1.2rem;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            transition: color 0.15s, border-color 0.15s;
-        }
-        .results-tabs button.active {
-            color: var(--navy);
-            border-bottom-color: var(--navy);
-        }
-        .results-tabs button:hover { color: var(--text); }
-
-        .tab-panel { display: none; padding: 1rem 0; }
-        .tab-panel.active { display: block; }
-
-        /* Procore budget table */
-        main.results-wide { max-width: 1200px; }
-
-        .budget-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.82rem;
-        }
-        .budget-table th {
-            background: #2c3e50;
-            color: white;
-            padding: 0.55rem 0.6rem;
-            text-align: left;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 2;
-            white-space: nowrap;
-        }
-        .budget-table th.col-money { text-align: right; width: 130px; }
-        .budget-table td {
-            padding: 0.4rem 0.6rem;
-            border-bottom: 1px solid #e8ecf0;
-            vertical-align: middle;
-        }
-        .budget-table td.money {
-            text-align: right;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            white-space: nowrap;
-        }
-
-        /* Division header row */
-        .budget-table .div-header td {
-            background: #f5f6f8;
-            font-weight: 700;
-            cursor: pointer;
-            user-select: none;
-        }
-        .budget-table .div-header:hover td { background: #eceef1; }
-        .div-toggle {
-            display: inline-block;
-            margin-right: 0.4rem;
-            transition: transform 0.15s;
-        }
-        .div-header.collapsed .div-toggle { transform: rotate(-90deg); }
-
-        /* Trade rows */
-        .budget-table .trade-row td { background: white; }
-        .budget-table .trade-row td:first-child { padding-left: 2rem; }
-        .budget-table .trade-row:hover td { background: rgba(26,35,50,0.02); }
-
-        /* Editable number inputs */
-        .budget-table input.cell-edit {
-            width: 100%;
-            border: none;
-            background: transparent;
-            text-align: right;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            padding: 0.2rem 0;
-            color: var(--text);
-            outline: none;
-        }
-        .budget-table input.cell-edit:focus {
-            border-bottom: 1.5px solid var(--orange);
-            background: #fffcf8;
-        }
-
-        /* Summary footer rows */
-        .budget-table .summary-subtotal td {
-            font-weight: 700;
-            background: #e8f0fe;
-            border-top: 2px solid #c5d4e8;
-        }
-        .budget-table .summary-markup td {
-            color: var(--text-muted);
-            font-size: 0.78rem;
-            background: #f7f9fc;
-        }
-        .budget-table .summary-total td {
-            background: var(--navy);
-            color: white;
-            font-weight: 700;
-            font-size: 0.88rem;
-        }
-        .budget-table .summary-total td.money {
-            font-family: 'JetBrains Mono', monospace;
-            color: white;
-        }
-        .budget-table .summary-estimate td {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            background: #fafbfc;
-        }
-
-        /* Project header bar */
-        .project-header-bar {
-            background: var(--navy);
-            color: white;
-            padding: 1rem 1.25rem;
-            border-radius: var(--radius) var(--radius) 0 0;
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-        .phb-left { flex: 1; min-width: 0; }
-        .phb-name {
-            font-size: 1.1rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: 0.15rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .phb-address {
-            font-size: 0.8rem;
-            color: rgba(255,255,255,0.5);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .phb-meta {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.78rem;
-            color: rgba(255,255,255,0.6);
-            flex-shrink: 0;
-        }
-        .phb-meta .phb-tag {
-            background: rgba(255,255,255,0.1);
-            padding: 0.2rem 0.55rem;
-            border-radius: 4px;
-            font-weight: 500;
-            font-size: 0.72rem;
-            white-space: nowrap;
-        }
-        .phb-meta .phb-value {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--orange);
-            font-weight: 600;
-        }
-        .phb-meta .phb-dot { color: rgba(255,255,255,0.25); }
-        .phb-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-shrink: 0;
-        }
-        .phb-actions .download-btn {
-            padding: 0.45rem 1.2rem;
-            font-size: 0.8rem;
-            border-radius: 6px;
-        }
-        .phb-actions .reset-link {
-            color: rgba(255,255,255,0.5);
-            font-size: 0.78rem;
-            margin-top: 0;
-        }
-        .phb-actions .reset-link:hover { color: white; }
-
-        /* Summary cards */
-        .summary-cards {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 0;
-            border-left: 1px solid var(--border-light);
-            border-right: 1px solid var(--border-light);
-        }
-        .summary-card {
-            background: var(--card);
-            padding: 1rem 1.15rem;
-            border-right: 1px solid var(--border-light);
-            border-bottom: 1px solid var(--border-light);
-            min-height: 160px;
-        }
-        .summary-card:last-child { border-right: none; }
-        .summary-card h3 {
-            font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            margin-bottom: 0.7rem;
-        }
-        .snapshot-item {
-            display: flex;
-            align-items: baseline;
-            gap: 0.4rem;
-            padding: 0.2rem 0;
-            font-size: 0.82rem;
-        }
-        .snapshot-item .arrow {
-            color: var(--orange);
-            font-size: 0.7rem;
-            flex-shrink: 0;
-        }
-        .snapshot-item .snap-label { color: var(--text-secondary); }
-        .snapshot-item .snap-value { font-weight: 600; color: var(--text); }
-        .summary-bullet {
-            display: flex;
-            gap: 0.4rem;
-            padding: 0.2rem 0;
-            font-size: 0.82rem;
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-        .summary-bullet .arrow {
-            color: var(--orange);
-            font-size: 0.7rem;
-            flex-shrink: 0;
-            margin-top: 0.2rem;
-        }
-        .estimate-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.2rem 0;
-            font-size: 0.8rem;
-        }
-        .estimate-row .est-label { color: var(--text-secondary); }
-        .estimate-row .est-value {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 500;
-            color: var(--text);
-            font-size: 0.78rem;
-        }
-        .estimate-divider {
-            border-top: 1px solid var(--border-light);
-            margin: 0.4rem 0;
-        }
-        .estimate-row.total .est-label { font-weight: 700; color: var(--text); }
-        .estimate-row.total .est-value {
-            font-weight: 700;
-            color: var(--orange);
-            font-size: 0.88rem;
-        }
-
-        /* Stats mini-bar */
-        .stats-bar {
-            display: flex;
-            gap: 1.5rem;
-            padding: 0.5rem 1.25rem;
-            background: var(--bg);
-            border-left: 1px solid var(--border-light);
-            border-right: 1px solid var(--border-light);
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-        .stats-bar .sb-item span { font-weight: 600; color: var(--text); }
-
-        /* Scope details */
-        .scope-trade { margin-bottom: 0.75rem; }
-        .scope-trade-header {
-            font-weight: 600;
-            color: var(--navy);
-            padding: 0.4rem 0;
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-        }
-        .scope-trade-header:hover { color: var(--orange); }
-        .scope-items {
-            padding: 0.3rem 0 0.3rem 1.2rem;
-            font-size: 0.82rem;
-            line-height: 1.5;
-            color: var(--text-muted);
-        }
-        .scope-items li { margin-bottom: 0.15rem; }
-
-        /* Flags */
-        .flag-item {
-            padding: 0.5rem 0.75rem;
-            border-left: 3px solid var(--border);
-            margin-bottom: 0.5rem;
-            font-size: 0.82rem;
-            background: var(--bg);
-            border-radius: 0 6px 6px 0;
-        }
-        .flag-item.HIGH { border-left-color: #dc3545; }
-        .flag-item.MEDIUM { border-left-color: #ffc107; }
-        .flag-item.LOW { border-left-color: #17a2b8; }
-        .flag-severity { font-weight: 700; margin-right: 0.5rem; font-size: 0.75rem; }
-
-        /* Scalars */
-        .scalars-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-        .scalars-table th {
-            background: var(--navy);
-            color: white;
-            padding: 0.5rem 0.6rem;
-            text-align: left;
-        }
-        .scalars-table td {
-            padding: 0.45rem 0.6rem;
-            border-bottom: 1px solid var(--border);
-        }
-        .conf-high { color: #28a745; font-weight: 600; }
-        .conf-medium { color: #ffc107; font-weight: 600; }
-        .conf-low { color: #dc3545; font-weight: 600; }
-
-        /* Error */
-        .error-card {
-            background: #fdf0ef;
-            border: 1px solid var(--error);
-            border-radius: 10px;
-            padding: 1.25rem;
-            color: var(--error);
-            margin-top: 1.5rem;
-            display: none;
-        }
-
-        .error-card.active { display: block; }
-
-        /* Reset link */
-        .reset-link {
-            display: inline-block;
-            margin-top: 1rem;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-
-        .reset-link:hover { color: var(--text); }
-
-        /* Buyout reference upload */
-        .buyout-section {
-            margin-top: 1.25rem;
-            background: var(--card);
-            border: 1.5px dashed var(--border);
-            border-radius: 10px;
-            padding: 1rem 1.25rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .buyout-section:hover {
-            border-color: var(--orange);
-            background: #fef5ee;
-        }
-
-        .buyout-section .buyout-icon {
-            font-size: 1.5rem;
-            opacity: 0.5;
-        }
-
-        .buyout-section .buyout-text h3 {
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin-bottom: 0.15rem;
-        }
-
-        .buyout-section .buyout-text p {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-        }
-
-        .buyout-section .buyout-file-name {
-            margin-left: auto;
-            font-size: 0.82rem;
-            color: var(--success);
-            font-weight: 500;
-        }
-
-        .buyout-section .buyout-remove {
-            background: none;
-            border: none;
-            color: var(--error);
-            cursor: pointer;
-            font-size: 1.1rem;
-            opacity: 0.6;
-            padding: 0 0.25rem;
-        }
-
-        .buyout-section .buyout-remove:hover { opacity: 1; }
-
-        /* Pre-check confirmation card */
-        .precheck-section {
-            margin-top: 1.5rem;
-            display: none;
-        }
-
+        /* Pre-check */
+        .precheck-section { display: none; }
         .precheck-section.active { display: block; }
 
         .precheck-card {
@@ -717,9 +397,7 @@
             gap: 0.25rem;
         }
 
-        .precheck-field.full-width {
-            grid-column: 1 / -1;
-        }
+        .precheck-field.full-width { grid-column: 1 / -1; }
 
         .precheck-field label {
             font-size: 0.78rem;
@@ -787,6 +465,7 @@
             border-radius: 8px;
             cursor: pointer;
             transition: background 0.15s;
+            font-family: inherit;
         }
 
         .precheck-confirm-btn:hover { background: var(--orange-hover); }
@@ -801,6 +480,7 @@
             cursor: pointer;
             color: var(--text-muted);
             transition: all 0.15s;
+            font-family: inherit;
         }
 
         .precheck-back-btn:hover {
@@ -809,11 +489,7 @@
         }
 
         /* Scalar Gate */
-        .scalar-gate-section {
-            margin-top: 1.5rem;
-            display: none;
-        }
-
+        .scalar-gate-section { display: none; }
         .scalar-gate-section.active { display: block; }
 
         .scalar-gate-card {
@@ -861,9 +537,7 @@
             gap: 0.25rem;
         }
 
-        .sg-field.full-width {
-            grid-column: 1 / -1;
-        }
+        .sg-field.full-width { grid-column: 1 / -1; }
 
         .sg-field label {
             font-size: 0.78rem;
@@ -918,6 +592,524 @@
             justify-content: center;
             margin-top: 1.25rem;
         }
+
+        /* Results section */
+        .results-section { display: none; }
+        .results-section.active { display: block; }
+
+        .results-card {
+            background: var(--card);
+            border: 1px solid var(--border-light);
+            border-top: none;
+            border-radius: 0 0 var(--radius) var(--radius);
+            padding: 0 1.25rem 1.25rem;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 0.45rem 1.2rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: opacity 0.15s;
+            font-family: inherit;
+        }
+
+        .download-btn:hover { opacity: 0.9; }
+
+        /* Results tabs */
+        .results-tabs {
+            display: flex;
+            gap: 0;
+            margin: 0;
+            padding-top: 0.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        .results-tabs button {
+            background: none;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: color 0.15s, border-color 0.15s;
+            font-family: inherit;
+        }
+        .results-tabs button.active {
+            color: var(--navy);
+            border-bottom-color: var(--navy);
+        }
+        .results-tabs button:hover { color: var(--text); }
+
+        .tab-panel { display: none; padding: 1rem 0; }
+        .tab-panel.active { display: block; }
+
+        /* Budget table */
+        .budget-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .budget-table th {
+            background: #2c3e50;
+            color: white;
+            padding: 0.55rem 0.6rem;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            white-space: nowrap;
+        }
+        .budget-table th.col-money { text-align: right; width: 130px; }
+        .budget-table td {
+            padding: 0.4rem 0.6rem;
+            border-bottom: 1px solid #e8ecf0;
+            vertical-align: middle;
+        }
+        .budget-table td.money {
+            text-align: right;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        .budget-table .div-header td {
+            background: #f5f6f8;
+            font-weight: 700;
+            cursor: pointer;
+            user-select: none;
+        }
+        .budget-table .div-header:hover td { background: #eceef1; }
+        .div-toggle {
+            display: inline-block;
+            margin-right: 0.4rem;
+            transition: transform 0.15s;
+        }
+        .div-header.collapsed .div-toggle { transform: rotate(-90deg); }
+
+        .budget-table .trade-row td { background: white; }
+        .budget-table .trade-row td:first-child { padding-left: 2rem; }
+        .budget-table .trade-row:hover td { background: rgba(26,35,50,0.02); }
+
+        .budget-table input.cell-edit {
+            width: 100%;
+            border: none;
+            background: transparent;
+            text-align: right;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            padding: 0.2rem 0;
+            color: var(--text);
+            outline: none;
+        }
+        .budget-table input.cell-edit:focus {
+            border-bottom: 1.5px solid var(--orange);
+            background: #fffcf8;
+        }
+
+        .budget-table .summary-subtotal td {
+            font-weight: 700;
+            background: #e8f0fe;
+            border-top: 2px solid #c5d4e8;
+        }
+        .budget-table .summary-markup td {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            background: #f7f9fc;
+        }
+        .budget-table .summary-total td {
+            background: var(--navy);
+            color: white;
+            font-weight: 700;
+            font-size: 0.88rem;
+        }
+        .budget-table .summary-total td.money {
+            font-family: 'IBM Plex Mono', monospace;
+            color: white;
+        }
+        .budget-table .summary-estimate td {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: #fafbfc;
+        }
+
+        /* Project header bar */
+        .project-header-bar {
+            background: var(--navy);
+            color: white;
+            padding: 1rem 1.25rem;
+            border-radius: var(--radius) var(--radius) 0 0;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .phb-left { flex: 1; min-width: 0; }
+        .phb-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.15rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .phb-address {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.5);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .phb-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.6);
+            flex-shrink: 0;
+        }
+        .phb-meta .phb-tag {
+            background: rgba(255,255,255,0.1);
+            padding: 0.2rem 0.55rem;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 0.72rem;
+            white-space: nowrap;
+        }
+        .phb-meta .phb-value {
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--orange);
+            font-weight: 600;
+        }
+        .phb-meta .phb-dot { color: rgba(255,255,255,0.25); }
+        .phb-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-shrink: 0;
+        }
+        .phb-actions .reset-link {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.78rem;
+            margin-top: 0;
+        }
+        .phb-actions .reset-link:hover { color: white; }
+
+        /* Summary cards */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0;
+            border-left: 1px solid var(--border-light);
+            border-right: 1px solid var(--border-light);
+        }
+        .summary-card {
+            background: var(--card);
+            padding: 1rem 1.15rem;
+            border-right: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light);
+            min-height: 160px;
+        }
+        .summary-card:last-child { border-right: none; }
+        .summary-card h3 {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 0.7rem;
+        }
+        .snapshot-item {
+            display: flex;
+            align-items: baseline;
+            gap: 0.4rem;
+            padding: 0.2rem 0;
+            font-size: 0.82rem;
+        }
+        .snapshot-item .arrow { color: var(--orange); font-size: 0.7rem; flex-shrink: 0; }
+        .snapshot-item .snap-label { color: var(--text-secondary); }
+        .snapshot-item .snap-value { font-weight: 600; color: var(--text); }
+        .summary-bullet {
+            display: flex;
+            gap: 0.4rem;
+            padding: 0.2rem 0;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+        .summary-bullet .arrow {
+            color: var(--orange);
+            font-size: 0.7rem;
+            flex-shrink: 0;
+            margin-top: 0.2rem;
+        }
+        .estimate-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.2rem 0;
+            font-size: 0.8rem;
+        }
+        .estimate-row .est-label { color: var(--text-secondary); }
+        .estimate-row .est-value {
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 500;
+            color: var(--text);
+            font-size: 0.78rem;
+        }
+        .estimate-divider { border-top: 1px solid var(--border-light); margin: 0.4rem 0; }
+        .estimate-row.total .est-label { font-weight: 700; color: var(--text); }
+        .estimate-row.total .est-value {
+            font-weight: 700;
+            color: var(--orange);
+            font-size: 0.88rem;
+        }
+
+        /* Stats mini-bar */
+        .stats-bar {
+            display: flex;
+            gap: 1.5rem;
+            padding: 0.5rem 1.25rem;
+            background: var(--bg);
+            border-left: 1px solid var(--border-light);
+            border-right: 1px solid var(--border-light);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+        .stats-bar .sb-item span { font-weight: 600; color: var(--text); }
+
+        /* Scope, flags, scalars */
+        .scope-trade { margin-bottom: 0.75rem; }
+        .scope-trade-header {
+            font-weight: 600;
+            color: var(--navy);
+            padding: 0.4rem 0;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+        }
+        .scope-trade-header:hover { color: var(--orange); }
+        .scope-items {
+            padding: 0.3rem 0 0.3rem 1.2rem;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            color: var(--text-muted);
+        }
+        .scope-items li { margin-bottom: 0.15rem; }
+
+        .flag-item {
+            padding: 0.5rem 0.75rem;
+            border-left: 3px solid var(--border);
+            margin-bottom: 0.5rem;
+            font-size: 0.82rem;
+            background: var(--bg);
+            border-radius: 0 6px 6px 0;
+        }
+        .flag-item.HIGH { border-left-color: #dc3545; }
+        .flag-item.MEDIUM { border-left-color: #ffc107; }
+        .flag-item.LOW { border-left-color: #17a2b8; }
+        .flag-severity { font-weight: 700; margin-right: 0.5rem; font-size: 0.75rem; }
+
+        .scalars-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .scalars-table th {
+            background: var(--navy);
+            color: white;
+            padding: 0.5rem 0.6rem;
+            text-align: left;
+        }
+        .scalars-table td {
+            padding: 0.45rem 0.6rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .conf-high { color: #28a745; font-weight: 600; }
+        .conf-medium { color: #ffc107; font-weight: 600; }
+        .conf-low { color: #dc3545; font-weight: 600; }
+
+        /* Error card */
+        .error-card {
+            background: #fdf0ef;
+            border: 1px solid var(--error);
+            border-radius: 10px;
+            padding: 1.25rem;
+            color: var(--error);
+            display: none;
+        }
+
+        .error-card.active { display: block; }
+
+        /* Reset link */
+        .reset-link {
+            display: inline-block;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .reset-link:hover { color: var(--text); }
+
+        /* ─── Right Panel: Ask BuildBrain ─── */
+        .right-panel {
+            width: 320px;
+            min-width: 320px;
+            background: var(--card);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .chat-header-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+        }
+
+        .chat-header h3 {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--navy);
+        }
+
+        .chat-header .chat-model {
+            margin-left: auto;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            background: var(--bg);
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .chat-welcome {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        .chat-welcome .cw-icon {
+            font-size: 2rem;
+            opacity: 0.3;
+            margin-bottom: 0.5rem;
+        }
+
+        .chat-msg {
+            max-width: 92%;
+            padding: 0.55rem 0.75rem;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .chat-msg.user {
+            background: var(--navy);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 3px;
+        }
+
+        .chat-msg.assistant {
+            background: var(--bg);
+            color: var(--text);
+            align-self: flex-start;
+            border-bottom-left-radius: 3px;
+        }
+
+        .chat-msg.typing {
+            background: var(--bg);
+            color: var(--text-muted);
+            align-self: flex-start;
+            border-bottom-left-radius: 3px;
+            font-style: italic;
+        }
+
+        .typing-dots::after {
+            content: '';
+            animation: dots 1.2s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+        }
+
+        .chat-input-area {
+            padding: 0.65rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 0.4rem;
+            flex-shrink: 0;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.5rem 0.65rem;
+            font-size: 0.82rem;
+            font-family: inherit;
+            color: var(--text);
+            resize: none;
+            outline: none;
+            min-height: 36px;
+            max-height: 100px;
+        }
+
+        .chat-input:focus { border-color: var(--orange); }
+
+        .chat-input::placeholder { color: var(--text-muted); }
+
+        .chat-send-btn {
+            background: var(--orange);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0 0.75rem;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s;
+            flex-shrink: 0;
+        }
+
+        .chat-send-btn:hover:not(:disabled) { background: var(--orange-hover); }
+        .chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -925,183 +1117,218 @@
 <header>
     <div class="logo">B</div>
     <h1>Build<span>Brain</span></h1>
-    <div class="subtitle">Construction Document Extraction</div>
+    <div class="subtitle">AI Construction Estimating</div>
 </header>
 
-<main>
-    <!-- Drop zone -->
-    <div class="dropzone" id="dropzone">
-        <div class="icon">&#128466;</div>
-        <h2>Drag & drop files here</h2>
-        <p>or click to browse &mdash; PDF, DOCX, XLSX, CSV, EML, JPG, PNG, TXT</p>
-        <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.eml,.jpg,.jpeg,.png,.tiff,.tif,.bmp,.webp,.txt,.rtf" multiple hidden>
-    </div>
+<div class="app-layout">
 
-    <!-- File list -->
-    <div class="file-list" id="fileList"></div>
-
-    <!-- Reference buyout upload -->
-    <div class="buyout-section" id="buyoutSection" title="Click to select a reference buyout spreadsheet">
-        <span class="buyout-icon">&#128200;</span>
-        <div class="buyout-text">
-            <h3>Reference Buyout (optional)</h3>
-            <p>Upload buyout spreadsheet to auto-map SOV values</p>
-        </div>
-        <span class="buyout-file-name" id="buyoutFileName"></span>
-        <button class="buyout-remove" id="buyoutRemove" style="display:none;" title="Remove">&times;</button>
-        <input type="file" id="buyoutInput" accept=".xlsx,.xls" hidden>
-    </div>
-
-    <!-- Submit -->
-    <div class="submit-section" id="submitSection" style="display:none;">
-        <button class="submit-btn" id="submitBtn">Submit Bid</button>
-    </div>
-
-    <!-- Pre-check confirmation -->
-    <div class="precheck-section" id="precheckSection">
-        <div class="precheck-card">
-            <div class="precheck-header">Project Pre-Check</div>
-            <div class="precheck-subtitle">Review and adjust the detected project info before running full analysis.</div>
-            <div class="precheck-grid">
-                <div class="precheck-field full-width">
-                    <label>Project Name</label>
-                    <input type="text" id="pc_project_name" placeholder="Not detected">
-                </div>
-                <div class="precheck-field full-width">
-                    <label>Project Address</label>
-                    <input type="text" id="pc_project_address" placeholder="Not detected">
-                </div>
-                <div class="precheck-field">
-                    <label>Project Type</label>
-                    <select id="pc_project_type">
-                        <option value="single_family">Single Family</option>
-                        <option value="multi_family">Multi-Family</option>
-                        <option value="commercial">Commercial</option>
-                        <option value="mixed_use">Mixed Use</option>
-                        <option value="unknown">Unknown</option>
-                    </select>
-                </div>
-                <div class="precheck-field">
-                    <label>Construction Type</label>
-                    <select id="pc_construction_type">
-                        <option value="new_construction">New Construction</option>
-                        <option value="renovation">Renovation (1.35x)</option>
-                        <option value="gut_rehabilitation">Gut Rehabilitation (1.55x)</option>
-                        <option value="addition">Addition (1.20x)</option>
-                        <option value="unknown">Unknown</option>
-                    </select>
-                </div>
-                <div class="precheck-field">
-                    <label>Unit Count</label>
-                    <input type="number" id="pc_unit_count" min="1" placeholder="--">
-                </div>
-                <div class="precheck-field">
-                    <label>Floor Count</label>
-                    <input type="number" id="pc_floor_count" min="1" placeholder="--">
-                </div>
-                <div class="precheck-field">
-                    <label>Total Building SF</label>
-                    <input type="number" id="pc_total_building_sf" min="1" placeholder="--">
-                </div>
-                <div class="precheck-field">
-                    <label>Confidence</label>
-                    <span class="confidence-badge" id="pc_confidence">--</span>
-                </div>
+    <!-- ─── Left Panel: Upload ─── -->
+    <aside class="left-panel">
+        <div class="left-panel-header">Documents</div>
+        <div class="left-panel-content">
+            <!-- Drop zone -->
+            <div class="dropzone" id="dropzone">
+                <div class="icon">&#128466;</div>
+                <h2>Drop files here</h2>
+                <p>PDF, DOCX, XLSX, CSV, EML, images</p>
+                <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.eml,.jpg,.jpeg,.png,.tiff,.tif,.bmp,.webp,.txt,.rtf" multiple hidden>
             </div>
-            <div class="precheck-warning" id="pc_warning" style="display:none;"></div>
-            <div class="precheck-actions">
-                <button class="precheck-back-btn" id="precheckBack">Back</button>
-                <button class="precheck-confirm-btn" id="precheckConfirm">Confirm &amp; Run Full Analysis</button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Progress -->
-    <div class="progress-section" id="progressSection">
-        <div class="progress-card">
-            <div class="progress-header">
-                <div class="spinner" id="progressSpinner"></div>
-                <span>Processing documents...</span>
-            </div>
-            <div class="progress-log" id="progressLog"></div>
-        </div>
-    </div>
+            <!-- File list -->
+            <div class="file-list" id="fileList"></div>
 
-    <!-- Scalar Gate -->
-    <div class="scalar-gate-section" id="scalarGateSection">
-        <div class="scalar-gate-card">
-            <div class="scalar-gate-header">Confirm Project Dimensions</div>
-            <div class="scalar-gate-subtitle">
-                Review extracted values before generating the pricing spreadsheet.
-                Low-confidence values are highlighted &mdash; verify or override them.
-            </div>
-            <div class="scalar-gate-warning" id="sgWarning" style="display:none;"></div>
-            <div class="scalar-gate-grid" id="scalarGateGrid"></div>
-            <div class="scalar-gate-actions">
-                <button class="precheck-back-btn" id="sgReset">Start Over</button>
-                <button class="precheck-confirm-btn" id="sgConfirm">Confirm &amp; Generate Excel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Results -->
-    <div class="results-section" id="resultsSection">
-        <!-- Project Header Bar -->
-        <div class="project-header-bar" id="projectHeaderBar">
-            <div class="phb-left">
-                <div class="phb-name" id="phbName">Project Name</div>
-                <div class="phb-address" id="phbAddress">Address</div>
-            </div>
-            <div class="phb-meta" id="phbMeta"></div>
-            <div class="phb-actions">
-                <button class="download-btn" id="downloadBtn">&#11015; Download Excel</button>
-                <span class="reset-link" id="resetLink">New project</span>
+            <!-- Reference buyout -->
+            <div class="buyout-section" id="buyoutSection" title="Reference buyout spreadsheet">
+                <span class="buyout-icon">&#128200;</span>
+                <div class="buyout-text">
+                    <h3>Reference Buyout</h3>
+                    <p>Optional SOV mapping</p>
+                </div>
+                <span class="buyout-file-name" id="buyoutFileName"></span>
+                <button class="buyout-remove" id="buyoutRemove" style="display:none;" title="Remove">&times;</button>
+                <input type="file" id="buyoutInput" accept=".xlsx,.xls" hidden>
             </div>
         </div>
 
-        <!-- Summary Cards -->
-        <div class="summary-cards" id="summaryCards">
-            <div class="summary-card" id="cardSnapshot"></div>
-            <div class="summary-card" id="cardSummary"></div>
-            <div class="summary-card" id="cardEstimate"></div>
+        <!-- Submit button -->
+        <div class="submit-section" id="submitSection" style="display:none;">
+            <button class="submit-btn" id="submitBtn">Estimate Project</button>
         </div>
+    </aside>
 
-        <!-- Stats mini-bar -->
-        <div class="stats-bar" id="statsGrid"></div>
+    <!-- ─── Center Panel: Work Area ─── -->
+    <main class="center-panel">
+        <div class="center-content">
 
-        <!-- Tab bar + content -->
-        <div class="results-card">
-            <div class="results-tabs" id="resultsTabs">
-                <button class="active" data-tab="budget">Budget</button>
-                <button data-tab="scope">Scope Details</button>
-                <button data-tab="flags">Flags</button>
-                <button data-tab="scalars">Scalars</button>
+            <!-- Idle state -->
+            <div class="idle-state" id="idleState">
+                <div class="idle-icon">&#128736;</div>
+                <h2>Ready to estimate</h2>
+                <p>Upload construction documents in the left panel to generate a detailed cost estimate.</p>
             </div>
-            <div class="tab-panel active" id="tab-budget"></div>
-            <div class="tab-panel" id="tab-scope"></div>
-            <div class="tab-panel" id="tab-flags"></div>
-            <div class="tab-panel" id="tab-scalars"></div>
-        </div>
-    </div>
 
-    <!-- Error -->
-    <div class="error-card" id="errorCard">
-        <strong>Error:</strong> <span id="errorMsg"></span>
-        <div style="text-align:center;">
-            <span class="reset-link" id="errorResetLink">Try again</span>
+            <!-- Pre-check -->
+            <div class="precheck-section" id="precheckSection">
+                <div class="precheck-card">
+                    <div class="precheck-header">Project Pre-Check</div>
+                    <div class="precheck-subtitle">Review and adjust the detected project info before running full analysis.</div>
+                    <div class="precheck-grid">
+                        <div class="precheck-field full-width">
+                            <label>Project Name</label>
+                            <input type="text" id="pc_project_name" placeholder="Not detected">
+                        </div>
+                        <div class="precheck-field full-width">
+                            <label>Project Address</label>
+                            <input type="text" id="pc_project_address" placeholder="Not detected">
+                        </div>
+                        <div class="precheck-field">
+                            <label>Project Type</label>
+                            <select id="pc_project_type">
+                                <option value="single_family">Single Family</option>
+                                <option value="multi_family">Multi-Family</option>
+                                <option value="commercial">Commercial</option>
+                                <option value="mixed_use">Mixed Use</option>
+                                <option value="unknown">Unknown</option>
+                            </select>
+                        </div>
+                        <div class="precheck-field">
+                            <label>Construction Type</label>
+                            <select id="pc_construction_type">
+                                <option value="new_construction">New Construction</option>
+                                <option value="renovation">Renovation (1.35x)</option>
+                                <option value="gut_rehabilitation">Gut Rehabilitation (1.55x)</option>
+                                <option value="addition">Addition (1.20x)</option>
+                                <option value="unknown">Unknown</option>
+                            </select>
+                        </div>
+                        <div class="precheck-field">
+                            <label>Unit Count</label>
+                            <input type="number" id="pc_unit_count" min="1" placeholder="--">
+                        </div>
+                        <div class="precheck-field">
+                            <label>Floor Count</label>
+                            <input type="number" id="pc_floor_count" min="1" placeholder="--">
+                        </div>
+                        <div class="precheck-field">
+                            <label>Total Building SF</label>
+                            <input type="number" id="pc_total_building_sf" min="1" placeholder="--">
+                        </div>
+                        <div class="precheck-field">
+                            <label>Confidence</label>
+                            <span class="confidence-badge" id="pc_confidence">--</span>
+                        </div>
+                    </div>
+                    <div class="precheck-warning" id="pc_warning" style="display:none;"></div>
+                    <div class="precheck-actions">
+                        <button class="precheck-back-btn" id="precheckBack">Back</button>
+                        <button class="precheck-confirm-btn" id="precheckConfirm">Confirm &amp; Run Full Analysis</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress -->
+            <div class="progress-section" id="progressSection">
+                <div class="progress-card">
+                    <div class="progress-header">
+                        <div class="spinner" id="progressSpinner"></div>
+                        <span>Processing documents...</span>
+                    </div>
+                    <div class="progress-log" id="progressLog"></div>
+                </div>
+            </div>
+
+            <!-- Scalar Gate -->
+            <div class="scalar-gate-section" id="scalarGateSection">
+                <div class="scalar-gate-card">
+                    <div class="scalar-gate-header">Confirm Project Dimensions</div>
+                    <div class="scalar-gate-subtitle">
+                        Review extracted values before generating the pricing spreadsheet.
+                        Low-confidence values are highlighted &mdash; verify or override them.
+                    </div>
+                    <div class="scalar-gate-warning" id="sgWarning" style="display:none;"></div>
+                    <div class="scalar-gate-grid" id="scalarGateGrid"></div>
+                    <div class="scalar-gate-actions">
+                        <button class="precheck-back-btn" id="sgReset">Start Over</button>
+                        <button class="precheck-confirm-btn" id="sgConfirm">Confirm &amp; Generate Excel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="results-section" id="resultsSection">
+                <div class="project-header-bar" id="projectHeaderBar">
+                    <div class="phb-left">
+                        <div class="phb-name" id="phbName">Project Name</div>
+                        <div class="phb-address" id="phbAddress">Address</div>
+                    </div>
+                    <div class="phb-meta" id="phbMeta"></div>
+                    <div class="phb-actions">
+                        <button class="download-btn" id="downloadBtn">&#11015; Download Excel</button>
+                        <span class="reset-link" id="resetLink">New project</span>
+                    </div>
+                </div>
+                <div class="summary-cards" id="summaryCards">
+                    <div class="summary-card" id="cardSnapshot"></div>
+                    <div class="summary-card" id="cardSummary"></div>
+                    <div class="summary-card" id="cardEstimate"></div>
+                </div>
+                <div class="stats-bar" id="statsGrid"></div>
+                <div class="results-card">
+                    <div class="results-tabs" id="resultsTabs">
+                        <button class="active" data-tab="budget">Budget</button>
+                        <button data-tab="scope">Scope Details</button>
+                        <button data-tab="flags">Flags</button>
+                        <button data-tab="scalars">Scalars</button>
+                    </div>
+                    <div class="tab-panel active" id="tab-budget"></div>
+                    <div class="tab-panel" id="tab-scope"></div>
+                    <div class="tab-panel" id="tab-flags"></div>
+                    <div class="tab-panel" id="tab-scalars"></div>
+                </div>
+            </div>
+
+            <!-- Error -->
+            <div class="error-card" id="errorCard">
+                <strong>Error:</strong> <span id="errorMsg"></span>
+                <div style="text-align:center;">
+                    <span class="reset-link" id="errorResetLink">Try again</span>
+                </div>
+            </div>
+
         </div>
-    </div>
-</main>
+    </main>
+
+    <!-- ─── Right Panel: Ask BuildBrain ─── -->
+    <aside class="right-panel">
+        <div class="chat-header">
+            <div class="chat-header-dot"></div>
+            <h3>Ask BuildBrain</h3>
+            <span class="chat-model">Haiku</span>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-welcome">
+                <div class="cw-icon">&#128172;</div>
+                Ask questions about your estimate, trades, pricing, or construction scope.
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <textarea class="chat-input" id="chatInput" placeholder="Ask about your estimate..." rows="1"></textarea>
+            <button class="chat-send-btn" id="chatSendBtn" title="Send">&#9654;</button>
+        </div>
+    </aside>
+
+</div>
 
 <script>
 (function() {
-    // State
+    // ─── State ───
     let selectedFiles = [];
     let buyoutFile = null;
     let currentJobId = null;
-    let confirmedPrecheck = null;  // stores confirmed pre-check values
+    let confirmedPrecheck = null;
+    let chatBusy = false;
 
-    // Elements
+    // ─── Elements ───
     const dropzone = document.getElementById('dropzone');
     const fileInput = document.getElementById('fileInput');
     const fileList = document.getElementById('fileList');
@@ -1111,6 +1338,7 @@
     const buyoutRemove = document.getElementById('buyoutRemove');
     const submitSection = document.getElementById('submitSection');
     const submitBtn = document.getElementById('submitBtn');
+    const idleState = document.getElementById('idleState');
     const precheckSection = document.getElementById('precheckSection');
     const precheckBack = document.getElementById('precheckBack');
     const precheckConfirm = document.getElementById('precheckConfirm');
@@ -1131,8 +1359,11 @@
     const sgWarning = document.getElementById('sgWarning');
     const sgConfirm = document.getElementById('sgConfirm');
     const sgReset = document.getElementById('sgReset');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const chatSendBtn = document.getElementById('chatSendBtn');
 
-    // Drag-and-drop
+    // ─── Drag-and-drop ───
     dropzone.addEventListener('click', () => fileInput.click());
 
     dropzone.addEventListener('dragover', (e) => {
@@ -1160,7 +1391,7 @@
         fileInput.value = '';
     });
 
-    // Buyout reference upload
+    // ─── Buyout reference ───
     buyoutSection.addEventListener('click', (e) => {
         if (e.target !== buyoutRemove) buyoutInput.click();
     });
@@ -1183,7 +1414,6 @@
 
     function addFiles(files) {
         for (const f of files) {
-            // Avoid duplicates by name
             if (!selectedFiles.some(sf => sf.name === f.name && sf.size === f.size)) {
                 selectedFiles.push(f);
             }
@@ -1211,7 +1441,6 @@
             fileList.appendChild(div);
         }
 
-        // Bind remove buttons
         fileList.querySelectorAll('.remove-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const idx = parseInt(e.target.getAttribute('data-idx'));
@@ -1223,15 +1452,13 @@
         submitSection.style.display = selectedFiles.length > 0 ? '' : 'none';
     }
 
-    // Submit — first run pre-check, then confirm, then full upload
+    // ─── Submit → Pre-check → Upload flow ───
     submitBtn.addEventListener('click', async () => {
         if (selectedFiles.length === 0) return;
 
-        // Check if any PDFs exist for pre-check
         const hasPDFs = selectedFiles.some(f => f.name.toLowerCase().endsWith('.pdf'));
 
         if (!hasPDFs) {
-            // No PDFs — skip pre-check, go straight to upload
             runFullUpload();
             return;
         }
@@ -1240,7 +1467,6 @@
         submitBtn.textContent = 'Scanning...';
 
         try {
-            // Send only PDFs to pre-check
             const pcForm = new FormData();
             for (const f of selectedFiles) {
                 if (f.name.toLowerCase().endsWith('.pdf')) {
@@ -1252,27 +1478,19 @@
             const pcData = await pcResp.json();
 
             if (pcData.error && !pcData.project_name) {
-                // Pre-check failed — skip to upload
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit Bid';
+                submitBtn.textContent = 'Estimate Project';
                 runFullUpload();
                 return;
             }
 
-            // Populate pre-check card
             populatePrecheck(pcData);
-
-            // Show pre-check card, hide upload UI
-            dropzone.style.display = 'none';
-            fileList.style.display = 'none';
-            buyoutSection.style.display = 'none';
-            submitSection.style.display = 'none';
+            hideAllCenterStates();
             precheckSection.classList.add('active');
 
         } catch (err) {
-            // Pre-check network error — fall through to upload
             submitBtn.disabled = false;
-            submitBtn.textContent = 'Submit Bid';
+            submitBtn.textContent = 'Estimate Project';
             runFullUpload();
         }
     });
@@ -1286,12 +1504,10 @@
         document.getElementById('pc_floor_count').value = data.floor_count || '';
         document.getElementById('pc_total_building_sf').value = data.total_building_sf || '';
 
-        // Confidence badge
         const conf = (data.confidence || 'low').toLowerCase();
         pcConfidence.textContent = conf;
         pcConfidence.className = 'confidence-badge confidence-' + conf;
 
-        // Complexity warning
         if (data.complexity_warning) {
             pcWarning.textContent = data.complexity_warning;
             pcWarning.style.display = '';
@@ -1312,35 +1528,33 @@
         };
     }
 
-    // Pre-check back button
     precheckBack.addEventListener('click', () => {
         precheckSection.classList.remove('active');
-        dropzone.style.display = '';
-        fileList.style.display = '';
-        buyoutSection.style.display = '';
-        submitSection.style.display = '';
+        idleState.style.display = '';
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit Bid';
+        submitBtn.textContent = 'Estimate Project';
     });
 
-    // Pre-check confirm button
     precheckConfirm.addEventListener('click', () => {
         confirmedPrecheck = readPrecheckValues();
         precheckSection.classList.remove('active');
         runFullUpload();
     });
 
-    // Full upload with optional confirmed values
-    async function runFullUpload() {
-        dropzone.style.display = 'none';
-        fileList.style.display = 'none';
-        buyoutSection.style.display = 'none';
-        submitSection.style.display = 'none';
+    function hideAllCenterStates() {
+        idleState.style.display = 'none';
         precheckSection.classList.remove('active');
-        progressSection.classList.add('active');
-        progressLog.innerHTML = '';
+        progressSection.classList.remove('active');
+        scalarGateSection.classList.remove('active');
         resultsSection.classList.remove('active');
         errorCard.classList.remove('active');
+    }
+
+    // ─── Full upload with SSE ───
+    async function runFullUpload() {
+        hideAllCenterStates();
+        progressSection.classList.add('active');
+        progressLog.innerHTML = '';
 
         addLogEntry('Uploading files...');
 
@@ -1352,7 +1566,6 @@
             formData.append('buyout', buyoutFile);
         }
 
-        // Append confirmed pre-check values if available
         if (confirmedPrecheck) {
             for (const [key, val] of Object.entries(confirmedPrecheck)) {
                 if (val) formData.append(key, val);
@@ -1370,7 +1583,6 @@
             currentJobId = uploadData.job_id;
             addLogEntry('Upload complete. Starting extraction...');
 
-            // Connect to SSE stream
             const evtSource = new EventSource('/api/stream/' + currentJobId);
 
             evtSource.addEventListener('progress', (e) => {
@@ -1408,8 +1620,7 @@
         }
     }
 
-    // ─── Scalar Gate ────────────────────────────────────────────────────
-
+    // ─── Scalar Gate ───
     const _SELECT_OPTIONS = {
         project_type: [
             { value: 'single_family', label: 'Single Family' },
@@ -1428,11 +1639,9 @@
     };
 
     function showScalarGate(data) {
-        // Hide progress, show scalar gate
-        progressSection.classList.remove('active');
+        hideAllCenterStates();
         scalarGateSection.classList.add('active');
 
-        // Warning banner
         if (data.tsf_missing_warning) {
             sgWarning.textContent = data.tsf_missing_warning;
             sgWarning.style.display = '';
@@ -1455,11 +1664,9 @@
             sgWarning.style.display = 'none';
         }
 
-        // Build fields
         scalarGateGrid.innerHTML = '';
         const fullWidthKeys = ['project_name', 'project_address'];
 
-        // Separate scalars into groups
         const mainScalars = data.scalars.filter(s => !s.group);
         const gcScalars = data.scalars.filter(s => s.group === 'gc_markup');
         const siteScalars = data.scalars.filter(s => s.group === 'site_work');
@@ -1493,12 +1700,10 @@
             return div;
         }
 
-        // Main scalars
         for (const s of mainScalars) {
             scalarGateGrid.appendChild(renderScalarField(s));
         }
 
-        // GC Markup group
         if (gcScalars.length > 0) {
             const gcHeader = document.createElement('div');
             gcHeader.className = 'sg-field full-width';
@@ -1509,7 +1714,6 @@
             }
         }
 
-        // Site Work group
         if (siteScalars.length > 0) {
             const siteHeader = document.createElement('div');
             siteHeader.className = 'sg-field full-width';
@@ -1522,14 +1726,12 @@
     }
 
     async function confirmScalars() {
-        // Collect values from scalar gate fields
         const scalars = {};
         scalarGateGrid.querySelectorAll('[data-key]').forEach(el => {
             scalars[el.dataset.key] = el.value;
         });
 
-        // Hide scalar gate, show progress spinner for Excel generation
-        scalarGateSection.classList.remove('active');
+        hideAllCenterStates();
         progressSection.classList.add('active');
         addLogEntry('Generating Excel with confirmed values...');
 
@@ -1544,7 +1746,6 @@
                 const err = await resp.json();
                 showError(err.error || 'Failed to confirm scalars');
             }
-            // SSE stream will continue with progress messages and done event
         } catch (err) {
             showError(err.message);
         }
@@ -1553,8 +1754,7 @@
     sgConfirm.addEventListener('click', confirmScalars);
     sgReset.addEventListener('click', resetUI);
 
-    // ─── Log & Results ──────────────────────────────────────────────────
-
+    // ─── Log & Results ───
     function addLogEntry(text) {
         const div = document.createElement('div');
         div.className = 'entry';
@@ -1564,11 +1764,10 @@
     }
 
     function showResults(stats) {
-        progressSection.classList.remove('active');
+        hideAllCenterStates();
         resultsSection.classList.add('active');
-        document.querySelector('main').classList.add('results-wide');
 
-        const totalCost = stats.total_cost !== undefined ? stats.total_cost.toFixed(4) : '—';
+        const totalCost = stats.total_cost !== undefined ? stats.total_cost.toFixed(4) : '\u2014';
 
         statsGrid.innerHTML = `
             <span class="sb-item"><span>${stats.total_pages || 0}</span> pages</span>
@@ -1579,7 +1778,6 @@
             <span class="sb-item"><span>${stats.api_calls || 0}</span> API calls</span>
         `;
 
-        // Fetch and render results viewer + project header
         if (currentJobId) {
             fetch('/api/results/' + currentJobId)
                 .then(r => r.json())
@@ -1601,7 +1799,7 @@
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     });
 
-    function fmt(n) { return n != null ? '$' + Math.round(n).toLocaleString() : '—'; }
+    function fmt(n) { return n != null ? '$' + Math.round(n).toLocaleString() : '\u2014'; }
 
     function renderProjectHeader(data) {
         const getScalar = (key) => {
@@ -1611,7 +1809,6 @@
         const titleCase = (str) => str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         const t = data.totals || {};
 
-        // ── Header bar ──
         const name = getScalar('project_name') || 'Untitled Project';
         const addr = getScalar('project_address') || '';
         const pType = titleCase(getScalar('project_type') || 'unknown');
@@ -1626,7 +1823,7 @@
             `<span class="phb-dot">&middot;</span>` +
             `<span>Est. Value: <span class="phb-value">${fmt(t.project_total)}</span></span>`;
 
-        // ── Card 1: Project Snapshot ──
+        // Card 1: Project Snapshot
         const units = getScalar('unit_count');
         const sf = getScalar('total_building_sf');
         const floors = getScalar('floor_count');
@@ -1648,24 +1845,20 @@
         }
         document.getElementById('cardSnapshot').innerHTML = snapHtml;
 
-        // ── Card 2: AI Project Summary ──
+        // Card 2: AI Project Summary
         const bullets = [];
         if (pType && units) bullets.push(`${pType} development with ${units} units`);
         if (sf) bullets.push(`${Number(sf).toLocaleString()} SF total building area`);
         if (floors && Number(floors) > 1) {
             bullets.push(`${floors}-story building on ${footprint ? Number(footprint).toLocaleString() + ' SF' : 'unknown'} footprint`);
         }
-
         const flagDetails = (data.flags || []).map(f => (f.detail || '').toLowerCase()).join(' ');
         if (flagDetails.includes('prevailing wage')) bullets.push('Prevailing wage requirements apply');
         if (flagDetails.includes('bond')) bullets.push('Bond required');
-
         if (cType && cType.toLowerCase() !== 'unknown') bullets.push(`${cType} project`);
-
         const tradeCount = (data.divisions || []).reduce((n, d) => n + d.rows.length, 0);
         const divCount = (data.divisions || []).length;
         bullets.push(`${tradeCount} trades identified across ${divCount} CSI divisions`);
-
         const highFlags = (data.flags || []).filter(f => f.severity === 'HIGH').length;
         if (highFlags > 0) bullets.push(`${highFlags} high-severity flag${highFlags > 1 ? 's' : ''} require review`);
 
@@ -1675,7 +1868,7 @@
         }
         document.getElementById('cardSummary').innerHTML = sumHtml;
 
-        // ── Card 3: Baseline Estimate ──
+        // Card 3: Baseline Estimate
         let estHtml = '<h3>Baseline Estimate</h3>';
         const estRows = [
             ['Building Trades', t.building_subtotal],
@@ -1692,18 +1885,15 @@
         estHtml += `<div class="estimate-row"><span class="est-label">Site Total</span><span class="est-value">${fmt(t.site_total)}</span></div>`;
         estHtml += '<div class="estimate-divider"></div>';
         estHtml += `<div class="estimate-row total"><span class="est-label">PROJECT TOTAL</span><span class="est-value">${fmt(t.project_total)}</span></div>`;
-
         document.getElementById('cardEstimate').innerHTML = estHtml;
     }
 
     function renderResultsViewer(data) {
         const t = data.totals;
         const divisions = data.divisions || [];
-
-        // Store for recalculation
         window._bbData = data;
 
-        // ── Budget Tab (Procore-style) ──
+        // Budget Tab
         let html = '<div style="overflow-x:auto;"><table class="budget-table" id="budgetTable">';
         html += '<thead><tr><th>Description</th><th class="col-money">Original Budget</th>';
         html += '<th class="col-money">Budget Mods</th><th class="col-money">Revised Budget</th>';
@@ -1711,7 +1901,6 @@
         html += '<tbody>';
 
         divisions.forEach((div, di) => {
-            // Division header
             html += `<tr class="div-header" data-div="${di}">`;
             html += `<td><span class="div-toggle">\u25BE</span>${escapeHtml(div.div)} - ${escapeHtml(div.name)}</td>`;
             html += `<td class="money div-subtotal" data-div="${di}" data-col="original">${fmt(div.subtotal)}</td>`;
@@ -1719,7 +1908,6 @@
             html += `<td class="money div-subtotal" data-div="${di}" data-col="revised">${fmt(div.subtotal)}</td>`;
             html += `<td class="money">$0</td><td class="money">$0</td></tr>`;
 
-            // Trade rows
             div.rows.forEach((row, ri) => {
                 html += `<tr class="trade-row" data-div="${di}" data-row="${ri}">`;
                 html += `<td><span style="color:var(--text-muted);font-size:0.75rem;margin-right:0.5rem;">${escapeHtml(row.cost_code)}</span>${escapeHtml(row.trade)}</td>`;
@@ -1730,7 +1918,6 @@
             });
         });
 
-        // Summary footer
         html += `<tr class="summary-subtotal"><td>BUILDING SUBTOTAL</td><td class="money" id="sum-bldg-sub">${fmt(t.building_subtotal)}</td><td class="money"></td><td class="money" id="sum-bldg-sub-rev">${fmt(t.building_subtotal)}</td><td class="money"></td><td class="money"></td></tr>`;
         html += `<tr class="summary-markup"><td style="padding-left:2rem;">GC Conditions (${(t.gc_conditions_pct*100).toFixed(1)}%)</td><td class="money" id="sum-gc-cond">${fmt(t.gc_conditions)}</td><td class="money"></td><td class="money" id="sum-gc-cond-rev">${fmt(t.gc_conditions)}</td><td class="money"></td><td class="money"></td></tr>`;
         html += `<tr class="summary-markup"><td style="padding-left:2rem;">GC Profit (${(t.gc_profit_pct*100).toFixed(1)}%)</td><td class="money" id="sum-gc-prof">${fmt(t.gc_profit)}</td><td class="money"></td><td class="money" id="sum-gc-prof-rev">${fmt(t.gc_profit)}</td><td class="money"></td><td class="money"></td></tr>`;
@@ -1745,7 +1932,6 @@
         html += '</tbody></table></div>';
         document.getElementById('tab-budget').innerHTML = html;
 
-        // Collapsible division headers
         document.querySelectorAll('.div-header').forEach(hdr => {
             hdr.addEventListener('click', (e) => {
                 if (e.target.closest('input')) return;
@@ -1757,12 +1943,11 @@
             });
         });
 
-        // Editable cell listeners for live recalc
         document.querySelectorAll('.cell-edit').forEach(input => {
             input.addEventListener('input', recalcBudget);
         });
 
-        // ── Scope Details ──
+        // Scope Details
         let scopeHtml = '';
         (data.scope_details || []).forEach(sd => {
             const items = (sd.scope_items || []).filter(s => s.trim()).map(s => `<li>${escapeHtml(s)}</li>`).join('');
@@ -1775,7 +1960,7 @@
         });
         document.getElementById('tab-scope').innerHTML = scopeHtml || '<p style="color:var(--text-muted);">No scope details available.</p>';
 
-        // ── Flags ──
+        // Flags
         let flagsHtml = '';
         (data.flags || []).forEach(f => {
             flagsHtml += `<div class="flag-item ${f.severity || ''}">
@@ -1787,7 +1972,7 @@
         });
         document.getElementById('tab-flags').innerHTML = flagsHtml || '<p style="color:var(--text-muted);">No flags raised.</p>';
 
-        // ── Scalars ──
+        // Scalars
         let scalarRows = '';
         (data.scalars || []).forEach(s => {
             const confClass = s.confidence === 'high' ? 'conf-high' : s.confidence === 'medium' ? 'conf-medium' : 'conf-low';
@@ -1821,7 +2006,6 @@
                 const modsVal = parseFloat(modsInput ? modsInput.value : 0) || 0;
                 const revised = origVal + modsVal;
 
-                // Update revised cell
                 const revisedCell = document.querySelector(`.revised-cell[data-div="${di}"][data-row="${ri}"]`);
                 if (revisedCell) revisedCell.textContent = fmt(revised);
 
@@ -1830,7 +2014,6 @@
                 divRevised += revised;
             });
 
-            // Update division subtotals
             document.querySelectorAll(`.div-subtotal[data-div="${di}"]`).forEach(td => {
                 if (td.dataset.col === 'original') td.textContent = fmt(divOriginal);
                 if (td.dataset.col === 'mods') td.textContent = fmt(divMods);
@@ -1844,7 +2027,6 @@
             }
         });
 
-        // Recalculate GC markups from building subtotal
         const gcCond = Math.round(buildingSubtotal * t.gc_conditions_pct);
         const gcProf = Math.round(buildingSubtotal * t.gc_profit_pct);
         const cont = Math.round(buildingSubtotal * t.contingency_pct);
@@ -1854,7 +2036,6 @@
         const siteTotal = siteSubtotal + siteFee;
         const projectTotal = buildingTotal + siteTotal;
 
-        // Update all summary cells
         const u = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = fmt(val); };
         u('sum-bldg-sub', buildingSubtotal);     u('sum-bldg-sub-rev', buildingSubtotal);
         u('sum-gc-cond', gcCond);                u('sum-gc-cond-rev', gcCond);
@@ -1869,7 +2050,7 @@
     }
 
     function showError(msg) {
-        progressSection.classList.remove('active');
+        hideAllCenterStates();
         errorCard.classList.add('active');
         errorMsg.textContent = msg;
     }
@@ -1888,28 +2069,108 @@
         currentJobId = null;
         confirmedPrecheck = null;
         window._bbData = null;
-        document.querySelector('main').classList.remove('results-wide');
-        dropzone.style.display = '';
-        fileList.style.display = '';
         fileList.innerHTML = '';
-        buyoutSection.style.display = '';
         buyoutFileName.textContent = '';
         buyoutRemove.style.display = 'none';
         submitSection.style.display = 'none';
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit Bid';
-        precheckSection.classList.remove('active');
-        scalarGateSection.classList.remove('active');
-        progressSection.classList.remove('active');
-        resultsSection.classList.remove('active');
-        errorCard.classList.remove('active');
+        submitBtn.textContent = 'Estimate Project';
+        hideAllCenterStates();
+        idleState.style.display = '';
         progressLog.innerHTML = '';
     }
 
     resetLink.addEventListener('click', resetUI);
     errorResetLink.addEventListener('click', resetUI);
 
-    // Utility
+    // ─── Ask BuildBrain Chat ───
+
+    function addChatMessage(text, role) {
+        // Remove welcome if present
+        const welcome = chatMessages.querySelector('.chat-welcome');
+        if (welcome) welcome.remove();
+
+        const div = document.createElement('div');
+        div.className = 'chat-msg ' + role;
+        div.textContent = text;
+        chatMessages.appendChild(div);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return div;
+    }
+
+    function addTypingIndicator() {
+        const welcome = chatMessages.querySelector('.chat-welcome');
+        if (welcome) welcome.remove();
+
+        const div = document.createElement('div');
+        div.className = 'chat-msg typing';
+        div.id = 'typingIndicator';
+        div.innerHTML = 'Thinking<span class="typing-dots"></span>';
+        chatMessages.appendChild(div);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+        const el = document.getElementById('typingIndicator');
+        if (el) el.remove();
+    }
+
+    async function sendQuestion() {
+        const question = chatInput.value.trim();
+        if (!question || chatBusy) return;
+
+        chatBusy = true;
+        chatSendBtn.disabled = true;
+        chatInput.value = '';
+
+        addChatMessage(question, 'user');
+        addTypingIndicator();
+
+        try {
+            const body = { question };
+            if (currentJobId) body.job_id = currentJobId;
+
+            const resp = await fetch('/api/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+
+            removeTypingIndicator();
+
+            if (resp.ok) {
+                const data = await resp.json();
+                addChatMessage(data.answer || 'No response.', 'assistant');
+            } else {
+                const err = await resp.json();
+                addChatMessage('Error: ' + (err.error || 'Request failed'), 'assistant');
+            }
+        } catch (err) {
+            removeTypingIndicator();
+            addChatMessage('Error: ' + err.message, 'assistant');
+        } finally {
+            chatBusy = false;
+            chatSendBtn.disabled = false;
+            chatInput.focus();
+        }
+    }
+
+    chatSendBtn.addEventListener('click', sendQuestion);
+
+    chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendQuestion();
+        }
+    });
+
+    // Auto-resize chat input
+    chatInput.addEventListener('input', () => {
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + 'px';
+    });
+
+    // ─── Utility ───
     function escapeHtml(str) {
         const div = document.createElement('div');
         div.textContent = str;

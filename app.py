@@ -279,6 +279,81 @@ def results_data(job_id):
     return jsonify(results)
 
 
+@app.route("/api/ask", methods=["POST"])
+def ask_buildbrain():
+    """Chat endpoint — answers questions about the estimate using Haiku."""
+    import anthropic
+
+    data = request.get_json()
+    if not data or not data.get("question"):
+        return jsonify({"error": "No question provided"}), 400
+
+    question = data["question"].strip()
+    job_id = data.get("job_id")
+
+    # Build context from job results if available
+    context_parts = []
+    if job_id and job_id in jobs:
+        job = jobs[job_id]
+        results = job.get("results_json")
+        if results:
+            t = results.get("totals", {})
+            context_parts.append(
+                f"Project estimate summary:\n"
+                f"- Building Subtotal: ${t.get('building_subtotal', 0):,.0f}\n"
+                f"- Site Total: ${t.get('site_total', 0):,.0f}\n"
+                f"- GC Markup: {t.get('gc_conditions_pct', 0)*100:.1f}% conditions, "
+                f"{t.get('gc_profit_pct', 0)*100:.1f}% profit, "
+                f"{t.get('contingency_pct', 0)*100:.1f}% contingency\n"
+                f"- Project Total: ${t.get('project_total', 0):,.0f}"
+            )
+
+            # Scalars
+            scalars = results.get("scalars", [])
+            if scalars:
+                scalar_lines = [f"  {s['label']}: {s['value']}" for s in scalars if s.get('value')]
+                context_parts.append("Project scalars:\n" + "\n".join(scalar_lines))
+
+            # Trade summary
+            divisions = results.get("divisions", [])
+            if divisions:
+                trade_lines = []
+                for div in divisions:
+                    for row in div.get("rows", []):
+                        trade_lines.append(f"  {row.get('trade', '?')}: ${row.get('original_budget', 0):,.0f}")
+                context_parts.append("Trade line items:\n" + "\n".join(trade_lines))
+
+            # Flags
+            flags = results.get("flags", [])
+            if flags:
+                flag_lines = [f"  [{f.get('severity', 'INFO')}] {f.get('flag', '')}: {f.get('detail', '')}" for f in flags]
+                context_parts.append("Flags:\n" + "\n".join(flag_lines))
+
+    system_prompt = (
+        "You are BuildBrain, an AI construction estimating assistant. "
+        "Answer questions about construction costs, trades, scope, and estimating. "
+        "Be concise and practical. Use dollar amounts when relevant. "
+        "If project data is provided in context, reference it specifically."
+    )
+
+    user_content = question
+    if context_parts:
+        user_content = "PROJECT CONTEXT:\n" + "\n\n".join(context_parts) + "\n\nUSER QUESTION:\n" + question
+
+    try:
+        client = anthropic.Anthropic(api_key=API_KEY)
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=600,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_content}],
+        )
+        answer = response.content[0].text.strip()
+        return jsonify({"answer": answer})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def get_precheck_page_limit(filename: str) -> int:
     """
     Returns how many pages to read from a file during pre-check.

@@ -329,24 +329,22 @@ def ask_buildbrain():
                 flag_lines = [f"  [{f.get('severity', 'INFO')}] {f.get('flag', '')}: {f.get('detail', '')}" for f in flags]
                 context_parts.append("Flags:\n" + "\n".join(flag_lines))
 
-    system_prompt = (
-        "You are BuildBrain, an AI construction estimating assistant. "
-        "Answer questions about construction costs, trades, scope, and estimating. "
-        "Be concise and practical. Use dollar amounts when relevant. "
-        "If project data is provided in context, reference it specifically."
-    )
+    context = "\n\n".join(context_parts) if context_parts else ""
 
-    user_content = question
-    if context_parts:
-        user_content = "PROJECT CONTEXT:\n" + "\n\n".join(context_parts) + "\n\nUSER QUESTION:\n" + question
+    prompt = (
+        "You are BuildBrain, an AI assistant for construction estimating. "
+        "Help GCs understand bid documents and estimates. "
+        "Be concise — 2-4 sentences max. Use numbers when available.\n\n"
+        f"Project context:\n{context}\n\n"
+        f"Question: {question}"
+    )
 
     try:
         client = anthropic.Anthropic(api_key=API_KEY)
         response = client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=600,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_content}],
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}],
         )
         answer = response.content[0].text.strip()
         return jsonify({"answer": answer})

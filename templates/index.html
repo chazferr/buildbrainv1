@@ -1,2183 +1,861 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BuildBrain</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        :root {
-            --navy: #1a2332;
-            --navy-light: #243447;
-            --navy-border: #2e4054;
-            --orange: #e8722a;
-            --orange-hover: #d4641f;
-            --bg: #f4f6f9;
-            --card: #ffffff;
-            --text: #2c3e50;
-            --text-muted: #7f8c9b;
-            --border: #dde2e8;
-            --success: #27ae60;
-            --error: #e74c3c;
-            --border-light: #e8ecf0;
-            --text-secondary: #5a6d82;
-            --radius: 10px;
-        }
-
-        body {
-            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* ─── Header ─── */
-        header {
-            background: var(--navy);
-            color: white;
-            padding: 0.65rem 1.25rem;
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            flex-shrink: 0;
-            z-index: 100;
-        }
-
-        header .logo {
-            width: 30px;
-            height: 30px;
-            background: var(--orange);
-            border-radius: 5px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 0.95rem;
-        }
-
-        header h1 {
-            font-size: 1.15rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-        }
-
-        header h1 span { color: var(--orange); }
-
-        header .subtitle {
-            margin-left: auto;
-            font-size: 0.78rem;
-            color: rgba(255,255,255,0.4);
-        }
-
-        /* ─── App Layout: Three panels ─── */
-        .app-layout {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
-        /* ─── Left Panel: Upload ─── */
-        .left-panel {
-            width: 260px;
-            min-width: 260px;
-            background: var(--navy);
-            color: rgba(255,255,255,0.85);
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid var(--navy-border);
-            overflow: hidden;
-        }
-
-        .left-panel-header {
-            padding: 1rem 1rem 0.5rem;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: rgba(255,255,255,0.4);
-        }
-
-        .left-panel-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0 0.75rem 0.75rem;
-        }
-
-        /* Dropzone (compact, in sidebar) */
-        .dropzone {
-            border: 2px dashed rgba(255,255,255,0.15);
-            border-radius: 8px;
-            padding: 1.25rem 0.75rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-bottom: 0.5rem;
-        }
-
-        .dropzone:hover,
-        .dropzone.dragover {
-            border-color: var(--orange);
-            background: rgba(232,114,42,0.08);
-        }
-
-        .dropzone .icon {
-            font-size: 1.8rem;
-            margin-bottom: 0.4rem;
-            opacity: 0.4;
-        }
-
-        .dropzone h2 {
-            font-size: 0.82rem;
-            font-weight: 600;
-            margin-bottom: 0.2rem;
-            color: rgba(255,255,255,0.8);
-        }
-
-        .dropzone p {
-            font-size: 0.68rem;
-            color: rgba(255,255,255,0.35);
-            line-height: 1.3;
-        }
-
-        /* File list (sidebar) */
-        .file-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-        }
-
-        .file-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.4rem 0.6rem;
-            background: var(--navy-light);
-            border: 1px solid var(--navy-border);
-            border-radius: 6px;
-            font-size: 0.78rem;
-        }
-
-        .file-item .file-icon { opacity: 0.35; font-size: 0.85rem; }
-
-        .file-item .file-name {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            color: rgba(255,255,255,0.8);
-        }
-
-        .file-item .file-size {
-            color: rgba(255,255,255,0.35);
-            font-size: 0.7rem;
-        }
-
-        .file-item .remove-btn {
-            background: none;
-            border: none;
-            color: var(--error);
-            cursor: pointer;
-            font-size: 1rem;
-            padding: 0 0.15rem;
-            opacity: 0.5;
-            transition: opacity 0.15s;
-        }
-
-        .file-item .remove-btn:hover { opacity: 1; }
-
-        /* Buyout reference (sidebar) */
-        .buyout-section {
-            margin-top: 0.5rem;
-            background: var(--navy-light);
-            border: 1.5px dashed rgba(255,255,255,0.12);
-            border-radius: 8px;
-            padding: 0.6rem 0.75rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.78rem;
-        }
-
-        .buyout-section:hover {
-            border-color: var(--orange);
-            background: rgba(232,114,42,0.06);
-        }
-
-        .buyout-section .buyout-icon { font-size: 1rem; opacity: 0.4; }
-
-        .buyout-section .buyout-text h3 {
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: rgba(255,255,255,0.7);
-        }
-
-        .buyout-section .buyout-text p {
-            font-size: 0.65rem;
-            color: rgba(255,255,255,0.3);
-        }
-
-        .buyout-section .buyout-file-name {
-            margin-left: auto;
-            font-size: 0.72rem;
-            color: var(--success);
-            font-weight: 500;
-        }
-
-        .buyout-section .buyout-remove {
-            background: none;
-            border: none;
-            color: var(--error);
-            cursor: pointer;
-            font-size: 1rem;
-            opacity: 0.5;
-            padding: 0;
-        }
-
-        .buyout-section .buyout-remove:hover { opacity: 1; }
-
-        /* Submit button (sidebar) */
-        .submit-section {
-            padding: 0.75rem;
-            border-top: 1px solid var(--navy-border);
-            flex-shrink: 0;
-        }
-
-        .submit-btn {
-            width: 100%;
-            background: var(--orange);
-            color: white;
-            border: none;
-            padding: 0.65rem 1rem;
-            font-size: 0.88rem;
-            font-weight: 600;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.15s;
-            font-family: inherit;
-        }
-
-        .submit-btn:hover:not(:disabled) { background: var(--orange-hover); }
-        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* ─── Center Panel: Work Area ─── */
-        .center-panel {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .center-content {
-            flex: 1;
-            padding: 1.5rem;
-            max-width: 1200px;
-            width: 100%;
-            margin: 0 auto;
-        }
-
-        /* Idle state */
-        .idle-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: var(--text-muted);
-            text-align: center;
-            padding: 3rem;
-        }
-
-        .idle-state .idle-icon {
-            font-size: 3.5rem;
-            opacity: 0.25;
-            margin-bottom: 1rem;
-        }
-
-        .idle-state h2 {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 0.4rem;
-        }
-
-        .idle-state p {
-            font-size: 0.88rem;
-            max-width: 360px;
-            line-height: 1.5;
-        }
-
-        /* Spinner */
-        .spinner {
-            width: 18px;
-            height: 18px;
-            border: 2.5px solid var(--border);
-            border-top-color: var(--orange);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* Progress section */
-        .progress-section { display: none; }
-        .progress-section.active { display: block; }
-
-        .progress-card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 1.25rem;
-        }
-
-        .progress-header {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-        }
-
-        .progress-log {
-            max-height: 300px;
-            overflow-y: auto;
-            font-size: 0.8rem;
-            font-family: 'IBM Plex Mono', 'Consolas', monospace;
-            color: var(--text-muted);
-            line-height: 1.6;
-            padding: 0.5rem 0;
-        }
-
-        .progress-log .entry { padding: 0.1rem 0; }
-        .progress-log .entry:last-child { color: var(--text); font-weight: 500; }
-
-        /* Pre-check */
-        .precheck-section { display: none; }
-        .precheck-section.active { display: block; }
-
-        .precheck-card {
-            background: var(--card);
-            border: 2px solid var(--orange);
-            border-radius: 10px;
-            padding: 1.5rem;
-        }
-
-        .precheck-header {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 700;
-            font-size: 1.05rem;
-            color: var(--navy);
-            margin-bottom: 0.25rem;
-        }
-
-        .precheck-subtitle {
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            margin-bottom: 1rem;
-        }
-
-        .precheck-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-        }
-
-        .precheck-field {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .precheck-field.full-width { grid-column: 1 / -1; }
-
-        .precheck-field label {
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-        }
-
-        .precheck-field input,
-        .precheck-field select {
-            padding: 0.5rem 0.65rem;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 0.9rem;
-            font-family: inherit;
-            color: var(--text);
-            background: var(--bg);
-            transition: border-color 0.15s;
-        }
-
-        .precheck-field input:focus,
-        .precheck-field select:focus {
-            outline: none;
-            border-color: var(--orange);
-        }
-
-        .precheck-field .confidence-badge {
-            display: inline-block;
-            padding: 0.15rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .confidence-high { background: #e2efda; color: #27ae60; }
-        .confidence-medium { background: #fff3cd; color: #b8860b; }
-        .confidence-low { background: #fce4d6; color: #e74c3c; }
-
-        .precheck-warning {
-            margin-top: 0.75rem;
-            padding: 0.6rem 0.85rem;
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 6px;
-            font-size: 0.82rem;
-            color: #856404;
-        }
-
-        .precheck-actions {
-            display: flex;
-            gap: 0.75rem;
-            justify-content: center;
-            margin-top: 1.25rem;
-        }
-
-        .precheck-confirm-btn {
-            background: var(--orange);
-            color: white;
-            border: none;
-            padding: 0.75rem 2rem;
-            font-size: 0.95rem;
-            font-weight: 600;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.15s;
-            font-family: inherit;
-        }
-
-        .precheck-confirm-btn:hover { background: var(--orange-hover); }
-
-        .precheck-back-btn {
-            background: none;
-            border: 1.5px solid var(--border);
-            padding: 0.75rem 1.5rem;
-            font-size: 0.95rem;
-            font-weight: 500;
-            border-radius: 8px;
-            cursor: pointer;
-            color: var(--text-muted);
-            transition: all 0.15s;
-            font-family: inherit;
-        }
-
-        .precheck-back-btn:hover {
-            border-color: var(--text-muted);
-            color: var(--text);
-        }
-
-        /* Scalar Gate */
-        .scalar-gate-section { display: none; }
-        .scalar-gate-section.active { display: block; }
-
-        .scalar-gate-card {
-            background: var(--card);
-            border: 2px solid var(--orange);
-            border-radius: 10px;
-            padding: 1.5rem;
-        }
-
-        .scalar-gate-header {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 700;
-            font-size: 1.05rem;
-            color: var(--navy);
-            margin-bottom: 0.25rem;
-        }
-
-        .scalar-gate-subtitle {
-            font-size: 0.82rem;
-            color: var(--text-muted);
-            margin-bottom: 1rem;
-        }
-
-        .scalar-gate-warning {
-            margin-bottom: 1rem;
-            padding: 0.6rem 0.85rem;
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 6px;
-            font-size: 0.82rem;
-            color: #856404;
-        }
-
-        .scalar-gate-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-        }
-
-        .sg-field {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .sg-field.full-width { grid-column: 1 / -1; }
-
-        .sg-field label {
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .sg-field label .sg-conf {
-            font-size: 0.65rem;
-            padding: 0.1rem 0.35rem;
-            border-radius: 3px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .sg-conf-high { background: #e2efda; color: #27ae60; }
-        .sg-conf-medium { background: #fff3cd; color: #b8860b; }
-        .sg-conf-low { background: #fce4d6; color: #e74c3c; }
-
-        .sg-field input,
-        .sg-field select {
-            padding: 0.5rem 0.65rem;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 0.9rem;
-            font-family: inherit;
-            color: var(--text);
-            background: var(--bg);
-            transition: border-color 0.15s;
-        }
-
-        .sg-field input.sg-low-conf,
-        .sg-field select.sg-low-conf {
-            border-color: #e74c3c;
-            background: #fff5f5;
-        }
-
-        .sg-field input:focus,
-        .sg-field select:focus {
-            outline: none;
-            border-color: var(--orange);
-        }
-
-        .scalar-gate-actions {
-            display: flex;
-            gap: 0.75rem;
-            justify-content: center;
-            margin-top: 1.25rem;
-        }
-
-        /* Results section */
-        .results-section { display: none; }
-        .results-section.active { display: block; }
-
-        .results-card {
-            background: var(--card);
-            border: 1px solid var(--border-light);
-            border-top: none;
-            border-radius: 0 0 var(--radius) var(--radius);
-            padding: 0 1.25rem 1.25rem;
-        }
-
-        .download-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            background: var(--success);
-            color: white;
-            border: none;
-            padding: 0.45rem 1.2rem;
-            font-size: 0.8rem;
-            font-weight: 600;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: opacity 0.15s;
-            font-family: inherit;
-        }
-
-        .download-btn:hover { opacity: 0.9; }
-
-        /* Results tabs */
-        .results-tabs {
-            display: flex;
-            gap: 0;
-            margin: 0;
-            padding-top: 0.5rem;
-            border-bottom: 2px solid var(--border);
-        }
-        .results-tabs button {
-            background: none;
-            border: none;
-            padding: 0.6rem 1.2rem;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px;
-            transition: color 0.15s, border-color 0.15s;
-            font-family: inherit;
-        }
-        .results-tabs button.active {
-            color: var(--navy);
-            border-bottom-color: var(--navy);
-        }
-        .results-tabs button:hover { color: var(--text); }
-
-        .tab-panel { display: none; padding: 1rem 0; }
-        .tab-panel.active { display: block; }
-
-        /* Budget table */
-        .budget-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.82rem;
-        }
-        .budget-table th {
-            background: #2c3e50;
-            color: white;
-            padding: 0.55rem 0.6rem;
-            text-align: left;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 2;
-            white-space: nowrap;
-        }
-        .budget-table th.col-money { text-align: right; width: 130px; }
-        .budget-table td {
-            padding: 0.4rem 0.6rem;
-            border-bottom: 1px solid #e8ecf0;
-            vertical-align: middle;
-        }
-        .budget-table td.money {
-            text-align: right;
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.8rem;
-            white-space: nowrap;
-        }
-
-        .budget-table .div-header td {
-            background: #f5f6f8;
-            font-weight: 700;
-            cursor: pointer;
-            user-select: none;
-        }
-        .budget-table .div-header:hover td { background: #eceef1; }
-        .div-toggle {
-            display: inline-block;
-            margin-right: 0.4rem;
-            transition: transform 0.15s;
-        }
-        .div-header.collapsed .div-toggle { transform: rotate(-90deg); }
-
-        .budget-table .trade-row td { background: white; }
-        .budget-table .trade-row td:first-child { padding-left: 2rem; }
-        .budget-table .trade-row:hover td { background: rgba(26,35,50,0.02); }
-
-        .budget-table input.cell-edit {
-            width: 100%;
-            border: none;
-            background: transparent;
-            text-align: right;
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.8rem;
-            padding: 0.2rem 0;
-            color: var(--text);
-            outline: none;
-        }
-        .budget-table input.cell-edit:focus {
-            border-bottom: 1.5px solid var(--orange);
-            background: #fffcf8;
-        }
-
-        .budget-table .summary-subtotal td {
-            font-weight: 700;
-            background: #e8f0fe;
-            border-top: 2px solid #c5d4e8;
-        }
-        .budget-table .summary-markup td {
-            color: var(--text-muted);
-            font-size: 0.78rem;
-            background: #f7f9fc;
-        }
-        .budget-table .summary-total td {
-            background: var(--navy);
-            color: white;
-            font-weight: 700;
-            font-size: 0.88rem;
-        }
-        .budget-table .summary-total td.money {
-            font-family: 'IBM Plex Mono', monospace;
-            color: white;
-        }
-        .budget-table .summary-estimate td {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            background: #fafbfc;
-        }
-
-        /* Project header bar */
-        .project-header-bar {
-            background: var(--navy);
-            color: white;
-            padding: 1rem 1.25rem;
-            border-radius: var(--radius) var(--radius) 0 0;
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-        .phb-left { flex: 1; min-width: 0; }
-        .phb-name {
-            font-size: 1.1rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            margin-bottom: 0.15rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .phb-address {
-            font-size: 0.8rem;
-            color: rgba(255,255,255,0.5);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .phb-meta {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.78rem;
-            color: rgba(255,255,255,0.6);
-            flex-shrink: 0;
-        }
-        .phb-meta .phb-tag {
-            background: rgba(255,255,255,0.1);
-            padding: 0.2rem 0.55rem;
-            border-radius: 4px;
-            font-weight: 500;
-            font-size: 0.72rem;
-            white-space: nowrap;
-        }
-        .phb-meta .phb-value {
-            font-family: 'IBM Plex Mono', monospace;
-            color: var(--orange);
-            font-weight: 600;
-        }
-        .phb-meta .phb-dot { color: rgba(255,255,255,0.25); }
-        .phb-actions {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-shrink: 0;
-        }
-        .phb-actions .reset-link {
-            color: rgba(255,255,255,0.5);
-            font-size: 0.78rem;
-            margin-top: 0;
-        }
-        .phb-actions .reset-link:hover { color: white; }
-
-        /* Summary cards */
-        .summary-cards {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 0;
-            border-left: 1px solid var(--border-light);
-            border-right: 1px solid var(--border-light);
-        }
-        .summary-card {
-            background: var(--card);
-            padding: 1rem 1.15rem;
-            border-right: 1px solid var(--border-light);
-            border-bottom: 1px solid var(--border-light);
-            min-height: 160px;
-        }
-        .summary-card:last-child { border-right: none; }
-        .summary-card h3 {
-            font-size: 0.72rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            margin-bottom: 0.7rem;
-        }
-        .snapshot-item {
-            display: flex;
-            align-items: baseline;
-            gap: 0.4rem;
-            padding: 0.2rem 0;
-            font-size: 0.82rem;
-        }
-        .snapshot-item .arrow { color: var(--orange); font-size: 0.7rem; flex-shrink: 0; }
-        .snapshot-item .snap-label { color: var(--text-secondary); }
-        .snapshot-item .snap-value { font-weight: 600; color: var(--text); }
-        .summary-bullet {
-            display: flex;
-            gap: 0.4rem;
-            padding: 0.2rem 0;
-            font-size: 0.82rem;
-            color: var(--text-secondary);
-            line-height: 1.4;
-        }
-        .summary-bullet .arrow {
-            color: var(--orange);
-            font-size: 0.7rem;
-            flex-shrink: 0;
-            margin-top: 0.2rem;
-        }
-        .estimate-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 0.2rem 0;
-            font-size: 0.8rem;
-        }
-        .estimate-row .est-label { color: var(--text-secondary); }
-        .estimate-row .est-value {
-            font-family: 'IBM Plex Mono', monospace;
-            font-weight: 500;
-            color: var(--text);
-            font-size: 0.78rem;
-        }
-        .estimate-divider { border-top: 1px solid var(--border-light); margin: 0.4rem 0; }
-        .estimate-row.total .est-label { font-weight: 700; color: var(--text); }
-        .estimate-row.total .est-value {
-            font-weight: 700;
-            color: var(--orange);
-            font-size: 0.88rem;
-        }
-
-        /* Stats mini-bar */
-        .stats-bar {
-            display: flex;
-            gap: 1.5rem;
-            padding: 0.5rem 1.25rem;
-            background: var(--bg);
-            border-left: 1px solid var(--border-light);
-            border-right: 1px solid var(--border-light);
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-        .stats-bar .sb-item span { font-weight: 600; color: var(--text); }
-
-        /* Scope, flags, scalars */
-        .scope-trade { margin-bottom: 0.75rem; }
-        .scope-trade-header {
-            font-weight: 600;
-            color: var(--navy);
-            padding: 0.4rem 0;
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-        }
-        .scope-trade-header:hover { color: var(--orange); }
-        .scope-items {
-            padding: 0.3rem 0 0.3rem 1.2rem;
-            font-size: 0.82rem;
-            line-height: 1.5;
-            color: var(--text-muted);
-        }
-        .scope-items li { margin-bottom: 0.15rem; }
-
-        .flag-item {
-            padding: 0.5rem 0.75rem;
-            border-left: 3px solid var(--border);
-            margin-bottom: 0.5rem;
-            font-size: 0.82rem;
-            background: var(--bg);
-            border-radius: 0 6px 6px 0;
-        }
-        .flag-item.HIGH { border-left-color: #dc3545; }
-        .flag-item.MEDIUM { border-left-color: #ffc107; }
-        .flag-item.LOW { border-left-color: #17a2b8; }
-        .flag-severity { font-weight: 700; margin-right: 0.5rem; font-size: 0.75rem; }
-
-        .scalars-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-        .scalars-table th {
-            background: var(--navy);
-            color: white;
-            padding: 0.5rem 0.6rem;
-            text-align: left;
-        }
-        .scalars-table td {
-            padding: 0.45rem 0.6rem;
-            border-bottom: 1px solid var(--border);
-        }
-        .conf-high { color: #28a745; font-weight: 600; }
-        .conf-medium { color: #ffc107; font-weight: 600; }
-        .conf-low { color: #dc3545; font-weight: 600; }
-
-        /* Error card */
-        .error-card {
-            background: #fdf0ef;
-            border: 1px solid var(--error);
-            border-radius: 10px;
-            padding: 1.25rem;
-            color: var(--error);
-            display: none;
-        }
-
-        .error-card.active { display: block; }
-
-        /* Reset link */
-        .reset-link {
-            display: inline-block;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            cursor: pointer;
-            text-decoration: underline;
-        }
-
-        .reset-link:hover { color: var(--text); }
-
-        /* ─── Right Panel: Ask BuildBrain ─── */
-        .right-panel {
-            width: 320px;
-            min-width: 320px;
-            background: var(--card);
-            border-left: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .chat-header {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            flex-shrink: 0;
-        }
-
-        .chat-header-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--success);
-            border-radius: 50%;
-        }
-
-        .chat-header h3 {
-            font-size: 0.88rem;
-            font-weight: 700;
-            color: var(--navy);
-        }
-
-        .chat-header .chat-model {
-            margin-left: auto;
-            font-size: 0.65rem;
-            color: var(--text-muted);
-            background: var(--bg);
-            padding: 0.15rem 0.4rem;
-            border-radius: 3px;
-        }
-
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0.75rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .chat-welcome {
-            text-align: center;
-            padding: 2rem 1rem;
-            color: var(--text-muted);
-            font-size: 0.82rem;
-            line-height: 1.5;
-        }
-
-        .chat-welcome .cw-icon {
-            font-size: 2rem;
-            opacity: 0.3;
-            margin-bottom: 0.5rem;
-        }
-
-        .chat-msg {
-            max-width: 92%;
-            padding: 0.55rem 0.75rem;
-            border-radius: 10px;
-            font-size: 0.82rem;
-            line-height: 1.5;
-            word-wrap: break-word;
-        }
-
-        .chat-msg.user {
-            background: var(--navy);
-            color: white;
-            align-self: flex-end;
-            border-bottom-right-radius: 3px;
-        }
-
-        .chat-msg.assistant {
-            background: var(--bg);
-            color: var(--text);
-            align-self: flex-start;
-            border-bottom-left-radius: 3px;
-        }
-
-        .chat-msg.typing {
-            background: var(--bg);
-            color: var(--text-muted);
-            align-self: flex-start;
-            border-bottom-left-radius: 3px;
-            font-style: italic;
-        }
-
-        .typing-dots::after {
-            content: '';
-            animation: dots 1.2s steps(4, end) infinite;
-        }
-
-        @keyframes dots {
-            0% { content: ''; }
-            25% { content: '.'; }
-            50% { content: '..'; }
-            75% { content: '...'; }
-        }
-
-        .chat-input-area {
-            padding: 0.65rem;
-            border-top: 1px solid var(--border);
-            display: flex;
-            gap: 0.4rem;
-            flex-shrink: 0;
-        }
-
-        .chat-input {
-            flex: 1;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 0.5rem 0.65rem;
-            font-size: 0.82rem;
-            font-family: inherit;
-            color: var(--text);
-            resize: none;
-            outline: none;
-            min-height: 36px;
-            max-height: 100px;
-        }
-
-        .chat-input:focus { border-color: var(--orange); }
-
-        .chat-input::placeholder { color: var(--text-muted); }
-
-        .chat-send-btn {
-            background: var(--orange);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 0 0.75rem;
-            cursor: pointer;
-            font-size: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.15s;
-            flex-shrink: 0;
-        }
-
-        .chat-send-btn:hover:not(:disabled) { background: var(--orange-hover); }
-        .chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BuildBrain</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+    --navy:#0f1923;--navy-mid:#1a2e3d;--navy-border:#263d52;
+    --orange:#E87722;--orange-dk:#c9621a;
+    --white:#ffffff;--gray-50:#f8f9fa;--gray-100:#f3f4f6;--gray-200:#e5e7eb;
+    --gray-400:#9ca3af;--gray-700:#374151;--gray-900:#111827;
+    --green:#10b981;--amber:#f59e0b;--red:#ef4444;
+    --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',system-ui,sans-serif;
+}
+body{font-family:var(--sans);background:var(--gray-50);color:var(--gray-900);height:100vh;overflow:hidden;display:flex}
+
+/* ═══ LEFT PANEL ═══ */
+.lp{width:30%;min-width:280px;max-width:380px;background:var(--navy);color:rgba(255,255,255,.85);display:flex;flex-direction:column;overflow:hidden}
+.lp-brand{padding:1.1rem 1.25rem;display:flex;align-items:center;gap:.6rem;border-bottom:1px solid var(--navy-border);flex-shrink:0}
+.lp-logo{width:28px;height:28px;background:var(--orange);border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;color:var(--white)}
+.lp-brand h1{font-size:1.1rem;font-weight:700;letter-spacing:-.02em;color:var(--white)}
+.lp-brand h1 span{color:var(--orange)}
+.lp-scroll{flex:1;overflow-y:auto;padding:.75rem 1rem}
+.lp-section{margin-bottom:1rem}
+.lp-section-hdr{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.35);margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
+.lp-section-hdr .badge{background:var(--red);color:var(--white);font-size:.6rem;padding:.1rem .35rem;border-radius:3px;font-weight:700}
+
+/* Dropzone */
+.dropzone{border:2px dashed rgba(255,255,255,.12);border-radius:8px;padding:1.5rem .75rem;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:.5rem}
+.dropzone:hover,.dropzone.dragover{border-color:var(--orange);background:rgba(232,119,34,.06)}
+.dropzone .dz-icon{font-size:2rem;opacity:.3;margin-bottom:.3rem}
+.dropzone h2{font-size:.82rem;font-weight:600;color:rgba(255,255,255,.75);margin-bottom:.15rem}
+.dropzone p{font-size:.68rem;color:rgba(255,255,255,.3);line-height:1.3}
+
+/* File list */
+.file-list{display:flex;flex-direction:column;gap:.3rem}
+.file-item{display:flex;align-items:center;gap:.4rem;padding:.35rem .5rem;background:var(--navy-mid);border:1px solid var(--navy-border);border-radius:5px;font-size:.75rem}
+.file-item .fi-icon{opacity:.3;font-size:.8rem}
+.file-item .fi-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(255,255,255,.75)}
+.file-item .fi-size{color:rgba(255,255,255,.3);font-size:.65rem;font-family:var(--mono)}
+.file-item .fi-rm{background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;opacity:.5;padding:0 .1rem}
+.file-item .fi-rm:hover{opacity:1}
+
+/* Buyout */
+.buyout-row{display:flex;align-items:center;gap:.4rem;padding:.4rem .5rem;background:var(--navy-mid);border:1.5px dashed rgba(255,255,255,.1);border-radius:6px;cursor:pointer;transition:all .2s;font-size:.75rem;margin-top:.4rem}
+.buyout-row:hover{border-color:var(--orange)}
+.buyout-row .br-icon{opacity:.35}
+.buyout-row .br-label{color:rgba(255,255,255,.5);flex:1}
+.buyout-row .br-name{color:var(--green);font-weight:500;font-size:.72rem}
+.buyout-row .br-rm{background:none;border:none;color:var(--red);cursor:pointer;font-size:.9rem;opacity:.5}
+
+/* Project status */
+.lp-proj-name{font-size:.95rem;font-weight:700;color:var(--white);margin-bottom:.15rem;cursor:text}
+.lp-proj-addr{font-size:.72rem;color:rgba(255,255,255,.4);margin-bottom:.5rem}
+.status-badge{display:inline-block;padding:.15rem .5rem;border-radius:3px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.status-processing{background:rgba(245,158,11,.15);color:var(--amber)}
+.status-review{background:rgba(232,119,34,.15);color:var(--orange)}
+.status-complete{background:rgba(16,185,129,.15);color:var(--green)}
+.lp-progress-text{font-size:.72rem;color:rgba(255,255,255,.45);margin-top:.35rem;font-family:var(--mono)}
+
+/* Confirmed scalars */
+.scalar-compact{width:100%}
+.scalar-compact tr{border-bottom:1px solid var(--navy-border)}
+.scalar-compact td{padding:.25rem 0;font-size:.75rem}
+.scalar-compact .sc-label{color:rgba(255,255,255,.45);padding-right:.6rem}
+.scalar-compact .sc-val{font-family:var(--mono);font-weight:500;color:rgba(255,255,255,.85)}
+.scalar-compact .sc-conf{font-size:.7rem;text-align:right;padding-left:.3rem}
+.sc-dot{display:inline-block;width:7px;height:7px;border-radius:50%}
+.sc-dot.high{background:var(--green)}.sc-dot.medium{background:var(--amber)}.sc-dot.low{background:var(--gray-400)}
+.lp-edit-link{font-size:.72rem;color:var(--orange);cursor:pointer;margin-top:.35rem;display:inline-block}
+.lp-edit-link:hover{text-decoration:underline}
+
+/* Confidence */
+.conf-pct{font-size:1.4rem;font-weight:700;color:var(--white);font-family:var(--mono);margin-bottom:.4rem}
+.conf-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin-bottom:.35rem}
+.conf-bar .cb-high{background:var(--green)}.conf-bar .cb-medium{background:var(--amber)}.conf-bar .cb-low{background:var(--gray-400)}
+.conf-legend{display:flex;gap:.8rem;font-size:.65rem;color:rgba(255,255,255,.45)}
+.conf-legend span::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:.25rem;vertical-align:middle}
+.conf-legend .cl-high::before{background:var(--green)}.conf-legend .cl-medium::before{background:var(--amber)}.conf-legend .cl-low::before{background:var(--gray-400)}
+
+/* Flags in sidebar */
+.flag-mini{padding:.35rem .5rem;border-left:3px solid var(--gray-400);margin-bottom:.3rem;font-size:.72rem;color:rgba(255,255,255,.6);cursor:pointer;border-radius:0 4px 4px 0;background:rgba(255,255,255,.03);transition:background .15s}
+.flag-mini:hover{background:rgba(255,255,255,.06)}
+.flag-mini.HIGH{border-left-color:var(--red)}.flag-mini.MEDIUM{border-left-color:var(--amber)}.flag-mini.LOW{border-left-color:#3b82f6}
+.flag-mini .fm-sev{font-weight:700;font-size:.62rem;margin-right:.3rem}
+.flag-mini .fm-detail{display:none;margin-top:.25rem;font-size:.68rem;color:rgba(255,255,255,.4)}
+.flag-mini.expanded .fm-detail{display:block}
+
+/* Actions */
+.lp-actions{padding:.75rem 1rem;border-top:1px solid var(--navy-border);flex-shrink:0;display:flex;flex-direction:column;gap:.4rem}
+.btn-primary{width:100%;background:var(--orange);color:var(--white);border:none;padding:.6rem;font-size:.85rem;font-weight:600;border-radius:6px;cursor:pointer;font-family:var(--sans);transition:background .15s}
+.btn-primary:hover:not(:disabled){background:var(--orange-dk)}.btn-primary:disabled{opacity:.45;cursor:not-allowed}
+.btn-ghost{width:100%;background:none;border:1px solid var(--navy-border);color:rgba(255,255,255,.5);padding:.5rem;font-size:.8rem;font-weight:500;border-radius:6px;cursor:pointer;font-family:var(--sans);transition:all .15s}
+.btn-ghost:hover{border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.8)}
+
+/* ═══ RIGHT PANEL ═══ */
+.rp{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--white)}
+
+/* Tab bar */
+.tab-bar{display:flex;border-bottom:2px solid var(--gray-200);padding:0 1.5rem;flex-shrink:0;background:var(--white)}
+.tab-bar button{background:none;border:none;padding:.7rem 1rem;font-size:.82rem;font-weight:600;color:var(--gray-400);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-2px;font-family:var(--sans);transition:color .15s;position:relative}
+.tab-bar button.active{color:var(--gray-900);border-bottom-color:var(--orange)}
+.tab-bar button:hover{color:var(--gray-700)}
+.tab-bar .tab-dot{position:absolute;top:8px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--orange);display:none}
+
+/* Right panel content */
+.rp-body{flex:1;overflow-y:auto}
+.rp-state{display:none;height:100%}
+.rp-state.active{display:flex;flex-direction:column}
+.tab-panel{display:none;padding:1.5rem}
+.tab-panel.active{display:block}
+
+/* Idle */
+.rp-idle{align-items:center;justify-content:center;text-align:center;padding:3rem;color:var(--gray-400)}
+.rp-idle .ri-icon{font-size:3.5rem;opacity:.2;margin-bottom:1rem}
+.rp-idle h2{font-size:1.15rem;font-weight:600;color:var(--gray-700);margin-bottom:.35rem}
+.rp-idle p{font-size:.88rem;max-width:380px;line-height:1.5}
+
+/* Processing */
+.rp-processing{padding:2rem}
+.proc-center{text-align:center;margin-bottom:1.5rem}
+.proc-logo{font-size:2.5rem;animation:pulse 2s ease-in-out infinite;margin-bottom:.5rem}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.proc-title{font-size:1.05rem;font-weight:600;color:var(--gray-900)}
+.proc-log{background:var(--gray-900);border-radius:8px;padding:1rem;max-height:380px;overflow-y:auto;font-family:var(--mono);font-size:.75rem;line-height:1.7;color:var(--gray-400)}
+.proc-log .pl-text{color:var(--gray-400)}.proc-log .pl-image{color:#60a5fa}
+.proc-log .pl-warn{color:var(--amber)}.proc-log .pl-done{color:var(--green)}
+.proc-log .pl-summary{color:var(--white);font-weight:600}
+.proc-counters{display:flex;gap:1.5rem;margin-top:.75rem;font-size:.75rem;color:var(--gray-400);font-family:var(--mono)}
+.proc-counters span b{color:var(--gray-700);font-weight:600}
+
+/* Pre-check */
+.rp-precheck{padding:2rem}
+.pc-card{background:var(--white);border:2px solid var(--orange);border-radius:10px;padding:1.5rem;max-width:640px;margin:0 auto}
+.pc-title{font-size:1.05rem;font-weight:700;color:var(--gray-900);margin-bottom:.2rem}
+.pc-sub{font-size:.82rem;color:var(--gray-400);margin-bottom:1rem}
+.pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.pc-field{display:flex;flex-direction:column;gap:.2rem}
+.pc-field.full{grid-column:1/-1}
+.pc-field label{font-size:.72rem;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.03em}
+.pc-field input,.pc-field select{padding:.45rem .6rem;border:1px solid var(--gray-200);border-radius:5px;font-size:.88rem;font-family:var(--sans);color:var(--gray-900);background:var(--gray-50)}
+.pc-field input:focus,.pc-field select:focus{outline:none;border-color:var(--orange)}
+.pc-conf{display:inline-block;padding:.12rem .4rem;border-radius:3px;font-size:.7rem;font-weight:600;text-transform:uppercase}
+.pc-conf-high{background:#d1fae5;color:#059669}.pc-conf-medium{background:#fef3c7;color:#d97706}.pc-conf-low{background:#fee2e2;color:#dc2626}
+.pc-warn{margin-top:.75rem;padding:.5rem .7rem;background:#fef3c7;border:1px solid var(--amber);border-radius:5px;font-size:.78rem;color:#92400e}
+.pc-actions{display:flex;gap:.6rem;justify-content:center;margin-top:1.25rem}
+.pc-back{background:none;border:1.5px solid var(--gray-200);padding:.6rem 1.25rem;font-size:.88rem;font-weight:500;border-radius:6px;cursor:pointer;color:var(--gray-400);font-family:var(--sans)}
+.pc-back:hover{border-color:var(--gray-400);color:var(--gray-700)}
+
+/* ═══ TAB: EXTRACTION ═══ */
+.ext-section-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-400);margin-bottom:.75rem;margin-top:1.5rem}
+.ext-section-title:first-child{margin-top:0}
+.ext-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.75rem}
+.ext-card{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:8px;padding:.85rem}
+.ext-card-trade{font-weight:600;font-size:.88rem;color:var(--gray-900);margin-bottom:.15rem}
+.ext-card-div{font-size:.68rem;color:var(--gray-400);margin-bottom:.4rem}
+.ext-card-scope{font-size:.78rem;color:var(--gray-700);line-height:1.4}
+.ext-card-scope li{margin-bottom:.1rem}
+.ext-card-src{font-size:.65rem;color:var(--gray-400);margin-top:.4rem;font-family:var(--mono)}
+
+/* ═══ TAB: SCALARS ═══ */
+.sg-banner{padding:.6rem .85rem;background:#fef3c7;border:1px solid var(--amber);border-radius:6px;font-size:.82rem;color:#92400e;margin-bottom:1rem}
+.sg-banner-critical{background:#fee2e2;border-color:var(--red);color:#991b1b}
+.sg-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;max-width:680px}
+.sg-field{display:flex;flex-direction:column;gap:.2rem}
+.sg-field.full{grid-column:1/-1}
+.sg-field label{font-size:.72rem;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;gap:.35rem}
+.sg-field label .sg-conf-badge{font-size:.58rem;padding:.08rem .3rem;border-radius:2px;font-weight:700}
+.sg-conf-badge.high{background:#d1fae5;color:#059669}.sg-conf-badge.medium{background:#fef3c7;color:#d97706}.sg-conf-badge.low{background:#fee2e2;color:#dc2626}
+.sg-field input,.sg-field select{padding:.45rem .6rem;border:1px solid var(--gray-200);border-radius:5px;font-size:.88rem;font-family:var(--sans);color:var(--gray-900);background:var(--gray-50)}
+.sg-field input.low-conf{border-color:var(--red);background:#fff5f5}
+.sg-field input:focus,.sg-field select:focus{outline:none;border-color:var(--orange)}
+.sg-group-hdr{grid-column:1/-1;font-size:.82rem;font-weight:700;color:var(--gray-900);border-bottom:2px solid var(--gray-200);padding-bottom:.35rem;margin-top:.5rem}
+.sg-actions{margin-top:1.25rem}
+
+/* ═══ TAB: PRICING ═══ */
+.price-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.price-table th{background:var(--gray-900);color:var(--white);padding:.5rem .6rem;text-align:left;font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.03em;position:sticky;top:0;z-index:2}
+.price-table th.col-r{text-align:right}
+.price-table td{padding:.45rem .6rem;border-bottom:1px solid var(--gray-200);vertical-align:middle}
+.price-table td.money{text-align:right;font-family:var(--mono);font-size:.78rem;white-space:nowrap}
+/* Source badges */
+.src-badge{display:inline-block;padding:.1rem .35rem;border-radius:3px;font-size:.6rem;font-weight:600;text-transform:uppercase}
+.src-calc{background:#dbeafe;color:#2563eb}.src-extract{background:#fef3c7;color:#d97706}.src-quote{background:#d1fae5;color:#059669}.src-placeholder{background:#fee2e2;color:#dc2626}
+/* Trade rows */
+.ptr-trade td{cursor:pointer}.ptr-trade:hover td{background:var(--gray-50)}
+.ptr-trade .pt-expand{color:var(--gray-400);font-size:.7rem;margin-right:.4rem;transition:transform .15s;display:inline-block}
+.ptr-trade.expanded .pt-expand{transform:rotate(90deg)}
+/* Detail rows */
+.ptr-detail{display:none}
+.ptr-detail.visible{display:table-row}
+.ptr-detail td{padding:0;background:var(--gray-50)}
+.detail-inner{padding:.5rem .8rem .5rem 2rem}
+.detail-table{width:100%;border-collapse:collapse;font-size:.72rem;margin:0}
+.detail-table th{background:var(--gray-200);color:var(--gray-700);padding:.3rem .4rem;font-weight:600;font-size:.65rem;text-transform:uppercase}
+.detail-table td{padding:.25rem .4rem;border-bottom:1px solid var(--gray-100)}
+.detail-table td.money{text-align:right;font-family:var(--mono)}
+/* Section rows */
+.ptr-section td{font-weight:700;background:var(--gray-100);border-top:2px solid var(--gray-200)}
+.ptr-markup td{font-size:.75rem;color:var(--gray-400);padding-left:2rem;background:var(--gray-50)}
+.ptr-total td{background:var(--navy);color:var(--white);font-weight:700;font-size:.88rem}
+.ptr-total td.money{font-family:var(--mono);color:var(--white)}
+.ptr-site td{font-weight:700;background:#e8f0fe;border-top:2px solid #b8ccf0}
+.ptr-grand td{background:var(--gray-900);color:var(--white);font-weight:700;font-size:.92rem}
+.ptr-grand td.money{font-family:var(--mono);color:var(--orange);font-size:.95rem}
+.ptr-range td{font-size:.78rem;color:var(--gray-400);background:var(--gray-50)}
+/* Estimate range bar */
+.range-bar{display:flex;align-items:center;gap:.75rem;padding:1rem 0;margin-top:.5rem}
+.range-low,.range-high{font-size:.78rem;font-family:var(--mono);color:var(--gray-400);white-space:nowrap}
+.range-track{flex:1;height:6px;background:var(--gray-200);border-radius:3px;position:relative}
+.range-dot{width:12px;height:12px;background:var(--orange);border-radius:50%;position:absolute;top:-3px;border:2px solid var(--white);box-shadow:0 1px 3px rgba(0,0,0,.2)}
+
+/* ═══ TAB: LINE ITEMS ═══ */
+.li-controls{display:flex;gap:.75rem;margin-bottom:1rem}
+.li-controls select,.li-controls input{padding:.4rem .6rem;border:1px solid var(--gray-200);border-radius:5px;font-size:.82rem;font-family:var(--sans);color:var(--gray-900)}
+.li-controls input{flex:1;max-width:300px}
+.li-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.li-table th{background:var(--gray-100);color:var(--gray-700);padding:.4rem .5rem;font-weight:600;font-size:.68rem;text-transform:uppercase;text-align:left;position:sticky;top:0;z-index:1}
+.li-table th.col-r{text-align:right}
+.li-table td{padding:.35rem .5rem;border-bottom:1px solid var(--gray-100);vertical-align:top}
+.li-table td.money{text-align:right;font-family:var(--mono);white-space:nowrap}
+.li-table tr:hover td{background:var(--gray-50)}
+
+/* ═══ TAB: EXPORT ═══ */
+.export-center{max-width:520px;margin:2rem auto;text-align:center}
+.export-check{font-size:3rem;margin-bottom:.5rem;opacity:.5}
+.export-title{font-size:1.15rem;font-weight:700;color:var(--gray-900);margin-bottom:.2rem}
+.export-proj{font-size:.88rem;color:var(--gray-400);margin-bottom:.15rem}
+.export-total{font-size:1.4rem;font-weight:700;font-family:var(--mono);color:var(--orange);margin-bottom:1.5rem}
+.export-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 2rem;font-size:.92rem;font-weight:600;border-radius:8px;cursor:pointer;font-family:var(--sans);border:none;transition:all .15s;margin-bottom:.5rem}
+.export-btn-primary{background:var(--orange);color:var(--white)}.export-btn-primary:hover{background:var(--orange-dk)}
+.export-btn-secondary{background:var(--gray-100);color:var(--gray-700);border:1px solid var(--gray-200)}.export-btn-secondary:hover{background:var(--gray-200)}
+.export-desc{font-size:.72rem;color:var(--gray-400);margin-bottom:1.5rem;line-height:1.4}
+/* Chat */
+.chat-section{text-align:left;margin-top:2rem;border-top:1px solid var(--gray-200);padding-top:1.5rem}
+.chat-section h4{font-size:.82rem;font-weight:600;color:var(--gray-700);margin-bottom:.5rem}
+.chat-msgs{max-height:250px;overflow-y:auto;display:flex;flex-direction:column;gap:.4rem;margin-bottom:.5rem}
+.chat-msg{max-width:88%;padding:.45rem .65rem;border-radius:8px;font-size:.8rem;line-height:1.45;word-wrap:break-word}
+.chat-msg.user{background:var(--navy);color:var(--white);align-self:flex-end;border-bottom-right-radius:2px}
+.chat-msg.assistant{background:var(--gray-100);color:var(--gray-900);align-self:flex-start;border-bottom-left-radius:2px}
+.chat-msg.typing{background:var(--gray-100);color:var(--gray-400);align-self:flex-start;font-style:italic}
+.typing-dots::after{content:'';animation:dots 1.2s steps(4,end) infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+.chat-row{display:flex;gap:.35rem}
+.chat-input{flex:1;border:1px solid var(--gray-200);border-radius:6px;padding:.45rem .6rem;font-size:.82rem;font-family:var(--sans);color:var(--gray-900);resize:none;outline:none;min-height:34px;max-height:80px}
+.chat-input:focus{border-color:var(--orange)}
+.chat-send{background:var(--orange);color:var(--white);border:none;border-radius:6px;padding:0 .7rem;cursor:pointer;font-size:.95rem}
+.chat-send:hover:not(:disabled){background:var(--orange-dk)}.chat-send:disabled{opacity:.35}
+
+/* Error */
+.error-card{background:#fef2f2;border:1px solid var(--red);border-radius:8px;padding:1rem;color:#991b1b;margin:1.5rem;display:none}
+.error-card.active{display:block}
+.error-card a{color:var(--red);cursor:pointer;text-decoration:underline;font-size:.82rem}
+
+/* Utility */
+.hidden{display:none!important}
+input[type=file]{display:none}
+</style>
 </head>
 <body>
 
-<header>
-    <div class="logo">B</div>
-    <h1>Build<span>Brain</span></h1>
-    <div class="subtitle">AI Construction Estimating</div>
-</header>
+<!-- ═══ LEFT PANEL ═══ -->
+<aside class="lp">
+    <div class="lp-brand">
+        <div class="lp-logo">B</div>
+        <h1>Build<span>Brain</span></h1>
+    </div>
+    <div class="lp-scroll">
 
-<div class="app-layout">
-
-    <!-- ─── Left Panel: Upload ─── -->
-    <aside class="left-panel">
-        <div class="left-panel-header">Documents</div>
-        <div class="left-panel-content">
-            <!-- Drop zone -->
+        <!-- Upload section -->
+        <div class="lp-section" id="lpUpload">
+            <div class="lp-section-hdr">Upload</div>
             <div class="dropzone" id="dropzone">
-                <div class="icon">&#128466;</div>
+                <div class="dz-icon">&#128466;</div>
                 <h2>Drop files here</h2>
-                <p>PDF, DOCX, XLSX, CSV, EML, images</p>
-                <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.eml,.jpg,.jpeg,.png,.tiff,.tif,.bmp,.webp,.txt,.rtf" multiple hidden>
+                <p>PDF, DOCX, XLSX, CSV, images</p>
+                <input type="file" id="fileInput" accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.eml,.jpg,.jpeg,.png,.tiff,.tif,.bmp,.webp,.txt,.rtf" multiple>
             </div>
-
-            <!-- File list -->
             <div class="file-list" id="fileList"></div>
-
-            <!-- Reference buyout -->
-            <div class="buyout-section" id="buyoutSection" title="Reference buyout spreadsheet">
-                <span class="buyout-icon">&#128200;</span>
-                <div class="buyout-text">
-                    <h3>Reference Buyout</h3>
-                    <p>Optional SOV mapping</p>
-                </div>
-                <span class="buyout-file-name" id="buyoutFileName"></span>
-                <button class="buyout-remove" id="buyoutRemove" style="display:none;" title="Remove">&times;</button>
-                <input type="file" id="buyoutInput" accept=".xlsx,.xls" hidden>
+            <div class="buyout-row" id="buyoutRow" title="Reference buyout spreadsheet">
+                <span class="br-icon">&#128200;</span>
+                <span class="br-label">Reference Buyout (optional)</span>
+                <span class="br-name" id="buyoutName"></span>
+                <button class="br-rm" id="buyoutRm" style="display:none">&times;</button>
+                <input type="file" id="buyoutInput" accept=".xlsx,.xls">
             </div>
         </div>
 
-        <!-- Submit button -->
-        <div class="submit-section" id="submitSection" style="display:none;">
-            <button class="submit-btn" id="submitBtn">Estimate Project</button>
+        <!-- Project Status (replaces upload after processing starts) -->
+        <div class="lp-section hidden" id="lpProject">
+            <div class="lp-section-hdr">Project</div>
+            <div class="lp-proj-name" id="lpProjName">-</div>
+            <div class="lp-proj-addr" id="lpProjAddr"></div>
+            <span class="status-badge status-processing" id="lpStatusBadge">Processing</span>
+            <div class="lp-progress-text" id="lpProgressText"></div>
         </div>
-    </aside>
 
-    <!-- ─── Center Panel: Work Area ─── -->
-    <main class="center-panel">
-        <div class="center-content">
-
-            <!-- Idle state -->
-            <div class="idle-state" id="idleState">
-                <div class="idle-icon">&#128736;</div>
-                <h2>Ready to estimate</h2>
-                <p>Upload construction documents in the left panel to generate a detailed cost estimate.</p>
-            </div>
-
-            <!-- Pre-check -->
-            <div class="precheck-section" id="precheckSection">
-                <div class="precheck-card">
-                    <div class="precheck-header">Project Pre-Check</div>
-                    <div class="precheck-subtitle">Review and adjust the detected project info before running full analysis.</div>
-                    <div class="precheck-grid">
-                        <div class="precheck-field full-width">
-                            <label>Project Name</label>
-                            <input type="text" id="pc_project_name" placeholder="Not detected">
-                        </div>
-                        <div class="precheck-field full-width">
-                            <label>Project Address</label>
-                            <input type="text" id="pc_project_address" placeholder="Not detected">
-                        </div>
-                        <div class="precheck-field">
-                            <label>Project Type</label>
-                            <select id="pc_project_type">
-                                <option value="single_family">Single Family</option>
-                                <option value="multi_family">Multi-Family</option>
-                                <option value="commercial">Commercial</option>
-                                <option value="mixed_use">Mixed Use</option>
-                                <option value="unknown">Unknown</option>
-                            </select>
-                        </div>
-                        <div class="precheck-field">
-                            <label>Construction Type</label>
-                            <select id="pc_construction_type">
-                                <option value="new_construction">New Construction</option>
-                                <option value="renovation">Renovation (1.35x)</option>
-                                <option value="gut_rehabilitation">Gut Rehabilitation (1.55x)</option>
-                                <option value="addition">Addition (1.20x)</option>
-                                <option value="unknown">Unknown</option>
-                            </select>
-                        </div>
-                        <div class="precheck-field">
-                            <label>Unit Count</label>
-                            <input type="number" id="pc_unit_count" min="1" placeholder="--">
-                        </div>
-                        <div class="precheck-field">
-                            <label>Floor Count</label>
-                            <input type="number" id="pc_floor_count" min="1" placeholder="--">
-                        </div>
-                        <div class="precheck-field">
-                            <label>Total Building SF</label>
-                            <input type="number" id="pc_total_building_sf" min="1" placeholder="--">
-                        </div>
-                        <div class="precheck-field">
-                            <label>Confidence</label>
-                            <span class="confidence-badge" id="pc_confidence">--</span>
-                        </div>
-                    </div>
-                    <div class="precheck-warning" id="pc_warning" style="display:none;"></div>
-                    <div class="precheck-actions">
-                        <button class="precheck-back-btn" id="precheckBack">Back</button>
-                        <button class="precheck-confirm-btn" id="precheckConfirm">Confirm &amp; Run Full Analysis</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Progress -->
-            <div class="progress-section" id="progressSection">
-                <div class="progress-card">
-                    <div class="progress-header">
-                        <div class="spinner" id="progressSpinner"></div>
-                        <span>Processing documents...</span>
-                    </div>
-                    <div class="progress-log" id="progressLog"></div>
-                </div>
-            </div>
-
-            <!-- Scalar Gate -->
-            <div class="scalar-gate-section" id="scalarGateSection">
-                <div class="scalar-gate-card">
-                    <div class="scalar-gate-header">Confirm Project Dimensions</div>
-                    <div class="scalar-gate-subtitle">
-                        Review extracted values before generating the pricing spreadsheet.
-                        Low-confidence values are highlighted &mdash; verify or override them.
-                    </div>
-                    <div class="scalar-gate-warning" id="sgWarning" style="display:none;"></div>
-                    <div class="scalar-gate-grid" id="scalarGateGrid"></div>
-                    <div class="scalar-gate-actions">
-                        <button class="precheck-back-btn" id="sgReset">Start Over</button>
-                        <button class="precheck-confirm-btn" id="sgConfirm">Confirm &amp; Generate Excel</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Results -->
-            <div class="results-section" id="resultsSection">
-                <div class="project-header-bar" id="projectHeaderBar">
-                    <div class="phb-left">
-                        <div class="phb-name" id="phbName">Project Name</div>
-                        <div class="phb-address" id="phbAddress">Address</div>
-                    </div>
-                    <div class="phb-meta" id="phbMeta"></div>
-                    <div class="phb-actions">
-                        <button class="download-btn" id="downloadBtn">&#11015; Download Excel</button>
-                        <span class="reset-link" id="resetLink">New project</span>
-                    </div>
-                </div>
-                <div class="summary-cards" id="summaryCards">
-                    <div class="summary-card" id="cardSnapshot"></div>
-                    <div class="summary-card" id="cardSummary"></div>
-                    <div class="summary-card" id="cardEstimate"></div>
-                </div>
-                <div class="stats-bar" id="statsGrid"></div>
-                <div class="results-card">
-                    <div class="results-tabs" id="resultsTabs">
-                        <button class="active" data-tab="budget">Budget</button>
-                        <button data-tab="scope">Scope Details</button>
-                        <button data-tab="flags">Flags</button>
-                        <button data-tab="scalars">Scalars</button>
-                    </div>
-                    <div class="tab-panel active" id="tab-budget"></div>
-                    <div class="tab-panel" id="tab-scope"></div>
-                    <div class="tab-panel" id="tab-flags"></div>
-                    <div class="tab-panel" id="tab-scalars"></div>
-                </div>
-            </div>
-
-            <!-- Error -->
-            <div class="error-card" id="errorCard">
-                <strong>Error:</strong> <span id="errorMsg"></span>
-                <div style="text-align:center;">
-                    <span class="reset-link" id="errorResetLink">Try again</span>
-                </div>
-            </div>
-
+        <!-- Confirmed Scalars -->
+        <div class="lp-section hidden" id="lpScalars">
+            <div class="lp-section-hdr">Confirmed Scalars</div>
+            <table class="scalar-compact" id="lpScalarTable"></table>
+            <span class="lp-edit-link" id="lpEditScalars">Edit Scalars</span>
         </div>
-    </main>
 
-    <!-- ─── Right Panel: Ask BuildBrain ─── -->
-    <aside class="right-panel">
-        <div class="chat-header">
-            <div class="chat-header-dot"></div>
-            <h3>Ask BuildBrain</h3>
-            <span class="chat-model">Haiku</span>
+        <!-- Extraction Confidence -->
+        <div class="lp-section hidden" id="lpConfidence">
+            <div class="lp-section-hdr">Extraction Confidence</div>
+            <div class="conf-pct" id="lpConfPct">--%</div>
+            <div class="conf-bar" id="lpConfBar"></div>
+            <div class="conf-legend" id="lpConfLegend"></div>
         </div>
-        <div class="chat-messages" id="chatMessages">
-            <div class="chat-welcome">
-                <div class="cw-icon">&#128172;</div>
-                Ask questions about your estimate, trades, pricing, or construction scope.
+
+        <!-- Flags -->
+        <div class="lp-section hidden" id="lpFlags">
+            <div class="lp-section-hdr">Flags <span class="badge hidden" id="lpFlagBadge">0</span></div>
+            <div id="lpFlagList" style="max-height:200px;overflow-y:auto"></div>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="lp-actions" id="lpActions">
+        <button class="btn-primary" id="btnAnalyze" style="display:none">Analyze Documents</button>
+        <button class="btn-primary hidden" id="btnRerun">Re-run Pricing</button>
+        <button class="btn-ghost hidden" id="btnNewProject">New Project</button>
+    </div>
+</aside>
+
+<!-- ═══ RIGHT PANEL ═══ -->
+<main class="rp">
+    <!-- Tab bar -->
+    <div class="tab-bar hidden" id="tabBar">
+        <button data-tab="extraction">Extraction</button>
+        <button data-tab="scalars">Scalars<span class="tab-dot"></span></button>
+        <button data-tab="pricing" class="active">Pricing</button>
+        <button data-tab="lineitems">Line Items</button>
+        <button data-tab="export">Export</button>
+    </div>
+
+    <div class="rp-body" id="rpBody">
+        <!-- Idle -->
+        <div class="rp-state rp-idle active" id="rpIdle">
+            <div class="ri-icon">&#128736;</div>
+            <h2>Ready to estimate</h2>
+            <p>Upload construction documents in the left panel, then click Analyze to generate a detailed cost estimate.</p>
+        </div>
+
+        <!-- Pre-check -->
+        <div class="rp-state rp-precheck" id="rpPrecheck">
+            <div class="pc-card">
+                <div class="pc-title">Project Pre-Check</div>
+                <div class="pc-sub">Review detected project info before running full analysis.</div>
+                <div class="pc-grid">
+                    <div class="pc-field full"><label>Project Name</label><input type="text" id="pc_project_name" placeholder="Not detected"></div>
+                    <div class="pc-field full"><label>Project Address</label><input type="text" id="pc_project_address" placeholder="Not detected"></div>
+                    <div class="pc-field"><label>Project Type</label>
+                        <select id="pc_project_type"><option value="single_family">Single Family</option><option value="multi_family">Multi-Family</option><option value="commercial">Commercial</option><option value="mixed_use">Mixed Use</option><option value="unknown">Unknown</option></select></div>
+                    <div class="pc-field"><label>Construction Type</label>
+                        <select id="pc_construction_type"><option value="new_construction">New Construction</option><option value="renovation">Renovation (1.35x)</option><option value="gut_rehabilitation">Gut Rehabilitation (1.55x)</option><option value="addition">Addition (1.20x)</option><option value="unknown">Unknown</option></select></div>
+                    <div class="pc-field"><label>Unit Count</label><input type="number" id="pc_unit_count" min="1" placeholder="--"></div>
+                    <div class="pc-field"><label>Floor Count</label><input type="number" id="pc_floor_count" min="1" placeholder="--"></div>
+                    <div class="pc-field"><label>Total Building SF</label><input type="number" id="pc_total_building_sf" min="1" placeholder="--"></div>
+                    <div class="pc-field"><label>Confidence</label><span class="pc-conf" id="pc_confidence">--</span></div>
+                </div>
+                <div class="pc-warn hidden" id="pc_warning"></div>
+                <div class="pc-actions">
+                    <button class="pc-back" id="pcBack">Back</button>
+                    <button class="btn-primary" id="pcConfirm" style="width:auto;padding:.6rem 1.5rem">Confirm &amp; Analyze</button>
+                </div>
             </div>
         </div>
-        <div class="chat-input-area">
-            <textarea class="chat-input" id="chatInput" placeholder="Ask about your estimate..." rows="1"></textarea>
-            <button class="chat-send-btn" id="chatSendBtn" title="Send">&#9654;</button>
-        </div>
-    </aside>
 
-</div>
+        <!-- Processing -->
+        <div class="rp-state rp-processing" id="rpProcessing">
+            <div class="proc-center">
+                <div class="proc-logo">&#128736;</div>
+                <div class="proc-title">Reading your documents...</div>
+            </div>
+            <div class="proc-log" id="procLog"></div>
+            <div class="proc-counters" id="procCounters">
+                <span><b id="cntPages">0</b> pages processed</span>
+                <span><b id="cntTrades">0</b> trades found</span>
+            </div>
+        </div>
+
+        <!-- Tab panels -->
+        <div class="tab-panel" id="tab-extraction"></div>
+        <div class="tab-panel" id="tab-scalars"></div>
+        <div class="tab-panel" id="tab-pricing"></div>
+        <div class="tab-panel" id="tab-lineitems"></div>
+        <div class="tab-panel" id="tab-export"></div>
+
+        <!-- Error -->
+        <div class="error-card" id="errorCard">
+            <strong>Error:</strong> <span id="errorMsg"></span><br>
+            <a id="errorRetry">Try again</a>
+        </div>
+    </div>
+</main>
 
 <script>
-(function() {
-    // ─── State ───
-    let selectedFiles = [];
-    let buyoutFile = null;
-    let currentJobId = null;
-    let confirmedPrecheck = null;
-    let chatBusy = false;
+(function(){
+/* ─── State ─── */
+let selectedFiles=[], buyoutFile=null, currentJobId=null, confirmedPrecheck=null, chatBusy=false;
+let _scalarData=null, _resultsData=null;
+let _procPages=0, _procTrades=0;
 
-    // ─── Elements ───
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('fileInput');
-    const fileList = document.getElementById('fileList');
-    const buyoutSection = document.getElementById('buyoutSection');
-    const buyoutInput = document.getElementById('buyoutInput');
-    const buyoutFileName = document.getElementById('buyoutFileName');
-    const buyoutRemove = document.getElementById('buyoutRemove');
-    const submitSection = document.getElementById('submitSection');
-    const submitBtn = document.getElementById('submitBtn');
-    const idleState = document.getElementById('idleState');
-    const precheckSection = document.getElementById('precheckSection');
-    const precheckBack = document.getElementById('precheckBack');
-    const precheckConfirm = document.getElementById('precheckConfirm');
-    const pcWarning = document.getElementById('pc_warning');
-    const pcConfidence = document.getElementById('pc_confidence');
-    const progressSection = document.getElementById('progressSection');
-    const progressLog = document.getElementById('progressLog');
-    const progressSpinner = document.getElementById('progressSpinner');
-    const resultsSection = document.getElementById('resultsSection');
-    const statsGrid = document.getElementById('statsGrid');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const errorCard = document.getElementById('errorCard');
-    const errorMsg = document.getElementById('errorMsg');
-    const resetLink = document.getElementById('resetLink');
-    const errorResetLink = document.getElementById('errorResetLink');
-    const scalarGateSection = document.getElementById('scalarGateSection');
-    const scalarGateGrid = document.getElementById('scalarGateGrid');
-    const sgWarning = document.getElementById('sgWarning');
-    const sgConfirm = document.getElementById('sgConfirm');
-    const sgReset = document.getElementById('sgReset');
-    const chatMessages = document.getElementById('chatMessages');
-    const chatInput = document.getElementById('chatInput');
-    const chatSendBtn = document.getElementById('chatSendBtn');
+/* ─── Elements ─── */
+const $=id=>document.getElementById(id);
+const dropzone=$('dropzone'), fileInput=$('fileInput'), fileList=$('fileList');
+const buyoutRow=$('buyoutRow'), buyoutInput=$('buyoutInput'), buyoutName=$('buyoutName'), buyoutRm=$('buyoutRm');
+const lpUpload=$('lpUpload'), lpProject=$('lpProject'), lpScalars=$('lpScalars'), lpConfidence=$('lpConfidence'), lpFlags=$('lpFlags');
+const lpProjName=$('lpProjName'), lpProjAddr=$('lpProjAddr'), lpStatusBadge=$('lpStatusBadge'), lpProgressText=$('lpProgressText');
+const btnAnalyze=$('btnAnalyze'), btnRerun=$('btnRerun'), btnNewProject=$('btnNewProject');
+const tabBar=$('tabBar'), rpBody=$('rpBody');
+const rpIdle=$('rpIdle'), rpPrecheck=$('rpPrecheck'), rpProcessing=$('rpProcessing');
+const procLog=$('procLog'), cntPages=$('cntPages'), cntTrades=$('cntTrades');
+const errorCard=$('errorCard'), errorMsg=$('errorMsg'), errorRetry=$('errorRetry');
 
-    // ─── Drag-and-drop ───
-    dropzone.addEventListener('click', () => fileInput.click());
+/* ─── Drag & Drop ─── */
+dropzone.addEventListener('click',()=>fileInput.click());
+dropzone.addEventListener('dragover',e=>{e.preventDefault();dropzone.classList.add('dragover')});
+dropzone.addEventListener('dragleave',()=>dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop',e=>{e.preventDefault();dropzone.classList.remove('dragover');
+    const ok=['.pdf','.docx','.doc','.xlsx','.xls','.csv','.eml','.jpg','.jpeg','.png','.tiff','.tif','.bmp','.webp','.txt','.rtf'];
+    addFiles(Array.from(e.dataTransfer.files).filter(f=>ok.includes('.'+f.name.split('.').pop().toLowerCase())));
+});
+fileInput.addEventListener('change',()=>{addFiles(Array.from(fileInput.files));fileInput.value=''});
 
-    dropzone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropzone.classList.add('dragover');
+/* Buyout */
+buyoutRow.addEventListener('click',e=>{if(e.target!==buyoutRm)buyoutInput.click()});
+buyoutInput.addEventListener('change',()=>{if(buyoutInput.files.length){buyoutFile=buyoutInput.files[0];buyoutName.textContent=buyoutFile.name;buyoutRm.style.display=''}buyoutInput.value=''});
+buyoutRm.addEventListener('click',e=>{e.stopPropagation();buyoutFile=null;buyoutName.textContent='';buyoutRm.style.display='none'});
+
+function addFiles(files){
+    for(const f of files)if(!selectedFiles.some(s=>s.name===f.name&&s.size===f.size))selectedFiles.push(f);
+    renderFileList();
+}
+function renderFileList(){
+    fileList.innerHTML='';
+    selectedFiles.forEach((f,i)=>{
+        const sz=f.size>1048576?(f.size/1048576).toFixed(1)+' MB':(f.size/1024).toFixed(0)+' KB';
+        const d=document.createElement('div');d.className='file-item';
+        d.innerHTML=`<span class="fi-icon">&#128196;</span><span class="fi-name">${esc(f.name)}</span><span class="fi-size">${sz}</span><button class="fi-rm" data-i="${i}">&times;</button>`;
+        fileList.appendChild(d);
     });
+    fileList.querySelectorAll('.fi-rm').forEach(b=>b.addEventListener('click',e=>{selectedFiles.splice(+e.target.dataset.i,1);renderFileList()}));
+    btnAnalyze.style.display=selectedFiles.length?'':'none';
+}
 
-    dropzone.addEventListener('dragleave', () => {
-        dropzone.classList.remove('dragover');
+/* ─── State transitions ─── */
+function showRpState(id){
+    document.querySelectorAll('.rp-state').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    if(id)document.getElementById(id).classList.add('active');
+}
+function showTab(name){
+    showRpState(null);
+    tabBar.classList.remove('hidden');
+    document.querySelectorAll('.tab-bar button').forEach(b=>{b.classList.toggle('active',b.dataset.tab===name)});
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    const panel=$('tab-'+name);if(panel)panel.classList.add('active');
+}
+
+/* Tab click */
+tabBar.addEventListener('click',e=>{const b=e.target.closest('button[data-tab]');if(b)showTab(b.dataset.tab)});
+
+/* ─── Pre-check ─── */
+btnAnalyze.addEventListener('click',async()=>{
+    if(!selectedFiles.length)return;
+    const hasPDFs=selectedFiles.some(f=>f.name.toLowerCase().endsWith('.pdf'));
+    if(!hasPDFs){runFullUpload();return}
+    btnAnalyze.disabled=true;btnAnalyze.textContent='Scanning...';
+    try{
+        const fd=new FormData();selectedFiles.forEach(f=>{if(f.name.toLowerCase().endsWith('.pdf'))fd.append('pdfs',f)});
+        const r=await fetch('/api/pre-check',{method:'POST',body:fd});const d=await r.json();
+        if(d.error&&!d.project_name){btnAnalyze.disabled=false;btnAnalyze.textContent='Analyze Documents';runFullUpload();return}
+        populatePrecheck(d);showRpState('rpPrecheck');tabBar.classList.add('hidden');
+    }catch(e){btnAnalyze.disabled=false;btnAnalyze.textContent='Analyze Documents';runFullUpload()}
+});
+
+function populatePrecheck(d){
+    $('pc_project_name').value=d.project_name||'';$('pc_project_address').value=d.project_address||'';
+    $('pc_project_type').value=d.project_type||'unknown';$('pc_construction_type').value=d.construction_type||'unknown';
+    $('pc_unit_count').value=d.unit_count||'';$('pc_floor_count').value=d.floor_count||'';$('pc_total_building_sf').value=d.total_building_sf||'';
+    const c=(d.confidence||'low').toLowerCase();const el=$('pc_confidence');el.textContent=c;el.className='pc-conf pc-conf-'+c;
+    const w=$('pc_warning');if(d.complexity_warning){w.textContent=d.complexity_warning;w.classList.remove('hidden')}else w.classList.add('hidden');
+}
+function readPrecheckValues(){return{
+    confirmed_project_name:$('pc_project_name').value,confirmed_project_address:$('pc_project_address').value,
+    confirmed_project_type:$('pc_project_type').value,confirmed_construction_type:$('pc_construction_type').value,
+    confirmed_unit_count:$('pc_unit_count').value,confirmed_floor_count:$('pc_floor_count').value,
+    confirmed_total_building_sf:$('pc_total_building_sf').value
+}}
+$('pcBack').addEventListener('click',()=>{showRpState('rpIdle');tabBar.classList.add('hidden');btnAnalyze.disabled=false;btnAnalyze.textContent='Analyze Documents'});
+$('pcConfirm').addEventListener('click',()=>{confirmedPrecheck=readPrecheckValues();runFullUpload()});
+
+/* ─── Full Upload + SSE ─── */
+async function runFullUpload(){
+    showRpState('rpProcessing');tabBar.classList.add('hidden');
+    lpUpload.classList.add('hidden');lpProject.classList.remove('hidden');
+    lpStatusBadge.textContent='PROCESSING';lpStatusBadge.className='status-badge status-processing';
+    lpProjName.textContent=confirmedPrecheck?confirmedPrecheck.confirmed_project_name||'Processing...':'Processing...';
+    lpProjAddr.textContent='';lpProgressText.textContent='';
+    procLog.innerHTML='';_procPages=0;_procTrades=0;cntPages.textContent='0';cntTrades.textContent='0';
+    btnAnalyze.style.display='none';
+
+    addProcEntry('Uploading files...','text');
+    const fd=new FormData();selectedFiles.forEach(f=>fd.append('pdfs',f));
+    if(buyoutFile)fd.append('buyout',buyoutFile);
+    if(confirmedPrecheck)for(const[k,v]of Object.entries(confirmedPrecheck))if(v)fd.append(k,v);
+
+    try{
+        const r=await fetch('/api/upload',{method:'POST',body:fd});const d=await r.json();
+        if(!r.ok)throw new Error(d.error||'Upload failed');
+        currentJobId=d.job_id;addProcEntry('Upload complete. Starting extraction...','done');
+        const es=new EventSource('/api/stream/'+currentJobId);
+        es.addEventListener('progress',e=>{const d=JSON.parse(e.data);addProcEntry(d.message);parseProcCounters(d.message)});
+        es.addEventListener('scalars_ready',e=>{const d=JSON.parse(e.data);_scalarData=d;onScalarsReady(d)});
+        es.addEventListener('done',e=>{es.close();onDone(JSON.parse(e.data))});
+        es.addEventListener('error',e=>{if(e.data){es.close();showError(JSON.parse(e.data).error)}else es.close()});
+        es.onerror=()=>es.close();
+    }catch(e){showError(e.message)}
+}
+
+function addProcEntry(text,type){
+    const cls=text.includes('[IMAGE]')||text.includes('[VISION]')?'pl-image':
+              text.includes('WARNING')||text.includes('⚠')?'pl-warn':
+              text.includes('✓')||text.includes('complete')?'pl-done':
+              type==='done'?'pl-done':type==='summary'?'pl-summary':'pl-text';
+    const d=document.createElement('div');d.className=cls;d.textContent=text;
+    procLog.appendChild(d);procLog.scrollTop=procLog.scrollHeight;
+    lpProgressText.textContent=text.substring(0,60);
+}
+function parseProcCounters(msg){
+    const pm=msg.match(/page\s+(\d+)/i);if(pm){_procPages=Math.max(_procPages,+pm[1]);cntPages.textContent=_procPages}
+    const tm=msg.match(/(\d+)\s+trades/i);if(tm){_procTrades=Math.max(_procTrades,+tm[1]);cntTrades.textContent=_procTrades}
+    if(msg.match(/\d+\s+pages/i)){const m2=msg.match(/(\d+)\s+pages/i);if(m2)cntPages.textContent=m2[1]}
+}
+
+/* ─── Scalar Gate → Scalars Tab ─── */
+const _SEL_OPTS={
+    project_type:[{v:'single_family',l:'Single Family'},{v:'multi_family',l:'Multi-Family'},{v:'commercial',l:'Commercial'},{v:'mixed_use',l:'Mixed Use'},{v:'unknown',l:'Unknown'}],
+    construction_type:[{v:'new_construction',l:'New Construction'},{v:'renovation',l:'Renovation (1.35x)'},{v:'gut_rehabilitation',l:'Gut Rehabilitation (1.55x)'},{v:'addition',l:'Addition (1.20x)'},{v:'unknown',l:'Unknown'}]
+};
+
+function onScalarsReady(data){
+    lpStatusBadge.textContent='REVIEW';lpStatusBadge.className='status-badge status-review';
+    // Build Scalars tab
+    buildScalarsTab(data);
+    // Show tab bar, switch to Scalars
+    showTab('scalars');
+}
+
+function buildScalarsTab(data){
+    let h='';
+    if(data.tsf_missing_warning) h+=`<div class="sg-banner sg-banner-critical">${esc(data.tsf_missing_warning)}</div>`;
+    else if(data.gate_required) h+='<div class="sg-banner">One or more values have low confidence. Please verify before generating.</div>';
+    else if(data.complexity_warning) h+=`<div class="sg-banner">${esc(data.complexity_warning)}</div>`;
+
+    h+='<div class="sg-grid" id="sgGrid">';
+    const fullKeys=['project_name','project_address'];
+    const mainS=data.scalars.filter(s=>!s.group),gcS=data.scalars.filter(s=>s.group==='gc_markup'),siteS=data.scalars.filter(s=>s.group==='site_work');
+
+    function field(s){
+        const fw=fullKeys.includes(s.key)?' full':'';
+        const lo=s.confidence==='low'?' low-conf':'';
+        const badge=`<span class="sg-conf-badge ${s.confidence}">${s.confidence}</span>`;
+        let inp;
+        if(_SEL_OPTS[s.key]){
+            const opts=_SEL_OPTS[s.key].map(o=>`<option value="${o.v}"${o.v===String(s.value)?' selected':''}>${o.l}</option>`).join('');
+            inp=`<select data-key="${s.key}"${lo?' class="low-conf"':''}>${opts}</select>`;
+        }else if(s.type==='float') inp=`<input type="number" data-key="${s.key}" class="${lo}" value="${s.value}" min="0" step="0.1" placeholder="--">`;
+        else if(s.type==='number') inp=`<input type="number" data-key="${s.key}" class="${lo}" value="${s.value}" min="0" placeholder="--">`;
+        else inp=`<input type="text" data-key="${s.key}" class="${lo}" value="${esc(String(s.value))}" placeholder="--">`;
+        return `<div class="sg-field${fw}"><label>${esc(s.label)} ${badge}</label>${inp}</div>`;
+    }
+    mainS.forEach(s=>{h+=field(s)});
+    if(gcS.length){h+='<div class="sg-group-hdr">GC Markup</div>';gcS.forEach(s=>{h+=field(s)})}
+    if(siteS.length){h+='<div class="sg-group-hdr">Site Work</div>';siteS.forEach(s=>{h+=field(s)})}
+    h+='</div>';
+    h+='<div class="sg-actions"><button class="btn-primary" id="sgConfirm" style="width:auto;padding:.6rem 2rem">Confirm Scalars &amp; Update Pricing</button></div>';
+    $('tab-scalars').innerHTML=h;
+    $('sgConfirm').addEventListener('click',confirmScalars);
+}
+
+async function confirmScalars(){
+    const scalars={};$('tab-scalars').querySelectorAll('[data-key]').forEach(el=>{scalars[el.dataset.key]=el.value});
+    showRpState('rpProcessing');tabBar.classList.add('hidden');
+    addProcEntry('Generating Excel with confirmed values...','text');
+    lpStatusBadge.textContent='PROCESSING';lpStatusBadge.className='status-badge status-processing';
+    try{
+        const r=await fetch('/api/confirm-scalars',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id:currentJobId,scalars})});
+        if(!r.ok){const e=await r.json();showError(e.error||'Failed to confirm')}
+    }catch(e){showError(e.message)}
+}
+
+/* ─── Done → Build all tabs ─── */
+function onDone(stats){
+    lpStatusBadge.textContent='COMPLETE';lpStatusBadge.className='status-badge status-complete';
+    lpProgressText.textContent='';
+    fetch('/api/results/'+currentJobId).then(r=>r.json()).then(data=>{
+        _resultsData=data;
+        updateLeftPanel(data);
+        buildExtractionTab(data);
+        buildPricingTab(data);
+        buildLineItemsTab(data);
+        buildExportTab(data,stats);
+        // If scalars tab not yet built from _scalarData, build read-only
+        if(!_scalarData)buildReadOnlyScalarsTab(data);
+        showTab('pricing');
+        // Show action buttons
+        btnRerun.classList.remove('hidden');btnNewProject.classList.remove('hidden');
+    }).catch(e=>console.error('Results error:',e));
+}
+
+/* ─── Update Left Panel after results ─── */
+function updateLeftPanel(data){
+    const gs=k=>{const s=(data.scalars||[]).find(x=>x.key===k);return s?String(s.value||''):''};
+    const tc=s=>s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    lpProjName.textContent=gs('project_name')||'Untitled Project';
+    lpProjAddr.textContent=gs('project_address')||'';
+
+    // Confirmed scalars
+    const scKeys=[['unit_count','Units'],['floor_count','Floors'],['total_building_sf','Total SF'],['project_type','Type'],['construction_type','Construction']];
+    let shtml='';
+    scKeys.forEach(([k,lbl])=>{
+        const s=(data.scalars||[]).find(x=>x.key===k);
+        const v=s?String(s.value||'\u2014'):'\u2014';const c=s?s.confidence:'low';
+        const dv=k==='total_building_sf'&&v!=='\u2014'?Number(v).toLocaleString()+' SF':
+                 (k==='project_type'||k==='construction_type')?tc(v):v;
+        shtml+=`<tr><td class="sc-label">${lbl}</td><td class="sc-val">${esc(dv)}</td><td class="sc-conf"><span class="sc-dot ${c}"></span></td></tr>`;
     });
+    $('lpScalarTable').innerHTML=shtml;lpScalars.classList.remove('hidden');
 
-    dropzone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropzone.classList.remove('dragover');
-        const supported = ['.pdf','.docx','.doc','.xlsx','.xls','.csv','.eml','.jpg','.jpeg','.png','.tiff','.tif','.bmp','.webp','.txt','.rtf'];
-        const files = Array.from(e.dataTransfer.files).filter(f => {
-            const ext = '.' + f.name.split('.').pop().toLowerCase();
-            return supported.includes(ext);
-        });
-        addFiles(files);
+    // Confidence
+    const allConf=(data.scalars||[]).map(s=>s.confidence);
+    const hi=allConf.filter(c=>c==='high').length,med=allConf.filter(c=>c==='medium').length,lo=allConf.filter(c=>c==='low').length;
+    const total=hi+med+lo||1;
+    const pct=Math.round((hi*1+med*.5)/total*100);
+    $('lpConfPct').textContent=pct+'% confidence';
+    $('lpConfBar').innerHTML=`<div class="cb-high" style="width:${hi/total*100}%"></div><div class="cb-medium" style="width:${med/total*100}%"></div><div class="cb-low" style="width:${lo/total*100}%"></div>`;
+    $('lpConfLegend').innerHTML=`<span class="cl-high">HIGH ${hi}</span><span class="cl-medium">MEDIUM ${med}</span><span class="cl-low">LOW ${lo}</span>`;
+    lpConfidence.classList.remove('hidden');
+
+    // Flags
+    const flags=data.flags||[];
+    const highCount=flags.filter(f=>f.severity==='HIGH').length;
+    const badge=$('lpFlagBadge');
+    if(highCount){badge.textContent=highCount;badge.classList.remove('hidden')}
+    let fhtml='';flags.forEach(f=>{
+        fhtml+=`<div class="flag-mini ${f.severity||''}" onclick="this.classList.toggle('expanded')">
+            <span class="fm-sev">${f.severity||'INFO'}</span>${esc(f.flag||'')}
+            <div class="fm-detail">${esc(f.detail||'')}</div></div>`;
     });
+    $('lpFlagList').innerHTML=fhtml||'<div style="font-size:.72rem;color:rgba(255,255,255,.3)">No flags</div>';
+    lpFlags.classList.remove('hidden');
+}
 
-    fileInput.addEventListener('change', () => {
-        addFiles(Array.from(fileInput.files));
-        fileInput.value = '';
+/* Edit scalars link */
+$('lpEditScalars').addEventListener('click',()=>{if(_scalarData)buildScalarsTab(_scalarData);showTab('scalars')});
+
+/* ─── Tab: Extraction ─── */
+function buildExtractionTab(data){
+    let h='<div class="ext-section-title">Trades Detected</div><div class="ext-cards">';
+    (data.scope_details||[]).forEach(sd=>{
+        const items=(sd.scope_items||[]).slice(0,3).map(s=>'<li>'+esc(s)+'</li>').join('');
+        const more=sd.scope_items.length>3?`<li style="color:var(--gray-400)">+${sd.scope_items.length-3} more...</li>`:'';
+        h+=`<div class="ext-card"><div class="ext-card-trade">${esc(sd.trade)}</div><div class="ext-card-div">CSI ${esc(sd.div)}</div><ul class="ext-card-scope">${items}${more}</ul></div>`;
     });
-
-    // ─── Buyout reference ───
-    buyoutSection.addEventListener('click', (e) => {
-        if (e.target !== buyoutRemove) buyoutInput.click();
-    });
-
-    buyoutInput.addEventListener('change', () => {
-        if (buyoutInput.files.length > 0) {
-            buyoutFile = buyoutInput.files[0];
-            buyoutFileName.textContent = buyoutFile.name;
-            buyoutRemove.style.display = '';
-        }
-        buyoutInput.value = '';
-    });
-
-    buyoutRemove.addEventListener('click', (e) => {
-        e.stopPropagation();
-        buyoutFile = null;
-        buyoutFileName.textContent = '';
-        buyoutRemove.style.display = 'none';
-    });
-
-    function addFiles(files) {
-        for (const f of files) {
-            if (!selectedFiles.some(sf => sf.name === f.name && sf.size === f.size)) {
-                selectedFiles.push(f);
-            }
-        }
-        renderFileList();
-    }
-
-    function renderFileList() {
-        fileList.innerHTML = '';
-        for (let i = 0; i < selectedFiles.length; i++) {
-            const f = selectedFiles[i];
-            const div = document.createElement('div');
-            div.className = 'file-item';
-
-            const sizeStr = f.size > 1048576
-                ? (f.size / 1048576).toFixed(1) + ' MB'
-                : (f.size / 1024).toFixed(0) + ' KB';
-
-            div.innerHTML = `
-                <span class="file-icon">&#128196;</span>
-                <span class="file-name">${escapeHtml(f.name)}</span>
-                <span class="file-size">${sizeStr}</span>
-                <button class="remove-btn" data-idx="${i}" title="Remove">&times;</button>
-            `;
-            fileList.appendChild(div);
-        }
-
-        fileList.querySelectorAll('.remove-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const idx = parseInt(e.target.getAttribute('data-idx'));
-                selectedFiles.splice(idx, 1);
-                renderFileList();
-            });
-        });
-
-        submitSection.style.display = selectedFiles.length > 0 ? '' : 'none';
-    }
-
-    // ─── Submit → Pre-check → Upload flow ───
-    submitBtn.addEventListener('click', async () => {
-        if (selectedFiles.length === 0) return;
-
-        const hasPDFs = selectedFiles.some(f => f.name.toLowerCase().endsWith('.pdf'));
-
-        if (!hasPDFs) {
-            runFullUpload();
-            return;
-        }
-
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Scanning...';
-
-        try {
-            const pcForm = new FormData();
-            for (const f of selectedFiles) {
-                if (f.name.toLowerCase().endsWith('.pdf')) {
-                    pcForm.append('pdfs', f);
-                }
-            }
-
-            const pcResp = await fetch('/api/pre-check', { method: 'POST', body: pcForm });
-            const pcData = await pcResp.json();
-
-            if (pcData.error && !pcData.project_name) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Estimate Project';
-                runFullUpload();
-                return;
-            }
-
-            populatePrecheck(pcData);
-            hideAllCenterStates();
-            precheckSection.classList.add('active');
-
-        } catch (err) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Estimate Project';
-            runFullUpload();
-        }
-    });
-
-    function populatePrecheck(data) {
-        document.getElementById('pc_project_name').value = data.project_name || '';
-        document.getElementById('pc_project_address').value = data.project_address || '';
-        document.getElementById('pc_project_type').value = data.project_type || 'unknown';
-        document.getElementById('pc_construction_type').value = data.construction_type || 'unknown';
-        document.getElementById('pc_unit_count').value = data.unit_count || '';
-        document.getElementById('pc_floor_count').value = data.floor_count || '';
-        document.getElementById('pc_total_building_sf').value = data.total_building_sf || '';
-
-        const conf = (data.confidence || 'low').toLowerCase();
-        pcConfidence.textContent = conf;
-        pcConfidence.className = 'confidence-badge confidence-' + conf;
-
-        if (data.complexity_warning) {
-            pcWarning.textContent = data.complexity_warning;
-            pcWarning.style.display = '';
-        } else {
-            pcWarning.style.display = 'none';
-        }
-    }
-
-    function readPrecheckValues() {
-        return {
-            confirmed_project_name: document.getElementById('pc_project_name').value,
-            confirmed_project_address: document.getElementById('pc_project_address').value,
-            confirmed_project_type: document.getElementById('pc_project_type').value,
-            confirmed_construction_type: document.getElementById('pc_construction_type').value,
-            confirmed_unit_count: document.getElementById('pc_unit_count').value,
-            confirmed_floor_count: document.getElementById('pc_floor_count').value,
-            confirmed_total_building_sf: document.getElementById('pc_total_building_sf').value,
-        };
-    }
-
-    precheckBack.addEventListener('click', () => {
-        precheckSection.classList.remove('active');
-        idleState.style.display = '';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Estimate Project';
-    });
-
-    precheckConfirm.addEventListener('click', () => {
-        confirmedPrecheck = readPrecheckValues();
-        precheckSection.classList.remove('active');
-        runFullUpload();
-    });
-
-    function hideAllCenterStates() {
-        idleState.style.display = 'none';
-        precheckSection.classList.remove('active');
-        progressSection.classList.remove('active');
-        scalarGateSection.classList.remove('active');
-        resultsSection.classList.remove('active');
-        errorCard.classList.remove('active');
-    }
-
-    // ─── Full upload with SSE ───
-    async function runFullUpload() {
-        hideAllCenterStates();
-        progressSection.classList.add('active');
-        progressLog.innerHTML = '';
-
-        addLogEntry('Uploading files...');
-
-        const formData = new FormData();
-        for (const f of selectedFiles) {
-            formData.append('pdfs', f);
-        }
-        if (buyoutFile) {
-            formData.append('buyout', buyoutFile);
-        }
-
-        if (confirmedPrecheck) {
-            for (const [key, val] of Object.entries(confirmedPrecheck)) {
-                if (val) formData.append(key, val);
-            }
-        }
-
-        try {
-            const uploadResp = await fetch('/api/upload', { method: 'POST', body: formData });
-            const uploadData = await uploadResp.json();
-
-            if (!uploadResp.ok) {
-                throw new Error(uploadData.error || 'Upload failed');
-            }
-
-            currentJobId = uploadData.job_id;
-            addLogEntry('Upload complete. Starting extraction...');
-
-            const evtSource = new EventSource('/api/stream/' + currentJobId);
-
-            evtSource.addEventListener('progress', (e) => {
-                const data = JSON.parse(e.data);
-                addLogEntry(data.message);
-            });
-
-            evtSource.addEventListener('scalars_ready', (e) => {
-                const data = JSON.parse(e.data);
-                showScalarGate(data);
-            });
-
-            evtSource.addEventListener('done', (e) => {
-                evtSource.close();
-                const stats = JSON.parse(e.data);
-                showResults(stats);
-            });
-
-            evtSource.addEventListener('error', (e) => {
-                if (e.data) {
-                    const data = JSON.parse(e.data);
-                    evtSource.close();
-                    showError(data.error);
-                } else {
-                    evtSource.close();
-                }
-            });
-
-            evtSource.onerror = () => {
-                evtSource.close();
-            };
-
-        } catch (err) {
-            showError(err.message);
-        }
-    }
-
-    // ─── Scalar Gate ───
-    const _SELECT_OPTIONS = {
-        project_type: [
-            { value: 'single_family', label: 'Single Family' },
-            { value: 'multi_family', label: 'Multi-Family' },
-            { value: 'commercial', label: 'Commercial' },
-            { value: 'mixed_use', label: 'Mixed Use' },
-            { value: 'unknown', label: 'Unknown' },
-        ],
-        construction_type: [
-            { value: 'new_construction', label: 'New Construction' },
-            { value: 'renovation', label: 'Renovation (1.35x)' },
-            { value: 'gut_rehabilitation', label: 'Gut Rehabilitation (1.55x)' },
-            { value: 'addition', label: 'Addition (1.20x)' },
-            { value: 'unknown', label: 'Unknown' },
-        ],
-    };
-
-    function showScalarGate(data) {
-        hideAllCenterStates();
-        scalarGateSection.classList.add('active');
-
-        if (data.tsf_missing_warning) {
-            sgWarning.textContent = data.tsf_missing_warning;
-            sgWarning.style.display = '';
-            sgWarning.style.background = '#fde8e8';
-            sgWarning.style.color = '#c0392b';
-            sgWarning.style.borderColor = '#e74c3c';
-        } else if (data.gate_required) {
-            sgWarning.textContent = 'One or more values have low confidence. Please verify before generating the spreadsheet.';
-            sgWarning.style.display = '';
-            sgWarning.style.background = '';
-            sgWarning.style.color = '';
-            sgWarning.style.borderColor = '';
-        } else if (data.complexity_warning) {
-            sgWarning.textContent = data.complexity_warning;
-            sgWarning.style.display = '';
-            sgWarning.style.background = '';
-            sgWarning.style.color = '';
-            sgWarning.style.borderColor = '';
-        } else {
-            sgWarning.style.display = 'none';
-        }
-
-        scalarGateGrid.innerHTML = '';
-        const fullWidthKeys = ['project_name', 'project_address'];
-
-        const mainScalars = data.scalars.filter(s => !s.group);
-        const gcScalars = data.scalars.filter(s => s.group === 'gc_markup');
-        const siteScalars = data.scalars.filter(s => s.group === 'site_work');
-
-        function renderScalarField(s) {
-            const div = document.createElement('div');
-            div.className = 'sg-field' + (fullWidthKeys.includes(s.key) ? ' full-width' : '');
-
-            const confClass = 'sg-conf sg-conf-' + s.confidence;
-            const confLabel = s.confidence;
-            const inputClass = s.confidence === 'low' ? ' sg-low-conf' : '';
-
-            let inputHtml;
-            if (_SELECT_OPTIONS[s.key]) {
-                const opts = _SELECT_OPTIONS[s.key]
-                    .map(o => `<option value="${o.value}"${o.value === String(s.value) ? ' selected' : ''}>${o.label}</option>`)
-                    .join('');
-                inputHtml = `<select id="sg_${s.key}" class="${inputClass}" data-key="${s.key}">${opts}</select>`;
-            } else if (s.type === 'float') {
-                inputHtml = `<input type="number" id="sg_${s.key}" class="${inputClass}" data-key="${s.key}" value="${s.value}" min="0" step="0.1" placeholder="--">`;
-            } else if (s.type === 'number') {
-                inputHtml = `<input type="number" id="sg_${s.key}" class="${inputClass}" data-key="${s.key}" value="${s.value}" min="0" placeholder="--">`;
-            } else {
-                inputHtml = `<input type="text" id="sg_${s.key}" class="${inputClass}" data-key="${s.key}" value="${escapeHtml(String(s.value))}" placeholder="--">`;
-            }
-
-            div.innerHTML = `
-                <label>${escapeHtml(s.label)} <span class="${confClass}">${confLabel}</span></label>
-                ${inputHtml}
-            `;
-            return div;
-        }
-
-        for (const s of mainScalars) {
-            scalarGateGrid.appendChild(renderScalarField(s));
-        }
-
-        if (gcScalars.length > 0) {
-            const gcHeader = document.createElement('div');
-            gcHeader.className = 'sg-field full-width';
-            gcHeader.innerHTML = '<label style="font-size:0.95rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border);padding-bottom:0.4rem;margin-top:0.5rem;">GC Markup</label>';
-            scalarGateGrid.appendChild(gcHeader);
-            for (const s of gcScalars) {
-                scalarGateGrid.appendChild(renderScalarField(s));
-            }
-        }
-
-        if (siteScalars.length > 0) {
-            const siteHeader = document.createElement('div');
-            siteHeader.className = 'sg-field full-width';
-            siteHeader.innerHTML = '<label style="font-size:0.95rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border);padding-bottom:0.4rem;margin-top:0.5rem;">Site Work</label>';
-            scalarGateGrid.appendChild(siteHeader);
-            for (const s of siteScalars) {
-                scalarGateGrid.appendChild(renderScalarField(s));
-            }
-        }
-    }
-
-    async function confirmScalars() {
-        const scalars = {};
-        scalarGateGrid.querySelectorAll('[data-key]').forEach(el => {
-            scalars[el.dataset.key] = el.value;
-        });
-
-        hideAllCenterStates();
-        progressSection.classList.add('active');
-        addLogEntry('Generating Excel with confirmed values...');
-
-        try {
-            const resp = await fetch('/api/confirm-scalars', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ job_id: currentJobId, scalars }),
-            });
-
-            if (!resp.ok) {
-                const err = await resp.json();
-                showError(err.error || 'Failed to confirm scalars');
-            }
-        } catch (err) {
-            showError(err.message);
-        }
-    }
-
-    sgConfirm.addEventListener('click', confirmScalars);
-    sgReset.addEventListener('click', resetUI);
-
-    // ─── Log & Results ───
-    function addLogEntry(text) {
-        const div = document.createElement('div');
-        div.className = 'entry';
-        div.textContent = text;
-        progressLog.appendChild(div);
-        progressLog.scrollTop = progressLog.scrollHeight;
-    }
-
-    function showResults(stats) {
-        hideAllCenterStates();
-        resultsSection.classList.add('active');
-
-        const totalCost = stats.total_cost !== undefined ? stats.total_cost.toFixed(4) : '\u2014';
-
-        statsGrid.innerHTML = `
-            <span class="sb-item"><span>${stats.total_pages || 0}</span> pages</span>
-            <span class="sb-item"><span>${stats.num_requirements || 0}</span> requirements</span>
-            <span class="sb-item"><span>${stats.num_trades || 0}</span> trades</span>
-            <span class="sb-item">cost: <span>$${totalCost}</span></span>
-            <span class="sb-item"><span>${((stats.input_tokens || 0) + (stats.output_tokens || 0)).toLocaleString()}</span> tokens</span>
-            <span class="sb-item"><span>${stats.api_calls || 0}</span> API calls</span>
-        `;
-
-        if (currentJobId) {
-            fetch('/api/results/' + currentJobId)
-                .then(r => r.json())
-                .then(data => {
-                    renderProjectHeader(data);
-                    renderResultsViewer(data);
-                })
-                .catch(err => console.error('Results viewer error:', err));
-        }
-    }
-
-    // Tab switching
-    document.getElementById('resultsTabs').addEventListener('click', e => {
-        const btn = e.target.closest('button[data-tab]');
-        if (!btn) return;
-        document.querySelectorAll('.results-tabs button').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    });
-
-    function fmt(n) { return n != null ? '$' + Math.round(n).toLocaleString() : '\u2014'; }
-
-    function renderProjectHeader(data) {
-        const getScalar = (key) => {
-            const s = (data.scalars || []).find(sc => sc.key === key);
-            return s ? String(s.value || '') : '';
-        };
-        const titleCase = (str) => str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-        const t = data.totals || {};
-
-        const name = getScalar('project_name') || 'Untitled Project';
-        const addr = getScalar('project_address') || '';
-        const pType = titleCase(getScalar('project_type') || 'unknown');
-        const cType = titleCase(getScalar('construction_type') || 'unknown');
-
-        document.getElementById('phbName').textContent = name;
-        document.getElementById('phbAddress').textContent = addr;
-        document.getElementById('phbMeta').innerHTML =
-            `<span class="phb-tag">${escapeHtml(pType)}</span>` +
-            `<span class="phb-dot">&middot;</span>` +
-            `<span class="phb-tag">${escapeHtml(cType)}</span>` +
-            `<span class="phb-dot">&middot;</span>` +
-            `<span>Est. Value: <span class="phb-value">${fmt(t.project_total)}</span></span>`;
-
-        // Card 1: Project Snapshot
-        const units = getScalar('unit_count');
-        const sf = getScalar('total_building_sf');
-        const floors = getScalar('floor_count');
-        const footprint = getScalar('footprint_sf');
-        const roof = getScalar('roof_type');
-
-        let snapHtml = '<h3>Project Snapshot</h3>';
-        const snapItems = [
-            ['Units', units ? Number(units).toLocaleString() : '\u2014'],
-            ['Total SF', sf ? Number(sf).toLocaleString() + ' SF' : '\u2014'],
-            ['Stories', floors || '\u2014'],
-            ['Footprint', footprint ? Number(footprint).toLocaleString() + ' SF' : '\u2014'],
-            ['Type', pType || '\u2014'],
-            ['Construction', cType || '\u2014'],
-            ['Roof', titleCase(roof || '\u2014')],
-        ];
-        for (const [label, val] of snapItems) {
-            snapHtml += `<div class="snapshot-item"><span class="arrow">\u25B8</span><span class="snap-label">${label}:</span> <span class="snap-value">${escapeHtml(val)}</span></div>`;
-        }
-        document.getElementById('cardSnapshot').innerHTML = snapHtml;
-
-        // Card 2: AI Project Summary
-        const bullets = [];
-        if (pType && units) bullets.push(`${pType} development with ${units} units`);
-        if (sf) bullets.push(`${Number(sf).toLocaleString()} SF total building area`);
-        if (floors && Number(floors) > 1) {
-            bullets.push(`${floors}-story building on ${footprint ? Number(footprint).toLocaleString() + ' SF' : 'unknown'} footprint`);
-        }
-        const flagDetails = (data.flags || []).map(f => (f.detail || '').toLowerCase()).join(' ');
-        if (flagDetails.includes('prevailing wage')) bullets.push('Prevailing wage requirements apply');
-        if (flagDetails.includes('bond')) bullets.push('Bond required');
-        if (cType && cType.toLowerCase() !== 'unknown') bullets.push(`${cType} project`);
-        const tradeCount = (data.divisions || []).reduce((n, d) => n + d.rows.length, 0);
-        const divCount = (data.divisions || []).length;
-        bullets.push(`${tradeCount} trades identified across ${divCount} CSI divisions`);
-        const highFlags = (data.flags || []).filter(f => f.severity === 'HIGH').length;
-        if (highFlags > 0) bullets.push(`${highFlags} high-severity flag${highFlags > 1 ? 's' : ''} require review`);
-
-        let sumHtml = '<h3>AI Project Summary</h3>';
-        for (const b of bullets) {
-            sumHtml += `<div class="summary-bullet"><span class="arrow">\u25B8</span><span>${escapeHtml(b)}</span></div>`;
-        }
-        document.getElementById('cardSummary').innerHTML = sumHtml;
-
-        // Card 3: Baseline Estimate
-        let estHtml = '<h3>Baseline Estimate</h3>';
-        const estRows = [
-            ['Building Trades', t.building_subtotal],
-            ['GC Conditions', t.gc_conditions],
-            ['GC Profit', t.gc_profit],
-            ['Contingency', t.contingency],
-            ['Permits + Bond', t.permits],
-        ];
-        for (const [label, val] of estRows) {
-            estHtml += `<div class="estimate-row"><span class="est-label">${label}</span><span class="est-value">${fmt(val)}</span></div>`;
-        }
-        estHtml += '<div class="estimate-divider"></div>';
-        estHtml += `<div class="estimate-row"><span class="est-label">Building Total</span><span class="est-value">${fmt(t.building_total)}</span></div>`;
-        estHtml += `<div class="estimate-row"><span class="est-label">Site Total</span><span class="est-value">${fmt(t.site_total)}</span></div>`;
-        estHtml += '<div class="estimate-divider"></div>';
-        estHtml += `<div class="estimate-row total"><span class="est-label">PROJECT TOTAL</span><span class="est-value">${fmt(t.project_total)}</span></div>`;
-        document.getElementById('cardEstimate').innerHTML = estHtml;
-    }
-
-    function renderResultsViewer(data) {
-        const t = data.totals;
-        const divisions = data.divisions || [];
-        window._bbData = data;
-
-        // Budget Tab
-        let html = '<div style="overflow-x:auto;"><table class="budget-table" id="budgetTable">';
-        html += '<thead><tr><th>Description</th><th class="col-money">Original Budget</th>';
-        html += '<th class="col-money">Budget Mods</th><th class="col-money">Revised Budget</th>';
-        html += '<th class="col-money">Committed Costs</th><th class="col-money">Direct Costs</th></tr></thead>';
-        html += '<tbody>';
-
-        divisions.forEach((div, di) => {
-            html += `<tr class="div-header" data-div="${di}">`;
-            html += `<td><span class="div-toggle">\u25BE</span>${escapeHtml(div.div)} - ${escapeHtml(div.name)}</td>`;
-            html += `<td class="money div-subtotal" data-div="${di}" data-col="original">${fmt(div.subtotal)}</td>`;
-            html += `<td class="money div-subtotal" data-div="${di}" data-col="mods">$0</td>`;
-            html += `<td class="money div-subtotal" data-div="${di}" data-col="revised">${fmt(div.subtotal)}</td>`;
-            html += `<td class="money">$0</td><td class="money">$0</td></tr>`;
-
-            div.rows.forEach((row, ri) => {
-                html += `<tr class="trade-row" data-div="${di}" data-row="${ri}">`;
-                html += `<td><span style="color:var(--text-muted);font-size:0.75rem;margin-right:0.5rem;">${escapeHtml(row.cost_code)}</span>${escapeHtml(row.trade)}</td>`;
-                html += `<td class="money"><input class="cell-edit" type="number" data-div="${di}" data-row="${ri}" data-field="original_budget" value="${row.original_budget}" step="100"></td>`;
-                html += `<td class="money"><input class="cell-edit" type="number" data-div="${di}" data-row="${ri}" data-field="budget_modifications" value="${row.budget_modifications}" step="100"></td>`;
-                html += `<td class="money revised-cell" data-div="${di}" data-row="${ri}">${fmt(row.revised_budget)}</td>`;
-                html += `<td class="money">$0</td><td class="money">$0</td></tr>`;
-            });
-        });
-
-        html += `<tr class="summary-subtotal"><td>BUILDING SUBTOTAL</td><td class="money" id="sum-bldg-sub">${fmt(t.building_subtotal)}</td><td class="money"></td><td class="money" id="sum-bldg-sub-rev">${fmt(t.building_subtotal)}</td><td class="money"></td><td class="money"></td></tr>`;
-        html += `<tr class="summary-markup"><td style="padding-left:2rem;">GC Conditions (${(t.gc_conditions_pct*100).toFixed(1)}%)</td><td class="money" id="sum-gc-cond">${fmt(t.gc_conditions)}</td><td class="money"></td><td class="money" id="sum-gc-cond-rev">${fmt(t.gc_conditions)}</td><td class="money"></td><td class="money"></td></tr>`;
-        html += `<tr class="summary-markup"><td style="padding-left:2rem;">GC Profit (${(t.gc_profit_pct*100).toFixed(1)}%)</td><td class="money" id="sum-gc-prof">${fmt(t.gc_profit)}</td><td class="money"></td><td class="money" id="sum-gc-prof-rev">${fmt(t.gc_profit)}</td><td class="money"></td><td class="money"></td></tr>`;
-        html += `<tr class="summary-markup"><td style="padding-left:2rem;">Contingency (${(t.contingency_pct*100).toFixed(1)}%)</td><td class="money" id="sum-cont">${fmt(t.contingency)}</td><td class="money"></td><td class="money" id="sum-cont-rev">${fmt(t.contingency)}</td><td class="money"></td><td class="money"></td></tr>`;
-        html += `<tr class="summary-markup"><td style="padding-left:2rem;">Permits + Bond (${(t.permits_pct*100).toFixed(1)}%)</td><td class="money" id="sum-perm">${fmt(t.permits)}</td><td class="money"></td><td class="money" id="sum-perm-rev">${fmt(t.permits)}</td><td class="money"></td><td class="money"></td></tr>`;
-        html += `<tr class="summary-total"><td>BUILDING TOTAL</td><td class="money" id="sum-bldg-total">${fmt(t.building_total)}</td><td class="money"></td><td class="money" id="sum-bldg-total-rev">${fmt(t.building_total)}</td><td class="money"></td><td class="money"></td></tr>`;
-        html += `<tr class="summary-subtotal"><td>SITE TOTAL</td><td class="money" id="sum-site-total">${fmt(t.site_total)}</td><td class="money"></td><td class="money" id="sum-site-total-rev">${fmt(t.site_total)}</td><td class="money"></td><td class="money"></td></tr>`;
-        html += `<tr class="summary-total"><td>PROJECT TOTAL</td><td class="money" id="sum-proj-total">${fmt(t.project_total)}</td><td class="money"></td><td class="money" id="sum-proj-total-rev">${fmt(t.project_total)}</td><td class="money"></td><td class="money"></td></tr>`;
-        html += `<tr class="summary-estimate"><td>Low Estimate (-15%)</td><td class="money" id="sum-low">${fmt(t.low_estimate)}</td><td class="money"></td><td class="money"></td><td class="money"></td><td class="money"></td></tr>`;
-        html += `<tr class="summary-estimate"><td>High Estimate (+15%)</td><td class="money" id="sum-high">${fmt(t.high_estimate)}</td><td class="money"></td><td class="money"></td><td class="money"></td><td class="money"></td></tr>`;
-
-        html += '</tbody></table></div>';
-        document.getElementById('tab-budget').innerHTML = html;
-
-        document.querySelectorAll('.div-header').forEach(hdr => {
-            hdr.addEventListener('click', (e) => {
-                if (e.target.closest('input')) return;
-                const di = hdr.dataset.div;
-                const collapsed = hdr.classList.toggle('collapsed');
-                document.querySelectorAll(`.trade-row[data-div="${di}"]`).forEach(tr => {
-                    tr.style.display = collapsed ? 'none' : '';
+    h+='</div>';
+    $('tab-extraction').innerHTML=h;
+}
+
+/* ─── Tab: Pricing ─── */
+function buildPricingTab(data){
+    const t=data.totals||{},divs=data.divisions||[];
+    window._bbData=data;
+    let h='<div style="overflow-x:auto"><table class="price-table" id="priceTable"><thead><tr>';
+    h+='<th>Trade</th><th>Source</th><th class="col-r">Total</th><th class="col-r">Conf</th></tr></thead><tbody>';
+
+    divs.forEach((div,di)=>{
+        div.rows.forEach((row,ri)=>{
+            const srcClass=row.source_note?.includes('rate_table')?'src-calc':
+                           row.source_note?.includes('material_db')?'src-extract':
+                           row.source_note?.includes('placeholder')?'src-placeholder':'src-calc';
+            const srcLabel=row.source_note?.includes('rate_table')?'RATE':
+                           row.source_note?.includes('material_db')?'MATERIAL':
+                           row.source_note?.includes('placeholder')?'PLACEHOLDER':
+                           row.source_note?.includes('calculated')?'CALC':'CALC';
+            const conf=row.confidence||'medium';
+            h+=`<tr class="ptr-trade" data-div="${di}" data-row="${ri}">`;
+            h+=`<td><span class="pt-expand">&#9654;</span><span style="color:var(--gray-400);font-size:.68rem;margin-right:.4rem">${esc(row.cost_code)}</span>${esc(row.trade)}</td>`;
+            h+=`<td><span class="src-badge ${srcClass}">${srcLabel}</span></td>`;
+            h+=`<td class="money">${fmt(row.original_budget)}</td>`;
+            h+=`<td><span class="sc-dot ${conf}"></span></td></tr>`;
+            // Detail row (hidden)
+            h+=`<tr class="ptr-detail" data-div="${di}" data-row="${ri}"><td colspan="4"><div class="detail-inner">`;
+            if(row.line_items&&row.line_items.length){
+                h+='<table class="detail-table"><thead><tr><th>Work Item</th><th class="col-r">Qty</th><th>Unit</th><th class="col-r">Total</th><th>Source</th></tr></thead><tbody>';
+                row.line_items.forEach(li=>{
+                    h+=`<tr><td>${esc(li.item||'')}</td><td class="money">${li.qty||''}</td><td>${esc(li.unit||'')}</td><td class="money">${fmt(li.total)}</td><td style="font-size:.65rem;color:var(--gray-400)">${esc(li.source||'')}</td></tr>`;
                 });
-            });
+                h+='</tbody></table>';
+            }else h+='<div style="font-size:.75rem;color:var(--gray-400)">No line item detail available</div>';
+            h+='</div></td></tr>';
         });
-
-        document.querySelectorAll('.cell-edit').forEach(input => {
-            input.addEventListener('input', recalcBudget);
-        });
-
-        // Scope Details
-        let scopeHtml = '';
-        (data.scope_details || []).forEach(sd => {
-            const items = (sd.scope_items || []).filter(s => s.trim()).map(s => `<li>${escapeHtml(s)}</li>`).join('');
-            scopeHtml += `<div class="scope-trade">
-                <div class="scope-trade-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-                    ${escapeHtml(sd.div)} &mdash; ${escapeHtml(sd.trade)} (${sd.scope_items.length} items)
-                </div>
-                <ul class="scope-items" style="display:none;">${items}</ul>
-            </div>`;
-        });
-        document.getElementById('tab-scope').innerHTML = scopeHtml || '<p style="color:var(--text-muted);">No scope details available.</p>';
-
-        // Flags
-        let flagsHtml = '';
-        (data.flags || []).forEach(f => {
-            flagsHtml += `<div class="flag-item ${f.severity || ''}">
-                <span class="flag-severity">${f.severity || 'INFO'}</span>
-                <strong>${escapeHtml(f.flag || '')}</strong>
-                <div style="margin-top:0.2rem;">${escapeHtml(f.detail || '')}</div>
-                ${f.source ? '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.15rem;">Source: '+escapeHtml(f.source)+'</div>' : ''}
-            </div>`;
-        });
-        document.getElementById('tab-flags').innerHTML = flagsHtml || '<p style="color:var(--text-muted);">No flags raised.</p>';
-
-        // Scalars
-        let scalarRows = '';
-        (data.scalars || []).forEach(s => {
-            const confClass = s.confidence === 'high' ? 'conf-high' : s.confidence === 'medium' ? 'conf-medium' : 'conf-low';
-            const val = typeof s.value === 'number' ? s.value.toLocaleString() : (s.value || '\u2014');
-            scalarRows += `<tr><td>${escapeHtml(s.label)}</td><td>${escapeHtml(String(val))}</td>
-                <td class="${confClass}">${s.confidence}</td></tr>`;
-        });
-        document.getElementById('tab-scalars').innerHTML = `
-            <table class="scalars-table"><thead><tr><th>Scalar</th><th>Value</th><th>Confidence</th></tr></thead>
-            <tbody>${scalarRows}</tbody></table>`;
-    }
-
-    function recalcBudget() {
-        const data = window._bbData;
-        if (!data) return;
-        const t = data.totals;
-        const divisions = data.divisions || [];
-
-        let buildingSubtotal = 0;
-        let siteSubtotal = 0;
-
-        divisions.forEach((div, di) => {
-            let divOriginal = 0;
-            let divMods = 0;
-            let divRevised = 0;
-
-            div.rows.forEach((row, ri) => {
-                const origInput = document.querySelector(`input[data-div="${di}"][data-row="${ri}"][data-field="original_budget"]`);
-                const modsInput = document.querySelector(`input[data-div="${di}"][data-row="${ri}"][data-field="budget_modifications"]`);
-                const origVal = parseFloat(origInput ? origInput.value : 0) || 0;
-                const modsVal = parseFloat(modsInput ? modsInput.value : 0) || 0;
-                const revised = origVal + modsVal;
-
-                const revisedCell = document.querySelector(`.revised-cell[data-div="${di}"][data-row="${ri}"]`);
-                if (revisedCell) revisedCell.textContent = fmt(revised);
-
-                divOriginal += origVal;
-                divMods += modsVal;
-                divRevised += revised;
-            });
-
-            document.querySelectorAll(`.div-subtotal[data-div="${di}"]`).forEach(td => {
-                if (td.dataset.col === 'original') td.textContent = fmt(divOriginal);
-                if (td.dataset.col === 'mods') td.textContent = fmt(divMods);
-                if (td.dataset.col === 'revised') td.textContent = fmt(divRevised);
-            });
-
-            if (div.div === '02') {
-                siteSubtotal += divOriginal;
-            } else {
-                buildingSubtotal += divOriginal;
-            }
-        });
-
-        const gcCond = Math.round(buildingSubtotal * t.gc_conditions_pct);
-        const gcProf = Math.round(buildingSubtotal * t.gc_profit_pct);
-        const cont = Math.round(buildingSubtotal * t.contingency_pct);
-        const perm = Math.round(buildingSubtotal * t.permits_pct);
-        const buildingTotal = buildingSubtotal + gcCond + gcProf + cont + perm;
-        const siteFee = Math.round(siteSubtotal * 0.05);
-        const siteTotal = siteSubtotal + siteFee;
-        const projectTotal = buildingTotal + siteTotal;
-
-        const u = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = fmt(val); };
-        u('sum-bldg-sub', buildingSubtotal);     u('sum-bldg-sub-rev', buildingSubtotal);
-        u('sum-gc-cond', gcCond);                u('sum-gc-cond-rev', gcCond);
-        u('sum-gc-prof', gcProf);                u('sum-gc-prof-rev', gcProf);
-        u('sum-cont', cont);                     u('sum-cont-rev', cont);
-        u('sum-perm', perm);                     u('sum-perm-rev', perm);
-        u('sum-bldg-total', buildingTotal);      u('sum-bldg-total-rev', buildingTotal);
-        u('sum-site-total', siteTotal);          u('sum-site-total-rev', siteTotal);
-        u('sum-proj-total', projectTotal);       u('sum-proj-total-rev', projectTotal);
-        u('sum-low', Math.round(projectTotal * 0.85));
-        u('sum-high', Math.round(projectTotal * 1.15));
-    }
-
-    function showError(msg) {
-        hideAllCenterStates();
-        errorCard.classList.add('active');
-        errorMsg.textContent = msg;
-    }
-
-    // Download
-    downloadBtn.addEventListener('click', () => {
-        if (currentJobId) {
-            window.location.href = '/api/download/' + currentJobId;
-        }
     });
 
-    // Reset
-    function resetUI() {
-        selectedFiles = [];
-        buyoutFile = null;
-        currentJobId = null;
-        confirmedPrecheck = null;
-        window._bbData = null;
-        fileList.innerHTML = '';
-        buyoutFileName.textContent = '';
-        buyoutRemove.style.display = 'none';
-        submitSection.style.display = 'none';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Estimate Project';
-        hideAllCenterStates();
-        idleState.style.display = '';
-        progressLog.innerHTML = '';
-    }
+    // Summary rows
+    h+=`<tr class="ptr-section"><td colspan="2">BUILDING SUBTOTAL</td><td class="money" id="sum-bldg-sub">${fmt(t.building_subtotal)}</td><td></td></tr>`;
+    h+=`<tr class="ptr-markup"><td colspan="2">GC Conditions (${(t.gc_conditions_pct*100).toFixed(1)}%)</td><td class="money">${fmt(t.gc_conditions)}</td><td></td></tr>`;
+    h+=`<tr class="ptr-markup"><td colspan="2">GC Profit (${(t.gc_profit_pct*100).toFixed(1)}%)</td><td class="money">${fmt(t.gc_profit)}</td><td></td></tr>`;
+    h+=`<tr class="ptr-markup"><td colspan="2">Contingency (${(t.contingency_pct*100).toFixed(1)}%)</td><td class="money">${fmt(t.contingency)}</td><td></td></tr>`;
+    h+=`<tr class="ptr-markup"><td colspan="2">Permits + Bond (${(t.permits_pct*100).toFixed(1)}%)</td><td class="money">${fmt(t.permits)}</td><td></td></tr>`;
+    h+=`<tr class="ptr-total"><td colspan="2">BUILDING TOTAL</td><td class="money">${fmt(t.building_total)}</td><td></td></tr>`;
+    h+=`<tr class="ptr-site"><td colspan="2">SITE TOTAL</td><td class="money">${fmt(t.site_total)}</td><td></td></tr>`;
+    h+=`<tr class="ptr-grand"><td colspan="2">PROJECT TOTAL</td><td class="money">${fmt(t.project_total)}</td><td></td></tr>`;
+    h+='</tbody></table></div>';
 
-    resetLink.addEventListener('click', resetUI);
-    errorResetLink.addEventListener('click', resetUI);
+    // Range bar
+    const lo=t.low_estimate||t.project_total*.85, hi=t.high_estimate||t.project_total*1.15;
+    const pct=t.project_total?Math.round((t.project_total-lo)/(hi-lo)*100):50;
+    h+=`<div class="range-bar"><span class="range-low">${fmt(lo)}</span><div class="range-track"><div class="range-dot" style="left:calc(${pct}% - 6px)"></div></div><span class="range-high">${fmt(hi)}</span></div>`;
 
-    // ─── Ask BuildBrain Chat ───
+    $('tab-pricing').innerHTML=h;
 
-    function addChatMessage(text, role) {
-        // Remove welcome if present
-        const welcome = chatMessages.querySelector('.chat-welcome');
-        if (welcome) welcome.remove();
+    // Expand/collapse trade rows
+    document.querySelectorAll('.ptr-trade').forEach(tr=>{
+        tr.addEventListener('click',()=>{
+            const di=tr.dataset.div,ri=tr.dataset.row;
+            tr.classList.toggle('expanded');
+            const detail=document.querySelector(`.ptr-detail[data-div="${di}"][data-row="${ri}"]`);
+            if(detail)detail.classList.toggle('visible');
+        });
+    });
+}
 
-        const div = document.createElement('div');
-        div.className = 'chat-msg ' + role;
-        div.textContent = text;
-        chatMessages.appendChild(div);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-        return div;
-    }
+/* ─── Tab: Line Items ─── */
+function buildLineItemsTab(data){
+    const divs=data.divisions||[];
+    // Collect all trades for filter
+    const tradeNames=['All Trades'];
+    divs.forEach(d=>d.rows.forEach(r=>{if(!tradeNames.includes(r.trade))tradeNames.push(r.trade)}));
+    let h='<div class="li-controls"><select id="liFilter">'+tradeNames.map(t=>`<option>${esc(t)}</option>`).join('')+'</select>';
+    h+='<input type="text" id="liSearch" placeholder="Search work items..."></div>';
+    h+='<div style="overflow-x:auto;max-height:calc(100vh - 160px);overflow-y:auto"><table class="li-table" id="liTable"><thead><tr>';
+    h+='<th>Trade</th><th>Work Item</th><th class="col-r">Qty</th><th>Unit</th><th class="col-r">Total</th><th>Source</th></tr></thead><tbody>';
 
-    function addTypingIndicator() {
-        const welcome = chatMessages.querySelector('.chat-welcome');
-        if (welcome) welcome.remove();
-
-        const div = document.createElement('div');
-        div.className = 'chat-msg typing';
-        div.id = 'typingIndicator';
-        div.innerHTML = 'Thinking<span class="typing-dots"></span>';
-        chatMessages.appendChild(div);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    function removeTypingIndicator() {
-        const el = document.getElementById('typingIndicator');
-        if (el) el.remove();
-    }
-
-    async function sendQuestion() {
-        const question = chatInput.value.trim();
-        if (!question || chatBusy) return;
-
-        chatBusy = true;
-        chatSendBtn.disabled = true;
-        chatInput.value = '';
-
-        addChatMessage(question, 'user');
-        addTypingIndicator();
-
-        try {
-            const body = { question };
-            if (currentJobId) body.job_id = currentJobId;
-
-            const resp = await fetch('/api/ask', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
+    divs.forEach(d=>d.rows.forEach(r=>{
+        if(r.line_items&&r.line_items.length){
+            r.line_items.forEach(li=>{
+                h+=`<tr data-trade="${esc(r.trade)}"><td>${esc(r.trade)}</td><td>${esc(li.item||'')}</td><td class="money">${li.qty||''}</td><td>${esc(li.unit||'')}</td><td class="money">${fmt(li.total)}</td><td style="font-size:.68rem;color:var(--gray-400)">${esc(li.source||'')}</td></tr>`;
             });
-
-            removeTypingIndicator();
-
-            if (resp.ok) {
-                const data = await resp.json();
-                addChatMessage(data.answer || 'No response.', 'assistant');
-            } else {
-                const err = await resp.json();
-                addChatMessage('Error: ' + (err.error || 'Request failed'), 'assistant');
-            }
-        } catch (err) {
-            removeTypingIndicator();
-            addChatMessage('Error: ' + err.message, 'assistant');
-        } finally {
-            chatBusy = false;
-            chatSendBtn.disabled = false;
-            chatInput.focus();
+        }else{
+            h+=`<tr data-trade="${esc(r.trade)}"><td>${esc(r.trade)}</td><td style="color:var(--gray-400)">Lump sum</td><td class="money"></td><td></td><td class="money">${fmt(r.original_budget)}</td><td style="font-size:.68rem;color:var(--gray-400)">${esc(r.source_note||'')}</td></tr>`;
         }
+    }));
+    h+='</tbody></table></div>';
+    $('tab-lineitems').innerHTML=h;
+
+    // Filter & search
+    const filterEl=$('liFilter'),searchEl=$('liSearch');
+    function applyFilter(){
+        const trade=filterEl.value,q=searchEl.value.toLowerCase();
+        document.querySelectorAll('#liTable tbody tr').forEach(tr=>{
+            const matchTrade=trade==='All Trades'||tr.dataset.trade===trade;
+            const matchSearch=!q||tr.textContent.toLowerCase().includes(q);
+            tr.style.display=matchTrade&&matchSearch?'':'none';
+        });
     }
+    filterEl.addEventListener('change',applyFilter);
+    searchEl.addEventListener('input',applyFilter);
+}
 
-    chatSendBtn.addEventListener('click', sendQuestion);
+/* ─── Tab: Export ─── */
+function buildExportTab(data,stats){
+    const gs=k=>{const s=(data.scalars||[]).find(x=>x.key===k);return s?String(s.value||''):''};
+    const t=data.totals||{};
+    let h=`<div class="export-center">
+        <div class="export-check">&#9989;</div>
+        <div class="export-title">Your estimate is ready.</div>
+        <div class="export-proj">${esc(gs('project_name')||'Untitled Project')}</div>
+        <div class="export-total">${fmt(t.project_total)}</div>
+        <button class="export-btn export-btn-primary" id="dlExcel">&#11015; Download Excel Workbook</button>
+        <div class="export-desc">6 tabs: Buyout Summary, Scope Details, Submission Requirements, Source Trace, Calculation Detail, Project Scalars</div>
+        <div class="chat-section">
+            <h4>Ask BuildBrain</h4>
+            <div class="chat-msgs" id="chatMsgs"></div>
+            <div class="chat-row">
+                <textarea class="chat-input" id="chatInput" placeholder="Ask about your estimate..." rows="1"></textarea>
+                <button class="chat-send" id="chatSend">&#9654;</button>
+            </div>
+        </div>
+    </div>`;
+    $('tab-export').innerHTML=h;
+    $('dlExcel').addEventListener('click',()=>{if(currentJobId)window.location.href='/api/download/'+currentJobId});
+    $('chatSend').addEventListener('click',sendQuestion);
+    $('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendQuestion()}});
+    $('chatInput').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'});
+}
 
-    chatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendQuestion();
-        }
+/* Read-only scalars if no scalar gate data */
+function buildReadOnlyScalarsTab(data){
+    let h='<div class="sg-grid">';
+    (data.scalars||[]).forEach(s=>{
+        const badge=`<span class="sg-conf-badge ${s.confidence}">${s.confidence}</span>`;
+        const v=typeof s.value==='number'?s.value.toLocaleString():String(s.value||'\u2014');
+        h+=`<div class="sg-field"><label>${esc(s.label)} ${badge}</label><input type="text" value="${esc(v)}" readonly style="background:var(--gray-100);cursor:default"></div>`;
     });
+    h+='</div>';$('tab-scalars').innerHTML=h;
+}
 
-    // Auto-resize chat input
-    chatInput.addEventListener('input', () => {
-        chatInput.style.height = 'auto';
-        chatInput.style.height = Math.min(chatInput.scrollHeight, 100) + 'px';
-    });
+/* ─── Chat ─── */
+async function sendQuestion(){
+    const inp=$('chatInput'),msgs=$('chatMsgs');
+    const q=inp.value.trim();if(!q||chatBusy)return;
+    chatBusy=true;$('chatSend').disabled=true;inp.value='';
+    addChat(q,'user');
+    const typ=document.createElement('div');typ.className='chat-msg typing';typ.id='typInd';typ.innerHTML='Thinking<span class="typing-dots"></span>';msgs.appendChild(typ);msgs.scrollTop=msgs.scrollHeight;
+    try{
+        const body={question:q};if(currentJobId)body.job_id=currentJobId;
+        const r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const el=$('typInd');if(el)el.remove();
+        if(r.ok){const d=await r.json();addChat(d.answer||'No response.','assistant')}
+        else{const e=await r.json();addChat('Error: '+(e.error||'Request failed'),'assistant')}
+    }catch(e){const el=$('typInd');if(el)el.remove();addChat('Error: '+e.message,'assistant')}
+    finally{chatBusy=false;$('chatSend').disabled=false;inp.focus()}
+}
+function addChat(text,role){const msgs=$('chatMsgs');const d=document.createElement('div');d.className='chat-msg '+role;d.textContent=text;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight}
 
-    // ─── Utility ───
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
+/* ─── Error ─── */
+function showError(msg){showRpState(null);tabBar.classList.add('hidden');errorCard.classList.add('active');errorMsg.textContent=msg}
+errorRetry.addEventListener('click',resetUI);
+
+/* ─── Reset / New Project ─── */
+function resetUI(){
+    selectedFiles=[];buyoutFile=null;currentJobId=null;confirmedPrecheck=null;_scalarData=null;_resultsData=null;
+    window._bbData=null;_procPages=0;_procTrades=0;
+    fileList.innerHTML='';buyoutName.textContent='';buyoutRm.style.display='none';
+    btnAnalyze.style.display='none';btnAnalyze.disabled=false;btnAnalyze.textContent='Analyze Documents';
+    btnRerun.classList.add('hidden');btnNewProject.classList.add('hidden');
+    lpUpload.classList.remove('hidden');lpProject.classList.add('hidden');
+    lpScalars.classList.add('hidden');lpConfidence.classList.add('hidden');lpFlags.classList.add('hidden');
+    $('lpFlagBadge').classList.add('hidden');
+    tabBar.classList.add('hidden');errorCard.classList.remove('active');
+    document.querySelectorAll('.tab-panel').forEach(p=>{p.classList.remove('active');p.innerHTML=''});
+    showRpState('rpIdle');
+}
+btnNewProject.addEventListener('click',resetUI);
+btnRerun.addEventListener('click',()=>{if(_scalarData){buildScalarsTab(_scalarData);showTab('scalars')}});
+
+/* ─── Utility ─── */
+function fmt(n){return n!=null?'$'+Math.round(n).toLocaleString():'\u2014'}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 })();
 </script>
-
 </body>
 </html>

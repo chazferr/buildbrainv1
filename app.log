@@ -10,20 +10,13 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://127.0.0.1:5000
  * Running on http://10.0.0.18:5000
 Press CTRL+C to quit
-127.0.0.1 - - [25/Feb/2026 14:32:36] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 14:32:48] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 14:33:19] "POST /api/pre-check HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 14:35:01] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 14:35:31] "POST /api/pre-check HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 14:35:48] "POST /api/upload HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 14:35:49] "GET /api/stream/8aaab30bb4ed HTTP/1.1" 200 -
-Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
+127.0.0.1 - - [25/Feb/2026 14:43:33] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:44:31] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:45:08] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:45:24] "POST /api/upload HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:45:24] "GET /api/stream/83555c680ee6 HTTP/1.1" 200 -
 Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
 Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
-Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
-[VISION] Site Drawings.pdf p.1 — image size: 2327KB raw, 3102KB base64
-[VISION] Site Drawings.pdf p.2 — image size: 3265KB raw, 4354KB base64
-[VISION] Site Drawings.pdf p.3 — image size: 2325KB raw, 3101KB base64
 [CLASSIFY] p.2 detected as CAD drawing (chars=6341, avg_line=14, digit_ratio=0.03, short_ratio=0.62, vectors=975, signals=3/5 [short_lines, short_ratio, vectors])
 [CLASSIFY] p.3 detected as CAD drawing (chars=2968, avg_line=9, digit_ratio=0.20, short_ratio=0.73, vectors=28012, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
 [CLASSIFY] p.4 detected as CAD drawing (chars=7354, avg_line=14, digit_ratio=0.04, short_ratio=0.52, vectors=6794, signals=3/5 [short_lines, short_ratio, vectors])
@@ -35,11 +28,36 @@ Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
 [VISION] Midstate House Drawings.pdf p.2 — image size: 1374KB raw, 1832KB base64
 [VISION] Midstate House Drawings.pdf p.3 — image size: 1460KB raw, 1946KB base64
 [VISION] Midstate House Drawings.pdf p.4 — image size: 1794KB raw, 2393KB base64
-[VISION] Midstate House Drawings.pdf p.6 — image size: 1244KB raw, 1659KB base64
 [VISION] Midstate House Drawings.pdf p.5 — image size: 1733KB raw, 2311KB base64
+[VISION] Midstate House Drawings.pdf p.6 — image size: 1244KB raw, 1659KB base64
 [VISION] Midstate House Drawings.pdf p.7 — image size: 2156KB raw, 2875KB base64
 [VISION] Midstate House Drawings.pdf p.8 — image size: 2084KB raw, 2778KB base64
 [VISION] Midstate House Drawings.pdf p.9 — image size: 1870KB raw, 2494KB base64
-127.0.0.1 - - [25/Feb/2026 14:38:04] "POST /api/confirm-scalars HTTP/1.1" 200 -
+[VISION] Site Drawings.pdf p.1 — image size: 2327KB raw, 3102KB base64
+[VISION] Site Drawings.pdf p.2 — image size: 3265KB raw, 4354KB base64
+[VISION] Site Drawings.pdf p.3 — image size: 2325KB raw, 3101KB base64
+127.0.0.1 - - [25/Feb/2026 14:46:35] "POST /api/confirm-scalars HTTP/1.1" 200 -
 [RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
-[EXCEL TOTALS] building_sub=153,800 site_sub=190,000 GC=34,605 (22.5%) project_total=387,905
+[EXCEL TOTALS] building_sub=140,084 site_sub=190,000 GC=31,518 (22.5%) project_total=371,102
+[RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
+[JSON TRADE] div=02 SITE WORK / CIVIL         $   190,000  src=user
+[JSON TRADE] div=02 Sitework                  $         0  src=none
+[JSON TRADE] div=02 Paving & Striping         $         0  src=none
+[JSON TRADE] div=02 Landscaping               $         0  src=none
+[JSON TRADE] div=03 Site Concrete             $         0  src=none
+[JSON TRADE] div=03 Building Concrete         $    25,000  src=rate_table
+[JSON TRADE] div=05 Structural Steel          $     6,500  src=placeholder
+[JSON TRADE] div=06 Rough Carpentry           $    24,526  src=material_db
+[JSON TRADE] div=08 Doors/Hdwr/Finish Carp    $     5,031  src=material_db
+[JSON TRADE] div=08 Windows                   $    10,000  src=rate_table
+[JSON TRADE] div=07 Insulation                $     3,000  src=rate_table
+[JSON TRADE] div=07 Roofing                   $    11,500  src=rate_table
+[JSON TRADE] div=07 Siding                    $    13,000  src=rate_table
+[JSON TRADE] div=09 Drywall                   $     2,850  src=rate_table
+[JSON TRADE] div=09 Countertops & Finishes    $     5,500  src=placeholder
+[JSON TRADE] div=15 Plumbing                  $     8,600  src=rate_table
+[JSON TRADE] div=15 HVAC                      $     7,800  src=rate_table
+[JSON TRADE] div=16 Electrical                $     6,400  src=rate_table
+[JSON TRADE] div=01 General Requirements      $    10,377  src=calculated
+[JSON TOTALS] building_sub=140,084 site_sub=190,000 GC=31,518 (22.5%) project_total=371,102
+127.0.0.1 - - [25/Feb/2026 14:46:36] "GET /api/results/83555c680ee6 HTTP/1.1" 200 -

@@ -646,8 +646,10 @@ function updateLeftPanel(data){
     const allConf=(data.scalars||[]).map(s=>s.confidence);
     const hi=allConf.filter(c=>c==='high').length,med=allConf.filter(c=>c==='medium').length,lo=allConf.filter(c=>c==='low').length;
     const total=hi+med+lo||1;
-    const pct=Math.round((hi*1+med*.5)/total*100);
+    const pct=Math.round((hi+med)/total*100);
+    const pctColor=pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--orange)';
     $('lpConfPct').textContent=pct+'% confidence';
+    $('lpConfPct').style.color=pctColor;
     $('lpConfBar').innerHTML=`<div class="cb-high" style="width:${hi/total*100}%"></div><div class="cb-medium" style="width:${med/total*100}%"></div><div class="cb-low" style="width:${lo/total*100}%"></div>`;
     $('lpConfLegend').innerHTML=`<span class="cl-high">HIGH ${hi}</span><span class="cl-medium">MEDIUM ${med}</span><span class="cl-low">LOW ${lo}</span>`;
     lpConfidence.classList.remove('hidden');

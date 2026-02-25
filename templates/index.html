@@ -133,8 +133,10 @@ body{font-family:var(--sans);background:var(--gray-50);color:var(--gray-900);dis
 .proc-counters span b{color:var(--gray-700);font-weight:600}
 
 /* Pre-check */
-.rp-precheck{padding:2rem}
-.pc-card{background:var(--white);border:2px solid var(--orange);border-radius:10px;padding:1.5rem;max-width:640px;margin:0 auto}
+.rp-precheck{padding:0;overflow-y:auto}
+.pc-card{background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:32px;max-width:640px;margin:40px auto}
+.pc-back-link{display:inline-block;font-size:.78rem;color:var(--gray-400);cursor:pointer;margin-bottom:.75rem;text-decoration:none}
+.pc-back-link:hover{color:var(--orange);text-decoration:underline}
 .pc-title{font-size:1.05rem;font-weight:700;color:var(--gray-900);margin-bottom:.2rem}
 .pc-sub{font-size:.82rem;color:var(--gray-400);margin-bottom:1rem}
 .pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
@@ -146,9 +148,7 @@ body{font-family:var(--sans);background:var(--gray-50);color:var(--gray-900);dis
 .pc-conf{display:inline-block;padding:.12rem .4rem;border-radius:3px;font-size:.7rem;font-weight:600;text-transform:uppercase}
 .pc-conf-high{background:#d1fae5;color:#059669}.pc-conf-medium{background:#fef3c7;color:#d97706}.pc-conf-low{background:#fee2e2;color:#dc2626}
 .pc-warn{margin-top:.75rem;padding:.5rem .7rem;background:#fef3c7;border:1px solid var(--amber);border-radius:5px;font-size:.78rem;color:#92400e}
-.pc-actions{display:flex;gap:.6rem;justify-content:center;margin-top:1.25rem}
-.pc-back{background:none;border:1.5px solid var(--gray-200);padding:.6rem 1.25rem;font-size:.88rem;font-weight:500;border-radius:6px;cursor:pointer;color:var(--gray-400);font-family:var(--sans)}
-.pc-back:hover{border-color:var(--gray-400);color:var(--gray-700)}
+.pc-actions{margin-top:1.25rem}
 
 /* ═══ TAB: EXTRACTION ═══ */
 .ext-section-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-400);margin-bottom:.75rem;margin-top:1.5rem}
@@ -350,6 +350,7 @@ input[type=file]{display:none}
         <!-- Pre-check -->
         <div class="rp-state rp-precheck" id="rpPrecheck">
             <div class="pc-card">
+                <a class="pc-back-link" id="pcBack">&larr; Change files</a>
                 <div class="pc-title">Project Pre-Check</div>
                 <div class="pc-sub">Review detected project info before running full analysis.</div>
                 <div class="pc-grid">
@@ -366,8 +367,7 @@ input[type=file]{display:none}
                 </div>
                 <div class="pc-warn hidden" id="pc_warning"></div>
                 <div class="pc-actions">
-                    <button class="pc-back" id="pcBack">Back</button>
-                    <button class="btn-primary" id="pcConfirm" style="width:auto;padding:.6rem 1.5rem">Confirm &amp; Analyze</button>
+                    <button class="btn-primary" id="pcConfirm">Confirm &amp; Analyze</button>
                 </div>
             </div>
         </div>

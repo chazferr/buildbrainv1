@@ -2153,6 +2153,17 @@ If truly nothing is extractable, return:
 # ─── Orchestrator ────────────────────────────────────────────────────────────
 
 
+_CAD_KEYWORD_PAT = re.compile(
+    r'(?:FLOOR|ROOF|SITE|FOUNDATION)\s*PLAN'
+    r'|ELEVATION|SECTION\s+[A-Z]|DETAIL\s+\d'
+    r'|SCALE\s*[:=]|NOT\s+TO\s+SCALE'
+    r'|[A-Z]\d{1,3}\.\d'           # sheet refs: A1.1, S2.0
+    r'|\bTYP\.?\b|\bSIM\.?\b'       # CAD abbreviations
+    r'|\bEQ\.?\b|\bN\.T\.S',
+    re.IGNORECASE,
+)
+
+
 def _classify_page(doc: fitz.Document, page_idx: int) -> str:
     """Classify a PDF page to choose extraction method.
 
@@ -2184,61 +2195,74 @@ def _classify_page(doc: fitz.Document, page_idx: int) -> str:
             pass
     image_fraction = image_area / page_area if page_area > 0 else 0
 
-    # We distinguish scanned vs drawing so we can track when adding
-    # a dedicated OCR tier (Google Document AI / Textract) is worth it.
-    # Both go to Vision API today, but scanned text pages are the ones
-    # where a cheap OCR service would replace Vision in the future.
+    # Count vector drawing objects (lines, curves, paths from CAD)
+    drawings = page.get_drawings()
+    vector_count = len(drawings)
+
+    # ── Low/no text pages ──
     if char_count < 50 and image_count > 0:
-        return "image_drawing"   # Drawing, floor plan, diagram — needs Vision
+        return "image_drawing"
     elif char_count < 50 and image_count == 0:
-        return "image_scanned"   # Scanned page, no embedded text — needs Vision (OCR candidate)
+        if vector_count > 50:
+            return "image_drawing"   # Vector-only CAD drawing
+        return "image_scanned"
 
-    # ── CAD drawing detection ──
+    # ── CAD drawing detection (5 heuristic signals) ──
     # CAD-generated PDFs embed text layers (title blocks, dimensions, room
-    # labels) that push char_count well over 50.  Detect them by text shape:
-    #   - many short lines (dimensions, labels)
-    #   - dimension-like patterns (4'-6", 12' - 0", etc.)
-    #   - repetitive fragments and low words-per-line
-    if char_count > 50:
-        lines = [ln for ln in text.split('\n') if ln.strip()]
-        num_lines = len(lines) or 1
-        avg_line_len = char_count / num_lines
-        words = text.split()
-        words_per_line = len(words) / num_lines
+    # labels) that push char_count well over 50.  We score 5 signals and
+    # classify as drawing when 3+ fire (or 2+ with images present).
+    lines = [ln for ln in text.split('\n') if ln.strip()]
+    num_lines = max(len(lines), 1)
+    avg_line_len = char_count / num_lines
 
-        # Dimension / CAD patterns:  4'-6"  12' - 0"  3/4"  ±  Ø  ##.##
-        import re
-        _dim_pat = re.compile(
-            r"""\d+['\u2032]\s*-?\s*\d*["\u2033]?    # 12'-6"  4'  12' - 0"
-            |\d+/\d+"?                                 # 3/4"  1/2
-            |\d+\.\d{2,}                               # 23.456  (coord-like)
-            |[A-Z]\d{1,3}\.\d                          # A1.1  S2.0  (sheet refs)
-            """, re.VERBOSE
-        )
-        dim_hits = len(_dim_pat.findall(text))
-        dim_density = dim_hits / num_lines
+    signals = 0
+    signal_details = []
 
-        # Drawing-title patterns (FLOOR PLAN, ELEVATION, SECTION, DETAIL)
-        _drawing_title_pat = re.compile(
-            r'(?:FLOOR|ROOF|SITE|FOUNDATION)\s*PLAN'
-            r'|ELEVATION|SECTION\s+[A-Z]|DETAIL\s+\d'
-            r'|SCALE\s*[:=]|NOT\s+TO\s+SCALE',
-            re.IGNORECASE
-        )
-        has_drawing_titles = bool(_drawing_title_pat.search(text))
+    # Signal 1: Short average line length (< 22 chars — CAD labels vs paragraphs)
+    if avg_line_len < 22:
+        signals += 1
+        signal_details.append("short_lines")
 
-        is_cad_drawing = (
-            (avg_line_len < 25 and words_per_line < 4 and num_lines > 15)
-            or (dim_density > 0.3 and avg_line_len < 40)
-            or (has_drawing_titles and avg_line_len < 35 and words_per_line < 5)
-        )
-        if is_cad_drawing:
-            return "image_drawing"  # CAD drawing with embedded text — needs Vision
+    # Signal 2: High digit ratio (> 15% — dimensions like 12'-6", 3/4", coords)
+    digit_count = sum(1 for c in text if c.isdigit())
+    digit_ratio = digit_count / max(char_count, 1)
+    if digit_ratio > 0.15:
+        signals += 1
+        signal_details.append("high_digits")
+
+    # Signal 3: Drawing keywords density (SCALE, DETAIL, SECTION, sheet refs)
+    kw_hits = len(_CAD_KEYWORD_PAT.findall(text))
+    kw_density = kw_hits / num_lines
+    if kw_density > 0.3:
+        signals += 1
+        signal_details.append("drawing_keywords")
+
+    # Signal 4: Many very short lines (> 50% under 10 chars — room labels, callouts)
+    short_lines = sum(1 for ln in lines if len(ln.strip()) < 10)
+    short_ratio = short_lines / num_lines
+    if short_ratio > 0.5:
+        signals += 1
+        signal_details.append("short_ratio")
+
+    # Signal 5: High vector drawing object count (> 50 — lines/curves from CAD)
+    if vector_count > 50:
+        signals += 1
+        signal_details.append("vectors")
+
+    # Decision: 3+ signals = CAD drawing.  2+ signals with images also qualifies.
+    is_cad = signals >= 3 or (signals >= 2 and image_count > 0)
+
+    if is_cad:
+        print(f"[CLASSIFY] p.{page_idx+1} detected as CAD drawing "
+              f"(chars={char_count}, avg_line={avg_line_len:.0f}, "
+              f"digit_ratio={digit_ratio:.2f}, short_ratio={short_ratio:.2f}, "
+              f"vectors={vector_count}, signals={signals}/5 [{', '.join(signal_details)}])")
+        return "image_drawing"
 
     if image_fraction > 0.4:
-        return "mixed"   # Text page with significant drawings/tables
+        return "mixed"
     else:
-        return "text"    # Standard spec/addendum text page
+        return "text"
 
 
 def _extract_text_page(
@@ -2324,6 +2348,12 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
         per_file[f"{page_types[page_idx]}_pages"] = \
             per_file.get(f"{page_types[page_idx]}_pages", 0) + 1
 
+    # Classification summary
+    n_text = sum(1 for t in page_types.values() if t == "text")
+    n_draw = sum(1 for t in page_types.values() if t in ("image_drawing", "mixed"))
+    n_scan = sum(1 for t in page_types.values() if t == "image_scanned")
+    emit(f"  Classified: {n_text} text, {n_draw} drawing/mixed, {n_scan} scanned")
+
     # Pre-extract text for text pages (read-only, safe on main thread)
     page_texts = {}
     for page_idx, ptype in page_types.items():
@@ -2350,23 +2380,37 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
             extraction = _extract_text_page(
                 client, page_texts[page_idx], file_name, page_num, page_stats
             )
-            # Fallback: if text extraction failed (flags set), escalate to Vision
-            if extraction and extraction.flags and not extraction.trades_and_scope:
-                emit(f"  \u21bb {file_name} p.{page_num} text parse failed — retrying with Vision...")
+            # Fallback: if text extraction failed, escalate to Vision
+            text_failed = (
+                (extraction and extraction.flags and not extraction.trades_and_scope)
+                or any(f"p.{page_num}" in fp for fp in page_stats["failed_pages"])
+            )
+            if text_failed:
+                emit(f"  \u21b3 Text extraction failed for p.{page_num} \u2014 retrying with Vision...")
                 try:
                     thread_doc = fitz.open(file_path_str)
                     png_bytes = render_page_to_png(thread_doc, page_idx)
                     thread_doc.close()
+                    vision_stats = {"input_tokens": 0, "output_tokens": 0,
+                                    "api_calls": 0, "failed_pages": []}
                     vision_extraction = process_page(
-                        client, png_bytes, file_name, page_num, page_stats
+                        client, png_bytes, file_name, page_num, vision_stats
                     )
+                    # Accumulate Vision stats regardless
+                    page_stats["input_tokens"] += vision_stats["input_tokens"]
+                    page_stats["output_tokens"] += vision_stats["output_tokens"]
+                    page_stats["api_calls"] += vision_stats["api_calls"]
+
                     if vision_extraction and not vision_extraction.flags:
                         extraction = vision_extraction  # Vision succeeded
-                        # Clear any failed_pages entry added by text attempt
+                        # Clear text-attempt failure entries
                         page_stats["failed_pages"] = [
                             fp for fp in page_stats["failed_pages"]
                             if f"p.{page_num}" not in fp
                         ]
+                    else:
+                        # Vision also failed — keep original failure
+                        page_stats["failed_pages"].extend(vision_stats["failed_pages"])
                 except Exception:
                     pass  # Keep the original text extraction result
         else:

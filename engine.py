@@ -133,6 +133,7 @@ _TRADE_TO_RATE_KEY = {
     "Siding": "siding_vinyl",
     "Sitework": "sitework",
     "SITE WORK / CIVIL": "sitework",
+    "Rough Carpentry": "rough_carpentry_combined",
 }
 
 
@@ -145,7 +146,44 @@ def _apply_rate_table_override(trade_name, rate_profile, project_quantities):
         return None, None
 
     rt_key = _TRADE_TO_RATE_KEY.get(trade_name)
-    if not rt_key or rt_key not in rate_profile:
+    if not rt_key:
+        return None, None
+
+    # Special case: Rough Carpentry combines materials + labor rate table entries
+    if rt_key == 'rough_carpentry_combined':
+        mat_rt = rate_profile.get('rough_carpentry_materials')
+        lab_rt = rate_profile.get('rough_carpentry_labor')
+        if not mat_rt and not lab_rt:
+            return None, None
+
+        pq = project_quantities or {}
+        total_sf = pq.get('total_building_sf') or 1000
+
+        mat_rate = (mat_rt or {}).get('recommended_rate', 0) or 0
+        lab_rate = (lab_rt or {}).get('recommended_rate', 0) or 0
+        combined_rate = mat_rate + lab_rate
+
+        if combined_rate <= 0:
+            return None, None
+
+        budget_val = round(combined_rate * total_sf)
+        mat_bids = (mat_rt or {}).get('bids', [])
+        lab_bids = (lab_rt or {}).get('bids', [])
+        mat_note = (mat_rt or {}).get('notes', '')
+        lab_note = (lab_rt or {}).get('notes', '')
+
+        note_val = (
+            f"Material ${mat_rate:.2f}/SF + Labor ${lab_rate:.2f}/SF "
+            f"= ${combined_rate:.2f}/SF \u00d7 {total_sf:,.0f} SF | "
+            f"Material: {mat_bids[0]['bidder'] if mat_bids else 'N/A'} "
+            f"@ ${mat_bids[0].get('amount', 0):,.0f}. "
+            f"Labor: {lab_bids[0]['bidder'] if lab_bids else 'N/A'} "
+            f"@ ${lab_bids[0].get('amount', 0):,.0f}. | "
+            f"{mat_note} {lab_note}"
+        )
+        return budget_val, note_val
+
+    if rt_key not in rate_profile:
         return None, None
 
     rt = rate_profile[rt_key]
@@ -157,9 +195,9 @@ def _apply_rate_table_override(trade_name, rate_profile, project_quantities):
         total_sf = pq.get('total_building_sf') or 1000
         footprint_sf = pq.get('footprint_sf') or (total_sf / max(pq.get('floor_count', 1) or 1, 1))
         unit_count = pq.get('unit_count') or 1
-        plumbing_fixtures = pq.get('plumbing_fixtures') or (unit_count * 5)
+        plumbing_fixtures = pq.get('plumbing_fixtures') or rt.get('fixture_count_basis') or (unit_count * 5)
         door_count = (pq.get('ext_door_count') or max(2, unit_count // 10)) + (pq.get('int_door_count') or unit_count * 4)
-        window_count = pq.get('window_count') or (unit_count * 3)
+        window_count = pq.get('window_count') or rt.get('opening_count_basis') or (unit_count * 3)
 
         if rt_unit == 'per_total_sf':
             budget_val = round(rec_rate * total_sf)

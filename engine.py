@@ -11,7 +11,9 @@ import email
 import io
 import json
 import re
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from email import policy
 from pathlib import Path
 from typing import Callable, Optional
@@ -1896,6 +1898,15 @@ If truly nothing is extractable, return:
             elif attempt == 3:
                 stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
 
+        except anthropic.APIStatusError as e:
+            if e.status_code == 429:
+                wait = 2 ** attempt
+                time.sleep(wait)
+                continue
+            if attempt < 3:
+                time.sleep(5)
+            else:
+                stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
         except anthropic.APIError:
             if attempt < 3:
                 time.sleep(5)
@@ -2000,6 +2011,15 @@ def _extract_text_page(
         except (json.JSONDecodeError, ValidationError):
             if attempt == 1:
                 stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
+        except anthropic.APIStatusError as e:
+            if e.status_code == 429:
+                wait = 2 ** attempt
+                time.sleep(wait)
+                continue
+            if attempt == 0:
+                time.sleep(3)
+            else:
+                stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
         except anthropic.APIError:
             if attempt == 0:
                 time.sleep(3)
@@ -2014,9 +2034,10 @@ def _extract_text_page(
 
 
 def _process_pdf(client, file_path, emit, global_stats, file_stats):
-    """Process a PDF file page by page using Vision API."""
+    """Process a PDF file page by page using parallel extraction (8 workers)."""
     file_name = file_path.name
-    doc = fitz.open(str(file_path))
+    file_path_str = str(file_path)
+    doc = fitz.open(file_path_str)
     num_pages = len(doc)
     emit(f"{file_name} has {num_pages} pages")
 
@@ -2024,37 +2045,88 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
                 "pages": num_pages, "failed_pages": []}
     reqs, trades = [], []
 
+    # Classify all pages up front (read-only, safe on main thread)
+    page_types = {}
     for page_idx in range(num_pages):
-        page_num = page_idx + 1
+        page_types[page_idx] = _classify_page(doc, page_idx)
+        per_file[f"{page_types[page_idx]}_pages"] = \
+            per_file.get(f"{page_types[page_idx]}_pages", 0) + 1
 
-        # 3-tier extraction: classify page to minimize Vision API cost
-        page_type = _classify_page(doc, page_idx)
-        page_stats = {"input_tokens": 0, "output_tokens": 0, "api_calls": 0, "failed_pages": []}
-        per_file[f"{page_type}_pages"] = per_file.get(f"{page_type}_pages", 0) + 1
+    # Pre-extract text for text pages (read-only, safe on main thread)
+    page_texts = {}
+    for page_idx, ptype in page_types.items():
+        if ptype == "text":
+            page_texts[page_idx] = doc.load_page(page_idx).get_text("text").strip()
+
+    doc.close()  # Close main doc — workers open their own for rendering
+
+    MAX_WORKERS = 8
+    results = {}  # page_idx → extraction
+    lock = threading.Lock()
+
+    def process_single_page(page_idx):
+        page_num = page_idx + 1
+        page_type = page_types[page_idx]
+        page_stats = {
+            "input_tokens": 0, "output_tokens": 0,
+            "api_calls": 0, "failed_pages": []
+        }
 
         if page_type == "text":
             # Tier 1: Native text extraction — cheapest
-            page_text = doc.load_page(page_idx).get_text("text").strip()
-            emit(f"Processing {file_name} — Page {page_num}/{num_pages} [TEXT]...")
-            extraction = _extract_text_page(client, page_text, file_name, page_num, page_stats)
+            emit(f"Processing {file_name} p.{page_num}/{num_pages} [TEXT]...")
+            extraction = _extract_text_page(
+                client, page_texts[page_idx], file_name, page_num, page_stats
+            )
         else:
-            # Tier 2 (future: OCR for scanned) / Tier 3 (Vision for drawings)
-            # Both go to Vision API today — we track them separately to know
-            # when adding a cheap OCR service pays for itself
+            # Tier 2/3: Vision API — each worker opens its own fitz doc for rendering
             label = "SCAN" if page_type == "image_scanned" else page_type.upper().replace("IMAGE_", "")
-            emit(f"Processing {file_name} — Page {page_num}/{num_pages} [{label}]...")
+            emit(f"Processing {file_name} p.{page_num}/{num_pages} [{label}]...")
             try:
-                png_bytes = render_page_to_png(doc, page_idx)
+                thread_doc = fitz.open(file_path_str)
+                png_bytes = render_page_to_png(thread_doc, page_idx)
+                thread_doc.close()
             except Exception as e:
                 emit(f"[RENDER ERROR] {file_name} p.{page_num}: {e}")
-                per_file["failed_pages"].append(f"{file_name} p.{page_num}")
-                continue
-            extraction = process_page(client, png_bytes, file_name, page_num, page_stats)
+                with lock:
+                    per_file["failed_pages"].append(f"{file_name} p.{page_num}")
+                return page_idx, None
 
-        per_file["input_tokens"] += page_stats["input_tokens"]
-        per_file["output_tokens"] += page_stats["output_tokens"]
-        per_file["api_calls"] += page_stats["api_calls"]
-        per_file["failed_pages"].extend(page_stats["failed_pages"])
+            extraction = process_page(
+                client, png_bytes, file_name, page_num, page_stats
+            )
+
+        # Thread-safe stats accumulation
+        with lock:
+            per_file["input_tokens"] += page_stats["input_tokens"]
+            per_file["output_tokens"] += page_stats["output_tokens"]
+            per_file["api_calls"] += page_stats["api_calls"]
+            per_file["failed_pages"].extend(page_stats["failed_pages"])
+
+        return page_idx, extraction
+
+    # Run pages in parallel
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = {
+            executor.submit(process_single_page, i): i
+            for i in range(num_pages)
+        }
+        completed = 0
+        for future in as_completed(futures):
+            completed += 1
+            try:
+                page_idx, extraction = future.result()
+                if extraction is not None:
+                    results[page_idx] = extraction
+                if completed % 10 == 0 or completed == num_pages:
+                    emit(f"  \u23f3 {file_name}: {completed}/{num_pages} pages done...")
+            except Exception as e:
+                emit(f"[PAGE ERROR] {e}")
+
+    # Process results IN ORDER (page 1 before page 2)
+    for page_idx in sorted(results.keys()):
+        extraction = results[page_idx]
+        page_num = page_idx + 1
 
         if extraction.flags:
             emit(f"\u26a0\ufe0f {file_name} p.{page_num} PARSE FAILED \u2014 flagged for manual review")
@@ -2063,7 +2135,6 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
         reqs.extend(extraction.submission_requirements)
         trades.extend(extraction.trades_and_scope)
 
-    doc.close()
     file_stats[file_name] = per_file
     for k in ["input_tokens", "output_tokens", "api_calls"]:
         global_stats[k] += per_file[k]
@@ -2074,13 +2145,13 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
     _mp = per_file.get('mixed_pages', 0)
     _id = per_file.get('image_drawing_pages', 0)
     _is = per_file.get('image_scanned_pages', 0)
-    emit(f"  📊 {file_name}: {_tp} text / {_mp} mixed / {_id} drawing / {_is} scanned pages "
+    emit(f"  \U0001f4ca {file_name}: {_tp} text / {_mp} mixed / {_id} drawing / {_is} scanned pages "
          f"(Vision calls saved: {_tp})")
     # Track scanned pages — when this number is consistently high across projects,
     # adding a dedicated OCR tier (Google Document AI @ $1.50/1000 pages) will
     # replace Vision for these pages and cut cost further.
     if _is > 5:
-        emit(f"  💡 {file_name}: {_is} scanned pages hit Vision API — "
+        emit(f"  \U0001f4a1 {file_name}: {_is} scanned pages hit Vision API — "
              f"OCR tier (Document AI) would save ~${_is * 0.05:.2f} on this file")
 
     return reqs, trades

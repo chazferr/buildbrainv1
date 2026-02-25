@@ -2192,7 +2192,50 @@ def _classify_page(doc: fitz.Document, page_idx: int) -> str:
         return "image_drawing"   # Drawing, floor plan, diagram — needs Vision
     elif char_count < 50 and image_count == 0:
         return "image_scanned"   # Scanned page, no embedded text — needs Vision (OCR candidate)
-    elif image_fraction > 0.4:
+
+    # ── CAD drawing detection ──
+    # CAD-generated PDFs embed text layers (title blocks, dimensions, room
+    # labels) that push char_count well over 50.  Detect them by text shape:
+    #   - many short lines (dimensions, labels)
+    #   - dimension-like patterns (4'-6", 12' - 0", etc.)
+    #   - repetitive fragments and low words-per-line
+    if char_count > 50:
+        lines = [ln for ln in text.split('\n') if ln.strip()]
+        num_lines = len(lines) or 1
+        avg_line_len = char_count / num_lines
+        words = text.split()
+        words_per_line = len(words) / num_lines
+
+        # Dimension / CAD patterns:  4'-6"  12' - 0"  3/4"  ±  Ø  ##.##
+        import re
+        _dim_pat = re.compile(
+            r"""\d+['\u2032]\s*-?\s*\d*["\u2033]?    # 12'-6"  4'  12' - 0"
+            |\d+/\d+"?                                 # 3/4"  1/2
+            |\d+\.\d{2,}                               # 23.456  (coord-like)
+            |[A-Z]\d{1,3}\.\d                          # A1.1  S2.0  (sheet refs)
+            """, re.VERBOSE
+        )
+        dim_hits = len(_dim_pat.findall(text))
+        dim_density = dim_hits / num_lines
+
+        # Drawing-title patterns (FLOOR PLAN, ELEVATION, SECTION, DETAIL)
+        _drawing_title_pat = re.compile(
+            r'(?:FLOOR|ROOF|SITE|FOUNDATION)\s*PLAN'
+            r'|ELEVATION|SECTION\s+[A-Z]|DETAIL\s+\d'
+            r'|SCALE\s*[:=]|NOT\s+TO\s+SCALE',
+            re.IGNORECASE
+        )
+        has_drawing_titles = bool(_drawing_title_pat.search(text))
+
+        is_cad_drawing = (
+            (avg_line_len < 25 and words_per_line < 4 and num_lines > 15)
+            or (dim_density > 0.3 and avg_line_len < 40)
+            or (has_drawing_titles and avg_line_len < 35 and words_per_line < 5)
+        )
+        if is_cad_drawing:
+            return "image_drawing"  # CAD drawing with embedded text — needs Vision
+
+    if image_fraction > 0.4:
         return "mixed"   # Text page with significant drawings/tables
     else:
         return "text"    # Standard spec/addendum text page
@@ -2307,6 +2350,25 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
             extraction = _extract_text_page(
                 client, page_texts[page_idx], file_name, page_num, page_stats
             )
+            # Fallback: if text extraction failed (flags set), escalate to Vision
+            if extraction and extraction.flags and not extraction.trades_and_scope:
+                emit(f"  \u21bb {file_name} p.{page_num} text parse failed — retrying with Vision...")
+                try:
+                    thread_doc = fitz.open(file_path_str)
+                    png_bytes = render_page_to_png(thread_doc, page_idx)
+                    thread_doc.close()
+                    vision_extraction = process_page(
+                        client, png_bytes, file_name, page_num, page_stats
+                    )
+                    if vision_extraction and not vision_extraction.flags:
+                        extraction = vision_extraction  # Vision succeeded
+                        # Clear any failed_pages entry added by text attempt
+                        page_stats["failed_pages"] = [
+                            fp for fp in page_stats["failed_pages"]
+                            if f"p.{page_num}" not in fp
+                        ]
+                except Exception:
+                    pass  # Keep the original text extraction result
         else:
             # Tier 2/3: Vision API — each worker opens its own fitz doc for rendering
             label = "SCAN" if page_type == "image_scanned" else page_type.upper().replace("IMAGE_", "")

@@ -4338,9 +4338,12 @@ def build_results_json(
     # Site work row — always add the priced SITE WORK / CIVIL row.
     # Check user-provided site budget FIRST
     _user_site_json = pq.get('site_work_budget')
+    _rt_bv = None  # safe default before conditional logic
+    _site_source = "placeholder"
     if _user_site_json and isinstance(_user_site_json, (int, float)) and _user_site_json > 0:
         site_override = round(_user_site_json)
         site_note = f"User-provided site budget: ${site_override:,.0f}"
+        _site_source = "user"
     else:
         site_items = get_baseline_quantities("SITE WORK / CIVIL", _extraction_for_detection,
                                              project_quantities=pq)
@@ -4354,6 +4357,7 @@ def build_results_json(
         if _rt_bv is not None:
             site_override = _rt_bv
             site_note = _rt_nv
+            _site_source = "rate_table"
 
     all_rows.append({
         "cost_code": "02-000",
@@ -4366,7 +4370,7 @@ def build_results_json(
         "revised_budget": site_override,
         "committed_costs": 0,
         "notes": site_note,
-        "source": "rate_table" if _rt_bv else "placeholder",
+        "source": _site_source,
         "scope_items": [],
     })
 

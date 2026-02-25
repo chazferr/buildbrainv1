@@ -15,10 +15,10 @@
     --green:#10b981;--amber:#f59e0b;--red:#ef4444;
     --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',system-ui,sans-serif;
 }
-body{font-family:var(--sans);background:var(--gray-50);color:var(--gray-900);height:100vh;overflow:hidden;display:flex}
+body{font-family:var(--sans);background:var(--gray-50);color:var(--gray-900);display:flex;flex-direction:row;height:100vh;width:100%;overflow:hidden}
 
 /* ═══ LEFT PANEL ═══ */
-.lp{width:380px;min-width:380px;background:var(--navy);color:rgba(255,255,255,.85);display:flex;flex-direction:column;overflow:hidden}
+.lp{width:380px;min-width:380px;max-width:380px;flex-shrink:0;background:var(--navy);color:rgba(255,255,255,.85);display:flex;flex-direction:column;overflow:hidden}
 .lp-brand{padding:1.1rem 1.25rem;display:flex;align-items:center;gap:.6rem;border-bottom:1px solid var(--navy-border);flex-shrink:0}
 .lp-logo{width:28px;height:28px;background:var(--orange);border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.9rem;color:var(--white)}
 .lp-brand h1{font-size:1.1rem;font-weight:700;letter-spacing:-.02em;color:var(--white)}
@@ -97,7 +97,7 @@ body{font-family:var(--sans);background:var(--gray-50);color:var(--gray-900);hei
 .btn-ghost:hover{border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.8)}
 
 /* ═══ RIGHT PANEL ═══ */
-.rp{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--white)}
+.rp{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--white)}
 
 /* Tab bar */
 .tab-bar{display:flex;border-bottom:2px solid var(--gray-200);padding:0 1.5rem;flex-shrink:0;background:var(--white)}

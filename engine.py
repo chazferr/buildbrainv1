@@ -2373,6 +2373,7 @@ Return ONLY valid JSON, no other text.
 
 {{
   "project_type": "single_family" | "multi_family" | "commercial" | "mixed_use" | "warehouse" | "institutional" | "unknown",
+  "construction_type": "new_construction" | "renovation" | "gut_rehabilitation" | "addition" | "unknown",
   "unit_count": <number of residential units, or 1 if single family>,
   "floor_count": <number of stories above grade>,
   "floor_to_floor_height_ft": <typical floor-to-floor height in feet, from section drawings or notes>,
@@ -2380,6 +2381,9 @@ Return ONLY valid JSON, no other text.
   "total_building_sf": <total gross SF all floors>,
   "perimeter_lf": <building perimeter in LF>,
   "unit_avg_sf": <average unit size in SF>,
+  "roof_type": "epdm_flat" | "tpo_flat" | "asphalt_shingle" | "built_up" | "metal" | "unknown",
+  "hvac_system_type": "commercial_rtu" | "residential_minisplit" | "residential_ducted" | "commercial_vrf" | "unknown",
+  "foundation_type": "slab_on_grade" | "strip_footing" | "mat_foundation" | "deep_foundation" | "unknown",
   "window_count": <total windows>,
   "ext_door_count": <exterior doors>,
   "int_door_count": <interior doors per unit x units>,
@@ -2393,6 +2397,40 @@ Return ONLY valid JSON, no other text.
   "confidence": "high" | "medium" | "low",
   "notes": "brief explanation of how quantities were derived"
 }}
+
+Look for system types in scope descriptions, not just cover sheet data.
+Examples of what to look for:
+
+roof_type: keywords like 'EPDM', 'TPO', 'asphalt shingle',
+'CertainTeed', 'built-up', 'flat roof', 'shingle', 'membrane'
+
+hvac_system_type: keywords like 'mini-split', 'Mitsubishi',
+'Daikin', 'ductless', 'RTU', 'rooftop unit', 'fan coil',
+'VRF', 'forced air', 'heat pump', 'PTAC'
+
+foundation_type: keywords like 'slab on grade', 'slab-on-grade',
+'strip footing', 'mat foundation', 'spread footing', 'grade beam',
+'pile', 'caisson', 'crawl space'
+
+construction_type: keywords like 'new construction', 'renovation',
+'rehabilitation', 'existing building', 'alteration', 'addition'
+
+If you find brand names like 'CertainTeed XT-25' in roofing scope,
+classify as asphalt_shingle. If you find 'Mitsubishi' or 'mini-split'
+in HVAC scope, classify as residential_minisplit.
+Only return 'unknown' if genuinely not mentioned anywhere.
+
+For footprint_sf: if you find a slab or concrete calculation
+in scope descriptions (e.g. 'slab on grade 699 SF' or
+'concrete slab 3,115 SF'), use that number as footprint_sf.
+If total_building_sf and floor_count are both known,
+estimate footprint_sf = total_building_sf / floor_count.
+
+For perimeter_lf: if footprint_sf is known and perimeter_lf
+is not explicitly stated, estimate it as:
+perimeter_lf = round(sqrt(footprint_sf) * 4)
+This assumes a roughly square footprint — flag as medium
+confidence if estimated this way.
 
 If a value cannot be determined from the documents, use null — never guess.
 
@@ -2438,7 +2476,8 @@ CONSTRUCTION DOCUMENTS TEXT:
 
         key_scalars = [
             'unit_count', 'floor_count', 'total_building_sf', 'footprint_sf',
-            'perimeter_lf', 'project_type', 'roof_type',
+            'perimeter_lf', 'project_type', 'construction_type',
+            'roof_type', 'hvac_system_type', 'foundation_type',
         ]
 
         for key in key_scalars:

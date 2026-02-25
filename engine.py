@@ -4133,13 +4133,13 @@ def build_results_json(
     project_quantities: Optional[dict] = None,
     addenda_findings: Optional[list[dict]] = None,
 ) -> dict:
-    """Build a JSON-serializable dict of all results for the in-browser viewer.
+    """Build JSON for the in-browser Procore-style budget viewer.
 
-    Returns dict with keys: buyout_summary, scope_details, flags, scalars, totals.
+    Returns dict with: divisions (grouped budget rows), flags, scalars, summary.
+    Each division has collapsible rows with editable budget cells.
     """
     consolidated = consolidate_trades(trades)
 
-    # Build raw text for detection helpers
     _raw_text_parts = []
     for t in trades:
         _raw_text_parts.extend([t.trade, t.scope_description, t.evidence])
@@ -4155,64 +4155,69 @@ def build_results_json(
 
     pq = project_quantities or {}
 
-    # ── Buyout Summary rows ──────────────────────────────────
     sov_matched = {}
     if sov_data:
         sov_matched = _match_sov_to_trades(consolidated, sov_data.get("trade_sov", {}))
 
-    buyout_rows = []
-    building_subtotal = 0
+    # ── Build budget rows ────────────────────────────────────
+    all_rows = []
 
     # Site work row
     site_items = get_baseline_quantities("SITE WORK / CIVIL", _extraction_for_detection,
                                          project_quantities=pq)
     site_override = next((item.get("override_amount") for item in site_items
                          if item.get("override_amount")), 0)
-    site_override_note = next((item.get("note") for item in site_items
-                              if item.get("note") and item.get("override_amount")),
-                             site_result.get("flag_note", ""))
-    site_budget = site_override
+    site_note = next((item.get("note") for item in site_items
+                     if item.get("note") and item.get("override_amount")),
+                    site_result.get("flag_note", ""))
 
-    # Rate table override for sitework
     _rt_bv, _rt_nv = _apply_rate_table_override("SITE WORK / CIVIL", rate_profile, pq)
     if _rt_bv is not None:
-        site_budget = _rt_bv
-        site_override_note = _rt_nv
+        site_override = _rt_bv
+        site_note = _rt_nv
 
-    site_row = {
-        "div": "02000",
+    all_rows.append({
+        "cost_code": "02-000",
+        "div": "02",
         "trade": "SITE WORK / CIVIL",
-        "scope_brief": "See Scope Details tab",
+        "scope_brief": "Grading, utilities, paving, landscaping",
         "low_bidder": None,
-        "budget": site_budget,
-        "notes": site_override_note,
-        "is_site": True,
-    }
+        "original_budget": site_override,
+        "budget_modifications": 0,
+        "revised_budget": site_override,
+        "committed_costs": 0,
+        "notes": site_note,
+        "source": "rate_table" if _rt_bv else "placeholder",
+        "scope_items": [],
+    })
 
-    # Build trade rows
     for row_data in consolidated:
         trade_name = row_data["trade"]
         budget_val = None
         note_val = None
+        source = "none"
 
         if trade_name == "General Requirements":
-            budget_val = 0  # recalculated below
-            note_val = "Calculated as % of direct building cost"
+            budget_val = 0
+            note_val = "Calculated as % of direct cost"
+            source = "calculated"
         else:
             # Tier 1: SOV
             if trade_name in sov_matched:
                 budget_val = sov_matched[trade_name]
                 note_val = "Matched from reference buyout SOV"
+                source = "sov"
 
-            # Tier 2: Extracted from docs
+            # Tier 2: Extracted
             if budget_val is None and row_data.get("budget") is not None:
                 extracted = row_data["budget"]
                 if isinstance(extracted, (int, float)) and extracted > 500000:
                     budget_val = None
-                    note_val = f"\u26a0\ufe0f Large amount ${extracted:,.0f} found \u2014 likely contract total, not trade cost"
+                    note_val = f"Large amount ${extracted:,.0f} \u2014 likely contract total"
                 else:
                     budget_val = extracted
                     note_val = "Extracted from documents"
+                    source = "extracted"
 
             # Tier 3: Rate table or material_db
             if budget_val is None or budget_val == 0:
@@ -4227,107 +4232,130 @@ def build_results_json(
                     if override is not None:
                         budget_val = override
                         note_val = override_note
+                        source = "placeholder"
                     else:
                         wage_regime = "CT_DOL_RESIDENTIAL"
                         if isinstance(project_type_result, dict) and "regime" in project_type_result:
                             wage_regime = project_type_result["regime"]
-                        trade_estimate = calculate_trade_estimate(
+                        te = calculate_trade_estimate(
                             trade_name=trade_name, work_items=work_items, wage_regime=wage_regime)
-                        budget_val = trade_estimate["total_material"] + trade_estimate["total_labor"]
-                        note_val = (
-                            f"Calculated baseline | Material: ${trade_estimate['total_material']:,.0f} "
-                            f"+ Labor: ${trade_estimate['total_labor']:,.0f}"
-                        )
+                        budget_val = te["total_material"] + te["total_labor"]
+                        note_val = f"Material: ${te['total_material']:,.0f} + Labor: ${te['total_labor']:,.0f}"
+                        source = "material_db"
 
-                    # Rate table override
                     _rt_bv, _rt_nv = _apply_rate_table_override(trade_name, rate_profile, pq)
                     if _rt_bv is not None:
                         budget_val = _rt_bv
                         note_val = _rt_nv
+                        source = "rate_table"
                 else:
                     budget_val = 0
-                    note_val = "\u26a0\ufe0f No pricing found \u2014 estimator must price"
+                    note_val = "No pricing \u2014 estimator must price"
+                    source = "none"
 
             # Sitework floor safeguard
             if trade_name in ("Sitework", "SITE WORK / CIVIL", "Paving & Striping", "Landscaping"):
                 _tsf = pq.get('total_building_sf') or 1000
-                _min_site = _tsf * 5
-                if budget_val is not None and budget_val < _min_site:
+                if budget_val is not None and budget_val < _tsf * 5:
                     budget_val = None
 
             # Complexity multiplier
-            _complexity_mult = pq.get('complexity_multiplier', 1.0)
-            if (budget_val and isinstance(budget_val, (int, float))
-                    and budget_val > 0 and _complexity_mult != 1.0):
-                _pre = budget_val
-                budget_val = round(budget_val * _complexity_mult)
+            _cm = pq.get('complexity_multiplier', 1.0)
+            if budget_val and isinstance(budget_val, (int, float)) and budget_val > 0 and _cm != 1.0:
+                budget_val = round(budget_val * _cm)
                 _label = pq.get('construction_type', 'unknown')
-                note_val = f"Complexity adj: ${_pre:,.0f} \u00d7 {_complexity_mult:.2f} ({_label})" + (f" | {note_val}" if note_val else "")
+                note_val = f"{_cm:.2f}x ({_label}) | {note_val}" if note_val else f"{_cm:.2f}x ({_label})"
 
         budget_val = round(budget_val) if budget_val else 0
 
-        # Scope brief
         scope_lines = row_data["scope"].split("\n")
-        brief = "; ".join(line.split(". ", 1)[-1] for line in scope_lines[:3])
-        if len(scope_lines) > 3:
-            brief += f" (+{len(scope_lines) - 3} more)"
+        brief = "; ".join(line.split(". ", 1)[-1] for line in scope_lines[:2])
+        if len(scope_lines) > 2:
+            brief += f" (+{len(scope_lines) - 2} more)"
 
         bids = row_data.get("bids", [])
-        low_bidder = bids[0][0] if bids else None
 
-        buyout_rows.append({
-            "div": row_data["csi_division"],
+        all_rows.append({
+            "cost_code": f"{row_data['csi_division'][:2]}-{row_data['csi_division']}",
+            "div": row_data["csi_division"][:2] if len(str(row_data["csi_division"])) >= 2 else str(row_data["csi_division"]).zfill(2),
             "trade": trade_name,
             "scope_brief": brief,
-            "low_bidder": low_bidder,
-            "budget": budget_val,
+            "low_bidder": bids[0][0] if bids else None,
+            "original_budget": budget_val,
+            "budget_modifications": 0,
+            "revised_budget": budget_val,
+            "committed_costs": 0,
             "notes": note_val or "",
-            "is_site": False,
+            "source": source,
+            "scope_items": [line.split(". ", 1)[-1] if ". " in line else line for line in scope_lines[:10]],
         })
 
-        if trade_name != "General Requirements":
-            building_subtotal += budget_val
-
     # Recalculate General Requirements
-    _gr_unit_count = pq.get('unit_count') or 1
-    _gr_rate = 0.05 if _gr_unit_count >= 50 else (0.06 if _gr_unit_count >= 10 else 0.08)
-    for row in buyout_rows:
+    direct_total = sum(r["original_budget"] for r in all_rows if r["trade"] != "General Requirements")
+    _gr_uc = pq.get('unit_count') or 1
+    _gr_rate = 0.05 if _gr_uc >= 50 else (0.06 if _gr_uc >= 10 else 0.08)
+    for row in all_rows:
         if row["trade"] == "General Requirements":
-            row["budget"] = round(building_subtotal * _gr_rate)
-            row["notes"] = f"General Requirements: {_gr_rate:.0%} of ${building_subtotal:,.0f} direct cost"
-            building_subtotal += row["budget"]
+            row["original_budget"] = round(direct_total * _gr_rate)
+            row["revised_budget"] = row["original_budget"]
+            row["notes"] = f"{_gr_rate:.0%} of ${direct_total:,.0f} direct cost"
             break
 
-    # GC Markups
+    # ── Group by CSI division ────────────────────────────────
+    from collections import OrderedDict
+    div_groups = OrderedDict()
+    _DIV_NAMES = {
+        "01": "General Requirements", "02": "Site Construction",
+        "03": "Concrete", "04": "Masonry", "05": "Metals",
+        "06": "Wood & Plastics", "07": "Thermal & Moisture",
+        "08": "Doors & Windows", "09": "Finishes",
+        "10": "Specialties", "11": "Equipment", "12": "Furnishings",
+        "13": "Special Construction", "14": "Conveying Systems",
+        "15": "Mechanical", "16": "Electrical",
+    }
+
+    for row in all_rows:
+        div = row["div"]
+        if div not in div_groups:
+            div_groups[div] = {
+                "div": div,
+                "name": _DIV_NAMES.get(div, f"Division {div}"),
+                "rows": [],
+                "subtotal": 0,
+            }
+        div_groups[div]["rows"].append(row)
+        div_groups[div]["subtotal"] += row["original_budget"]
+
+    divisions = list(div_groups.values())
+
+    # ── Totals ───────────────────────────────────────────────
+    building_subtotal = sum(r["original_budget"] for r in all_rows if r["div"] != "02")
+    site_subtotal = sum(r["original_budget"] for r in all_rows if r["div"] == "02")
+
     _gc = rate_profile.get('gc_markups', {})
-    gc_conditions_pct = _gc.get('conditions_pct', 0.10)
-    gc_profit_pct = _gc.get('profit_pct', 0.12)
-    contingency_pct = _gc.get('contingency_pct', 0.10)
-    permits_pct = _gc.get('permits_bond_pct', 0.025)
+    gc_cond_pct = _gc.get('conditions_pct', 0.10)
+    gc_prof_pct = _gc.get('profit_pct', 0.12)
+    cont_pct = _gc.get('contingency_pct', 0.10)
+    perm_pct = _gc.get('permits_bond_pct', 0.025)
 
-    gc_conditions = round(building_subtotal * gc_conditions_pct)
-    gc_profit = round(building_subtotal * gc_profit_pct)
-    contingency = round(building_subtotal * contingency_pct)
-    permits = round(building_subtotal * permits_pct)
-    building_total = building_subtotal + gc_conditions + gc_profit + contingency + permits
+    gc_cond = round(building_subtotal * gc_cond_pct)
+    gc_prof = round(building_subtotal * gc_prof_pct)
+    cont = round(building_subtotal * cont_pct)
+    perm = round(building_subtotal * perm_pct)
+    building_total = building_subtotal + gc_cond + gc_prof + cont + perm
 
-    site_fee = round(site_budget * 0.05)
-    site_total = site_budget + site_fee
+    site_fee = round(site_subtotal * 0.05)
+    site_total = site_subtotal + site_fee
     project_total = building_total + site_total
 
     totals = {
         "building_subtotal": building_subtotal,
-        "gc_conditions": gc_conditions,
-        "gc_conditions_pct": gc_conditions_pct,
-        "gc_profit": gc_profit,
-        "gc_profit_pct": gc_profit_pct,
-        "contingency": contingency,
-        "contingency_pct": contingency_pct,
-        "permits": permits,
-        "permits_pct": permits_pct,
+        "gc_conditions": gc_cond, "gc_conditions_pct": gc_cond_pct,
+        "gc_profit": gc_prof, "gc_profit_pct": gc_prof_pct,
+        "contingency": cont, "contingency_pct": cont_pct,
+        "permits": perm, "permits_pct": perm_pct,
         "building_total": building_total,
-        "site_subtotal": site_budget,
-        "site_fee": site_fee,
+        "site_subtotal": site_subtotal, "site_fee": site_fee,
         "site_total": site_total,
         "project_total": project_total,
         "low_estimate": round(project_total * 0.85),
@@ -4348,50 +4376,29 @@ def build_results_json(
     # ── Flags ────────────────────────────────────────────────
     flags = []
     for page_ref in (failed_pages or []):
-        flags.append({
-            "severity": "HIGH",
-            "flag": "Page could not be parsed",
-            "detail": f"{page_ref} failed extraction after 4 attempts.",
-            "source": page_ref,
-        })
+        flags.append({"severity": "HIGH", "flag": "Page parse failure",
+                      "detail": f"{page_ref} failed after 4 attempts.", "source": page_ref})
     for finding in (addenda_findings or []):
         flags.append(finding)
     for vf in pq.get('_validation_findings', []):
-        flags.append({
-            "severity": "MEDIUM",
-            "flag": "Quantity validation",
-            "detail": vf,
-            "source": "Project quantities",
-        })
+        flags.append({"severity": "MEDIUM", "flag": "Quantity validation",
+                      "detail": vf, "source": "Project quantities"})
 
     # ── Scalars ──────────────────────────────────────────────
     confidence = pq.get('_confidence', {})
     scalars = []
-    scalar_display = [
-        ('project_name', 'Project Name'),
-        ('project_address', 'Project Address'),
-        ('project_type', 'Project Type'),
-        ('construction_type', 'Construction Type'),
-        ('unit_count', 'Unit Count'),
-        ('floor_count', 'Floor Count'),
-        ('total_building_sf', 'Total Building SF'),
-        ('footprint_sf', 'Footprint SF'),
-        ('perimeter_lf', 'Perimeter LF'),
-        ('roof_type', 'Roof Type'),
-    ]
-    for key, label in scalar_display:
-        val = pq.get(key)
-        conf = confidence.get(key, 'low')
-        scalars.append({
-            "key": key,
-            "label": label,
-            "value": val if val is not None else "",
-            "confidence": conf,
-        })
+    for key, label in [
+        ('project_name', 'Project Name'), ('project_address', 'Project Address'),
+        ('project_type', 'Project Type'), ('construction_type', 'Construction Type'),
+        ('unit_count', 'Unit Count'), ('floor_count', 'Floor Count'),
+        ('total_building_sf', 'Total Building SF'), ('footprint_sf', 'Footprint SF'),
+        ('perimeter_lf', 'Perimeter LF'), ('roof_type', 'Roof Type'),
+    ]:
+        scalars.append({"key": key, "label": label,
+                        "value": pq.get(key, ""), "confidence": confidence.get(key, 'low')})
 
     return {
-        "site_row": site_row,
-        "buyout_rows": buyout_rows,
+        "divisions": divisions,
         "totals": totals,
         "scope_details": scope_details,
         "flags": flags,

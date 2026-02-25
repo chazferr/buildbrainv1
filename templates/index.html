@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BuildBrain</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -321,47 +322,100 @@
         .tab-panel { display: none; padding: 1rem 0; }
         .tab-panel.active { display: block; }
 
-        /* Buyout table */
-        .buyout-table {
+        /* Procore budget table */
+        main.results-wide { max-width: 1200px; }
+
+        .budget-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.8rem;
+            font-size: 0.82rem;
         }
-        .buyout-table th {
-            background: var(--navy);
+        .budget-table th {
+            background: #2c3e50;
             color: white;
-            padding: 0.5rem 0.6rem;
+            padding: 0.55rem 0.6rem;
             text-align: left;
             font-weight: 600;
             position: sticky;
             top: 0;
+            z-index: 2;
+            white-space: nowrap;
         }
-        .buyout-table th:nth-child(4),
-        .buyout-table td:nth-child(4) { text-align: right; }
-        .buyout-table td {
+        .budget-table th.col-money { text-align: right; width: 130px; }
+        .budget-table td {
             padding: 0.4rem 0.6rem;
-            border-bottom: 1px solid var(--border);
-            vertical-align: top;
+            border-bottom: 1px solid #e8ecf0;
+            vertical-align: middle;
         }
-        .buyout-table tr:hover td { background: rgba(26,35,50,0.03); }
-        .buyout-table .site-row td { background: #FFF8F0; }
-        .buyout-table .summary-row td {
+        .budget-table td.money {
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+
+        /* Division header row */
+        .budget-table .div-header td {
+            background: #f5f6f8;
             font-weight: 700;
-            border-top: 2px solid var(--navy);
-            background: #F0F4FA;
+            cursor: pointer;
+            user-select: none;
         }
-        .buyout-table .markup-row td { color: var(--text-muted); font-size: 0.78rem; }
-        .buyout-table .total-row td {
+        .budget-table .div-header:hover td { background: #eceef1; }
+        .div-toggle {
+            display: inline-block;
+            margin-right: 0.4rem;
+            transition: transform 0.15s;
+        }
+        .div-header.collapsed .div-toggle { transform: rotate(-90deg); }
+
+        /* Trade rows */
+        .budget-table .trade-row td { background: white; }
+        .budget-table .trade-row td:first-child { padding-left: 2rem; }
+        .budget-table .trade-row:hover td { background: rgba(26,35,50,0.02); }
+
+        /* Editable number inputs */
+        .budget-table input.cell-edit {
+            width: 100%;
+            border: none;
+            background: transparent;
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            padding: 0.2rem 0;
+            color: var(--text);
+            outline: none;
+        }
+        .budget-table input.cell-edit:focus {
+            border-bottom: 1.5px solid var(--orange);
+            background: #fffcf8;
+        }
+
+        /* Summary footer rows */
+        .budget-table .summary-subtotal td {
+            font-weight: 700;
+            background: #e8f0fe;
+            border-top: 2px solid #c5d4e8;
+        }
+        .budget-table .summary-markup td {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            background: #f7f9fc;
+        }
+        .budget-table .summary-total td {
             background: var(--navy);
             color: white;
             font-weight: 700;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
         }
-        .buyout-table .notes-cell {
-            max-width: 300px;
-            font-size: 0.75rem;
+        .budget-table .summary-total td.money {
+            font-family: 'JetBrains Mono', monospace;
+            color: white;
+        }
+        .budget-table .summary-estimate td {
+            font-size: 0.8rem;
             color: var(--text-muted);
-            line-height: 1.3;
+            background: #fafbfc;
         }
 
         /* Scope details */
@@ -874,12 +928,12 @@
                 <button class="download-btn" id="downloadBtn">&#11015; Download Excel</button>
             </div>
             <div class="results-tabs" id="resultsTabs">
-                <button class="active" data-tab="buyout">Buyout Summary</button>
+                <button class="active" data-tab="budget">Budget</button>
                 <button data-tab="scope">Scope Details</button>
                 <button data-tab="flags">Flags</button>
                 <button data-tab="scalars">Scalars</button>
             </div>
-            <div class="tab-panel active" id="tab-buyout"></div>
+            <div class="tab-panel active" id="tab-budget"></div>
             <div class="tab-panel" id="tab-scope"></div>
             <div class="tab-panel" id="tab-flags"></div>
             <div class="tab-panel" id="tab-scalars"></div>
@@ -1325,6 +1379,7 @@
     function showResults(stats) {
         progressSection.classList.remove('active');
         resultsSection.classList.add('active');
+        document.querySelector('main').classList.add('results-wide');
 
         const totalCost = stats.total_cost !== undefined ? stats.total_cost.toFixed(4) : '—';
 
@@ -1359,40 +1414,70 @@
     function fmt(n) { return n != null ? '$' + Math.round(n).toLocaleString() : '—'; }
 
     function renderResultsViewer(data) {
-        // ── Buyout Summary ──
         const t = data.totals;
-        let rows = '';
+        const divisions = data.divisions || [];
 
-        // Site row first
-        if (data.site_row) {
-            const s = data.site_row;
-            rows += `<tr class="site-row"><td>${escapeHtml(s.div)}</td><td>${escapeHtml(s.trade)}</td>
-                <td>${s.low_bidder || ''}</td><td>${fmt(s.budget)}</td>
-                <td class="notes-cell">${escapeHtml(s.notes || '')}</td></tr>`;
-        }
+        // Store for recalculation
+        window._bbData = data;
 
-        // Trade rows
-        (data.buyout_rows || []).forEach(r => {
-            rows += `<tr><td>${escapeHtml(r.div)}</td><td>${escapeHtml(r.trade)}</td>
-                <td>${r.low_bidder || ''}</td><td>${fmt(r.budget)}</td>
-                <td class="notes-cell">${escapeHtml(r.notes || '')}</td></tr>`;
+        // ── Budget Tab (Procore-style) ──
+        let html = '<div style="overflow-x:auto;"><table class="budget-table" id="budgetTable">';
+        html += '<thead><tr><th>Description</th><th class="col-money">Original Budget</th>';
+        html += '<th class="col-money">Budget Mods</th><th class="col-money">Revised Budget</th>';
+        html += '<th class="col-money">Committed Costs</th><th class="col-money">Direct Costs</th></tr></thead>';
+        html += '<tbody>';
+
+        divisions.forEach((div, di) => {
+            // Division header
+            html += `<tr class="div-header" data-div="${di}">`;
+            html += `<td><span class="div-toggle">\u25BE</span>${escapeHtml(div.div)} - ${escapeHtml(div.name)}</td>`;
+            html += `<td class="money div-subtotal" data-div="${di}" data-col="original">${fmt(div.subtotal)}</td>`;
+            html += `<td class="money div-subtotal" data-div="${di}" data-col="mods">$0</td>`;
+            html += `<td class="money div-subtotal" data-div="${di}" data-col="revised">${fmt(div.subtotal)}</td>`;
+            html += `<td class="money">$0</td><td class="money">$0</td></tr>`;
+
+            // Trade rows
+            div.rows.forEach((row, ri) => {
+                html += `<tr class="trade-row" data-div="${di}" data-row="${ri}">`;
+                html += `<td><span style="color:var(--text-muted);font-size:0.75rem;margin-right:0.5rem;">${escapeHtml(row.cost_code)}</span>${escapeHtml(row.trade)}</td>`;
+                html += `<td class="money"><input class="cell-edit" type="number" data-div="${di}" data-row="${ri}" data-field="original_budget" value="${row.original_budget}" step="100"></td>`;
+                html += `<td class="money"><input class="cell-edit" type="number" data-div="${di}" data-row="${ri}" data-field="budget_modifications" value="${row.budget_modifications}" step="100"></td>`;
+                html += `<td class="money revised-cell" data-div="${di}" data-row="${ri}">${fmt(row.revised_budget)}</td>`;
+                html += `<td class="money">$0</td><td class="money">$0</td></tr>`;
+            });
         });
 
-        // Summary rows
-        rows += `<tr class="summary-row"><td></td><td>BUILDING SUBTOTAL</td><td></td><td>${fmt(t.building_subtotal)}</td><td></td></tr>`;
-        rows += `<tr class="markup-row"><td></td><td>GC Conditions (${(t.gc_conditions_pct*100).toFixed(0)}%)</td><td></td><td>${fmt(t.gc_conditions)}</td><td></td></tr>`;
-        rows += `<tr class="markup-row"><td></td><td>GC Profit (${(t.gc_profit_pct*100).toFixed(0)}%)</td><td></td><td>${fmt(t.gc_profit)}</td><td></td></tr>`;
-        rows += `<tr class="markup-row"><td></td><td>Contingency (${(t.contingency_pct*100).toFixed(0)}%)</td><td></td><td>${fmt(t.contingency)}</td><td></td></tr>`;
-        rows += `<tr class="markup-row"><td></td><td>Permits + Bond (${(t.permits_pct*100).toFixed(1)}%)</td><td></td><td>${fmt(t.permits)}</td><td></td></tr>`;
-        rows += `<tr class="total-row"><td></td><td>BUILDING TOTAL</td><td></td><td>${fmt(t.building_total)}</td><td></td></tr>`;
-        rows += `<tr class="markup-row"><td></td><td>Site Fee (5%)</td><td></td><td>${fmt(t.site_fee)}</td><td></td></tr>`;
-        rows += `<tr class="total-row"><td></td><td>PROJECT TOTAL</td><td></td><td>${fmt(t.project_total)}</td>
-            <td class="notes-cell" style="color:white;font-size:0.78rem;">Range: ${fmt(t.low_estimate)} - ${fmt(t.high_estimate)}</td></tr>`;
+        // Summary footer
+        html += `<tr class="summary-subtotal"><td>BUILDING SUBTOTAL</td><td class="money" id="sum-bldg-sub">${fmt(t.building_subtotal)}</td><td class="money"></td><td class="money" id="sum-bldg-sub-rev">${fmt(t.building_subtotal)}</td><td class="money"></td><td class="money"></td></tr>`;
+        html += `<tr class="summary-markup"><td style="padding-left:2rem;">GC Conditions (${(t.gc_conditions_pct*100).toFixed(1)}%)</td><td class="money" id="sum-gc-cond">${fmt(t.gc_conditions)}</td><td class="money"></td><td class="money" id="sum-gc-cond-rev">${fmt(t.gc_conditions)}</td><td class="money"></td><td class="money"></td></tr>`;
+        html += `<tr class="summary-markup"><td style="padding-left:2rem;">GC Profit (${(t.gc_profit_pct*100).toFixed(1)}%)</td><td class="money" id="sum-gc-prof">${fmt(t.gc_profit)}</td><td class="money"></td><td class="money" id="sum-gc-prof-rev">${fmt(t.gc_profit)}</td><td class="money"></td><td class="money"></td></tr>`;
+        html += `<tr class="summary-markup"><td style="padding-left:2rem;">Contingency (${(t.contingency_pct*100).toFixed(1)}%)</td><td class="money" id="sum-cont">${fmt(t.contingency)}</td><td class="money"></td><td class="money" id="sum-cont-rev">${fmt(t.contingency)}</td><td class="money"></td><td class="money"></td></tr>`;
+        html += `<tr class="summary-markup"><td style="padding-left:2rem;">Permits + Bond (${(t.permits_pct*100).toFixed(1)}%)</td><td class="money" id="sum-perm">${fmt(t.permits)}</td><td class="money"></td><td class="money" id="sum-perm-rev">${fmt(t.permits)}</td><td class="money"></td><td class="money"></td></tr>`;
+        html += `<tr class="summary-total"><td>BUILDING TOTAL</td><td class="money" id="sum-bldg-total">${fmt(t.building_total)}</td><td class="money"></td><td class="money" id="sum-bldg-total-rev">${fmt(t.building_total)}</td><td class="money"></td><td class="money"></td></tr>`;
+        html += `<tr class="summary-subtotal"><td>SITE TOTAL</td><td class="money" id="sum-site-total">${fmt(t.site_total)}</td><td class="money"></td><td class="money" id="sum-site-total-rev">${fmt(t.site_total)}</td><td class="money"></td><td class="money"></td></tr>`;
+        html += `<tr class="summary-total"><td>PROJECT TOTAL</td><td class="money" id="sum-proj-total">${fmt(t.project_total)}</td><td class="money"></td><td class="money" id="sum-proj-total-rev">${fmt(t.project_total)}</td><td class="money"></td><td class="money"></td></tr>`;
+        html += `<tr class="summary-estimate"><td>Low Estimate (-15%)</td><td class="money" id="sum-low">${fmt(t.low_estimate)}</td><td class="money"></td><td class="money"></td><td class="money"></td><td class="money"></td></tr>`;
+        html += `<tr class="summary-estimate"><td>High Estimate (+15%)</td><td class="money" id="sum-high">${fmt(t.high_estimate)}</td><td class="money"></td><td class="money"></td><td class="money"></td><td class="money"></td></tr>`;
 
-        document.getElementById('tab-buyout').innerHTML = `
-            <div style="overflow-x:auto;"><table class="buyout-table">
-            <thead><tr><th>DIV</th><th>Trade</th><th>Low Bidder</th><th>Budget</th><th>Notes</th></tr></thead>
-            <tbody>${rows}</tbody></table></div>`;
+        html += '</tbody></table></div>';
+        document.getElementById('tab-budget').innerHTML = html;
+
+        // Collapsible division headers
+        document.querySelectorAll('.div-header').forEach(hdr => {
+            hdr.addEventListener('click', (e) => {
+                if (e.target.closest('input')) return;
+                const di = hdr.dataset.div;
+                const collapsed = hdr.classList.toggle('collapsed');
+                document.querySelectorAll(`.trade-row[data-div="${di}"]`).forEach(tr => {
+                    tr.style.display = collapsed ? 'none' : '';
+                });
+            });
+        });
+
+        // Editable cell listeners for live recalc
+        document.querySelectorAll('.cell-edit').forEach(input => {
+            input.addEventListener('input', recalcBudget);
+        });
 
         // ── Scope Details ──
         let scopeHtml = '';
@@ -1423,13 +1508,81 @@
         let scalarRows = '';
         (data.scalars || []).forEach(s => {
             const confClass = s.confidence === 'high' ? 'conf-high' : s.confidence === 'medium' ? 'conf-medium' : 'conf-low';
-            const val = typeof s.value === 'number' ? s.value.toLocaleString() : (s.value || '—');
+            const val = typeof s.value === 'number' ? s.value.toLocaleString() : (s.value || '\u2014');
             scalarRows += `<tr><td>${escapeHtml(s.label)}</td><td>${escapeHtml(String(val))}</td>
                 <td class="${confClass}">${s.confidence}</td></tr>`;
         });
         document.getElementById('tab-scalars').innerHTML = `
             <table class="scalars-table"><thead><tr><th>Scalar</th><th>Value</th><th>Confidence</th></tr></thead>
             <tbody>${scalarRows}</tbody></table>`;
+    }
+
+    function recalcBudget() {
+        const data = window._bbData;
+        if (!data) return;
+        const t = data.totals;
+        const divisions = data.divisions || [];
+
+        let buildingSubtotal = 0;
+        let siteSubtotal = 0;
+
+        divisions.forEach((div, di) => {
+            let divOriginal = 0;
+            let divMods = 0;
+            let divRevised = 0;
+
+            div.rows.forEach((row, ri) => {
+                const origInput = document.querySelector(`input[data-div="${di}"][data-row="${ri}"][data-field="original_budget"]`);
+                const modsInput = document.querySelector(`input[data-div="${di}"][data-row="${ri}"][data-field="budget_modifications"]`);
+                const origVal = parseFloat(origInput ? origInput.value : 0) || 0;
+                const modsVal = parseFloat(modsInput ? modsInput.value : 0) || 0;
+                const revised = origVal + modsVal;
+
+                // Update revised cell
+                const revisedCell = document.querySelector(`.revised-cell[data-div="${di}"][data-row="${ri}"]`);
+                if (revisedCell) revisedCell.textContent = fmt(revised);
+
+                divOriginal += origVal;
+                divMods += modsVal;
+                divRevised += revised;
+            });
+
+            // Update division subtotals
+            document.querySelectorAll(`.div-subtotal[data-div="${di}"]`).forEach(td => {
+                if (td.dataset.col === 'original') td.textContent = fmt(divOriginal);
+                if (td.dataset.col === 'mods') td.textContent = fmt(divMods);
+                if (td.dataset.col === 'revised') td.textContent = fmt(divRevised);
+            });
+
+            if (div.div === '02') {
+                siteSubtotal += divOriginal;
+            } else {
+                buildingSubtotal += divOriginal;
+            }
+        });
+
+        // Recalculate GC markups from building subtotal
+        const gcCond = Math.round(buildingSubtotal * t.gc_conditions_pct);
+        const gcProf = Math.round(buildingSubtotal * t.gc_profit_pct);
+        const cont = Math.round(buildingSubtotal * t.contingency_pct);
+        const perm = Math.round(buildingSubtotal * t.permits_pct);
+        const buildingTotal = buildingSubtotal + gcCond + gcProf + cont + perm;
+        const siteFee = Math.round(siteSubtotal * 0.05);
+        const siteTotal = siteSubtotal + siteFee;
+        const projectTotal = buildingTotal + siteTotal;
+
+        // Update all summary cells
+        const u = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = fmt(val); };
+        u('sum-bldg-sub', buildingSubtotal);     u('sum-bldg-sub-rev', buildingSubtotal);
+        u('sum-gc-cond', gcCond);                u('sum-gc-cond-rev', gcCond);
+        u('sum-gc-prof', gcProf);                u('sum-gc-prof-rev', gcProf);
+        u('sum-cont', cont);                     u('sum-cont-rev', cont);
+        u('sum-perm', perm);                     u('sum-perm-rev', perm);
+        u('sum-bldg-total', buildingTotal);      u('sum-bldg-total-rev', buildingTotal);
+        u('sum-site-total', siteTotal);          u('sum-site-total-rev', siteTotal);
+        u('sum-proj-total', projectTotal);       u('sum-proj-total-rev', projectTotal);
+        u('sum-low', Math.round(projectTotal * 0.85));
+        u('sum-high', Math.round(projectTotal * 1.15));
     }
 
     function showError(msg) {
@@ -1451,6 +1604,8 @@
         buyoutFile = null;
         currentJobId = null;
         confirmedPrecheck = null;
+        window._bbData = null;
+        document.querySelector('main').classList.remove('results-wide');
         dropzone.style.display = '';
         fileList.style.display = '';
         fileList.innerHTML = '';

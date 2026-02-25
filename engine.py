@@ -1913,6 +1913,101 @@ If truly nothing is extractable, return:
 # ─── Orchestrator ────────────────────────────────────────────────────────────
 
 
+def _classify_page(doc: fitz.Document, page_idx: int) -> str:
+    """Classify a PDF page as 'text', 'mixed', or 'image' to choose extraction method.
+
+    Returns:
+        'text'  — page is mostly text, use native text extraction (cheapest)
+        'mixed' — page has text + some images/tables, use text + Vision for images
+        'image' — page is mostly images/drawings, use Vision API (most expensive)
+    """
+    page = doc.load_page(page_idx)
+    text = page.get_text("text").strip()
+    char_count = len(text)
+
+    # Count images on the page
+    image_list = page.get_images(full=True)
+    image_count = len(image_list)
+
+    # Calculate image area as fraction of page
+    page_rect = page.rect
+    page_area = page_rect.width * page_rect.height
+    image_area = 0
+    for img in image_list:
+        try:
+            bbox = page.get_image_bbox(img)
+            if bbox:
+                image_area += abs(bbox.width * bbox.height)
+        except Exception:
+            pass
+    image_fraction = image_area / page_area if page_area > 0 else 0
+
+    # Decision logic
+    if char_count < 50 and image_count > 0:
+        return "image"   # Drawing, floor plan, diagram
+    elif char_count < 50 and image_count == 0:
+        return "image"   # Scanned page with no extractable text — need OCR/Vision
+    elif image_fraction > 0.4:
+        return "mixed"   # Text page with significant drawings/tables
+    else:
+        return "text"    # Standard spec/addendum text page
+
+
+def _extract_text_page(
+    client: anthropic.Anthropic,
+    text: str,
+    pdf_name: str,
+    page_num: int,
+    stats: dict,
+) -> Optional[PageExtraction]:
+    """Process a text-heavy page using native text extraction (no Vision).
+    Sends extracted text to Claude as a text prompt — much cheaper than Vision."""
+
+    prompt_text = EXTRACTION_PROMPT.format(pdf_name=pdf_name, page_num=page_num)
+
+    full_prompt = (
+        f"--- DOCUMENT CONTENT ({pdf_name}, Page {page_num}) ---\n\n"
+        f"{text}\n\n"
+        f"--- END DOCUMENT CONTENT ---\n\n"
+        f"{prompt_text}"
+    )
+
+    for attempt in range(2):
+        try:
+            response = client.messages.create(
+                model=MODEL,
+                max_tokens=4096,
+                temperature=TEMPERATURE,
+                messages=[{"role": "user", "content": full_prompt}],
+            )
+
+            usage = response.usage
+            stats["input_tokens"] += usage.input_tokens
+            stats["output_tokens"] += usage.output_tokens
+            stats["api_calls"] += 1
+
+            raw_text = response.content[0].text
+            json_text = extract_json_from_text(raw_text)
+            data = json.loads(json_text)
+            extraction = PageExtraction(**data)
+            return extraction
+
+        except (json.JSONDecodeError, ValidationError):
+            if attempt == 1:
+                stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
+        except anthropic.APIError:
+            if attempt == 0:
+                time.sleep(3)
+            else:
+                stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
+
+    return PageExtraction(
+        trades_and_scope=[],
+        submission_requirements=[],
+        flags=[f"WARNING: Page {page_num} text extraction failed — manual review required"]
+    )
+
+
 def _process_pdf(client, file_path, emit, global_stats, file_stats):
     """Process a PDF file page by page using Vision API."""
     file_name = file_path.name
@@ -1926,17 +2021,27 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
 
     for page_idx in range(num_pages):
         page_num = page_idx + 1
-        emit(f"Processing {file_name} — Page {page_num}/{num_pages}...")
 
-        try:
-            png_bytes = render_page_to_png(doc, page_idx)
-        except Exception as e:
-            emit(f"[RENDER ERROR] {file_name} p.{page_num}: {e}")
-            per_file["failed_pages"].append(f"{file_name} p.{page_num}")
-            continue
-
+        # 3-tier extraction: classify page to minimize Vision API cost
+        page_type = _classify_page(doc, page_idx)
         page_stats = {"input_tokens": 0, "output_tokens": 0, "api_calls": 0, "failed_pages": []}
-        extraction = process_page(client, png_bytes, file_name, page_num, page_stats)
+        per_file[f"{page_type}_pages"] = per_file.get(f"{page_type}_pages", 0) + 1
+
+        if page_type == "text":
+            # Tier 1: Native text extraction — cheapest
+            page_text = doc.load_page(page_idx).get_text("text").strip()
+            emit(f"Processing {file_name} — Page {page_num}/{num_pages} [TEXT]...")
+            extraction = _extract_text_page(client, page_text, file_name, page_num, page_stats)
+        else:
+            # Tier 2/3: Vision API for image-heavy or mixed pages
+            emit(f"Processing {file_name} — Page {page_num}/{num_pages} [{page_type.upper()}]...")
+            try:
+                png_bytes = render_page_to_png(doc, page_idx)
+            except Exception as e:
+                emit(f"[RENDER ERROR] {file_name} p.{page_num}: {e}")
+                per_file["failed_pages"].append(f"{file_name} p.{page_num}")
+                continue
+            extraction = process_page(client, png_bytes, file_name, page_num, page_stats)
 
         per_file["input_tokens"] += page_stats["input_tokens"]
         per_file["output_tokens"] += page_stats["output_tokens"]
@@ -1956,6 +2061,13 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
         global_stats[k] += per_file[k]
     global_stats["total_pages"] += per_file["pages"]
     global_stats["failed_pages"].extend(per_file["failed_pages"])
+
+    _tp = per_file.get('text_pages', 0)
+    _mp = per_file.get('mixed_pages', 0)
+    _ip = per_file.get('image_pages', 0)
+    emit(f"  {file_name}: {_tp} text / {_mp} mixed / {_ip} image pages "
+         f"(Vision calls saved: {_tp})")
+
     return reqs, trades
 
 
@@ -2320,6 +2432,45 @@ CONSTRUCTION DOCUMENTS TEXT:
             f"{quantities.get('total_building_sf')} SF | "
             f"confidence: {quantities.get('confidence')}"
         )
+
+        # ── Confidence scoring for scalar gate ────────────────────────────────
+        confidence = {}
+
+        key_scalars = [
+            'unit_count', 'floor_count', 'total_building_sf', 'footprint_sf',
+            'perimeter_lf', 'project_type', 'roof_type',
+        ]
+
+        for key in key_scalars:
+            val = quantities.get(key)
+            if val is None or val == 0 or val == 'unknown':
+                confidence[key] = 'low'      # Missing — estimator MUST provide
+            elif isinstance(val, (int, float)) and val > 0:
+                confidence[key] = 'high'     # Extracted, looks reasonable
+            else:
+                confidence[key] = 'medium'   # Extracted but may need verification
+
+        # Plausibility checks that lower confidence
+        _tsf = quantities.get('total_building_sf', 0) or 0
+        _uc = quantities.get('unit_count', 0) or 0
+        _fc = quantities.get('floor_count', 0) or 0
+
+        if _tsf > 0 and _uc > 0:
+            sf_per_unit = _tsf / _uc
+            if sf_per_unit < 150 or sf_per_unit > 3000:
+                confidence['unit_count'] = 'low'
+                confidence['total_building_sf'] = 'low'
+
+        if _tsf > 0 and _fc > 0:
+            sf_per_floor = _tsf / _fc
+            if sf_per_floor < 500 or sf_per_floor > 50000:
+                confidence['floor_count'] = 'low'
+
+        quantities['_confidence'] = confidence
+        quantities['_scalar_gate_required'] = any(
+            v == 'low' for v in confidence.values()
+        )
+
         return quantities
     except Exception as e:
         emit(f"[WARNING] Could not extract quantities: {e}. Using conservative defaults.")
@@ -2509,6 +2660,7 @@ def build_excel_bytes(
     failed_pages: Optional[list[str]] = None,
     project_quantities: Optional[dict] = None,
     addenda_findings: Optional[list[dict]] = None,
+    progress_callback: Optional[Callable[[str], None]] = None,
 ) -> bytes:
     """Build the Excel workbook in memory and return it as bytes.
 
@@ -2541,6 +2693,10 @@ def build_excel_bytes(
 
     site_result = _detect_site_scope(consolidated, trades)
 
+    def emit(msg: str):
+        if progress_callback:
+            progress_callback(msg)
+
     wb = openpyxl.Workbook()
 
     # ── Styles ────────────────────────────────────────────────────────────
@@ -2571,9 +2727,95 @@ def build_excel_bytes(
     top_align = Alignment(vertical="top")
     wrap_top = Alignment(vertical="top", wrap_text=True)
 
+    # ── Scalar Gate: Show extracted quantities with confidence ────────────
+    if project_quantities:
+        _conf = project_quantities.get('_confidence', {})
+        _conf_emoji = {'high': '\U0001f7e2', 'medium': '\U0001f7e1', 'low': '\u26aa'}
+
+        ws_scalars = wb.active
+        ws_scalars.title = "Project Scalars"
+        ws_scalars.column_dimensions['A'].width = 25
+        ws_scalars.column_dimensions['B'].width = 18
+        ws_scalars.column_dimensions['C'].width = 12
+        ws_scalars.column_dimensions['D'].width = 18
+        ws_scalars.column_dimensions['E'].width = 50
+
+        for col, title in enumerate(["Scalar", "Extracted Value", "Confidence",
+                                       "Your Override", "Notes"], 1):
+            cell = ws_scalars.cell(row=1, column=col, value=title)
+            cell.font = header_font
+            cell.fill = navy_fill
+
+        scalar_display = [
+            ('unit_count', 'Unit Count', 'units'),
+            ('floor_count', 'Floor Count', 'floors'),
+            ('total_building_sf', 'Total Building SF', 'SF'),
+            ('footprint_sf', 'Footprint SF', 'SF'),
+            ('perimeter_lf', 'Perimeter LF', 'LF'),
+            ('project_type', 'Project Type', ''),
+            ('construction_type', 'Construction Type', ''),
+            ('roof_type', 'Roof Type', ''),
+            ('hvac_system_type', 'HVAC System Type', ''),
+            ('foundation_type', 'Foundation Type', ''),
+        ]
+
+        for row_idx, (key, label, unit_hint) in enumerate(scalar_display, 2):
+            val = project_quantities.get(key, 'NOT EXTRACTED')
+            conf = _conf.get(key, 'low')
+            _emoji = _conf_emoji.get(conf, '\u26aa')
+
+            ws_scalars.cell(row=row_idx, column=1, value=label).font = bold_font
+
+            if isinstance(val, (int, float)):
+                display_val = f"{val:,.0f} {unit_hint}".strip()
+            else:
+                display_val = str(val) if val is not None else 'NOT EXTRACTED'
+            ws_scalars.cell(row=row_idx, column=2, value=display_val).font = normal_font
+
+            conf_cell = ws_scalars.cell(row=row_idx, column=3, value=f"{_emoji} {conf.upper()}")
+            conf_cell.font = normal_font
+            if conf == 'low':
+                conf_cell.fill = amber_fill
+            elif conf == 'high':
+                conf_cell.fill = green_fill
+
+            # Column D left blank for estimator override
+            ws_scalars.cell(row=row_idx, column=4, value="").font = normal_font
+
+            # Notes column
+            note = ""
+            if conf == 'low':
+                note = "\u26a0\ufe0f REQUIRES CONFIRMATION \u2014 pricing depends on this value"
+            elif conf == 'medium':
+                note = "Please verify"
+            ws_scalars.cell(row=row_idx, column=5, value=note).font = normal_font
+
+        # Warning banner if any scalar is low confidence
+        if project_quantities.get('_scalar_gate_required', False):
+            banner_row = len(scalar_display) + 3
+            banner_cell = ws_scalars.cell(
+                row=banner_row, column=1,
+                value="\u26a0\ufe0f LOW-CONFIDENCE SCALARS DETECTED \u2014 Review values above before trusting pricing"
+            )
+            banner_cell.font = Font(name="Calibri", bold=True, size=12, color="CC0000")
+            ws_scalars.merge_cells(
+                start_row=banner_row, start_column=1,
+                end_row=banner_row, end_column=5
+            )
+
+        # Step B3: Emit scalar gate status
+        emit(f"Scalar Gate: {len([v for v in _conf.values() if v == 'high'])} HIGH / "
+             f"{len([v for v in _conf.values() if v == 'medium'])} MEDIUM / "
+             f"{len([v for v in _conf.values() if v == 'low'])} LOW confidence")
+
+        if project_quantities.get('_scalar_gate_required', False):
+            emit("SCALAR GATE: Low-confidence values detected \u2014 "
+                 "estimator review required before trusting pricing")
+
     # ── TAB 1: Buyout Summary ─────────────────────────────────────────────
-    ws = wb.active
-    ws.title = "Buyout Summary"
+    ws = wb.create_sheet("Buyout Summary") if project_quantities else wb.active
+    if not project_quantities:
+        ws.title = "Buyout Summary"
     NUM_COLS = 7  # A through G
 
     # Column layout: DIV | TRADE | SCOPE | LOW BIDDER | BUDGET / SOV | VARIANCE | NOTES

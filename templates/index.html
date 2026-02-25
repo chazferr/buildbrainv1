@@ -505,6 +505,117 @@
             border-color: var(--text-muted);
             color: var(--text);
         }
+
+        /* Scalar Gate */
+        .scalar-gate-section {
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .scalar-gate-section.active { display: block; }
+
+        .scalar-gate-card {
+            background: var(--card);
+            border: 2px solid var(--orange);
+            border-radius: 10px;
+            padding: 1.5rem;
+        }
+
+        .scalar-gate-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--navy);
+            margin-bottom: 0.25rem;
+        }
+
+        .scalar-gate-subtitle {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .scalar-gate-warning {
+            margin-bottom: 1rem;
+            padding: 0.6rem 0.85rem;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            color: #856404;
+        }
+
+        .scalar-gate-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .sg-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .sg-field.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .sg-field label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .sg-field label .sg-conf {
+            font-size: 0.65rem;
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .sg-conf-high { background: #e2efda; color: #27ae60; }
+        .sg-conf-medium { background: #fff3cd; color: #b8860b; }
+        .sg-conf-low { background: #fce4d6; color: #e74c3c; }
+
+        .sg-field input,
+        .sg-field select {
+            padding: 0.5rem 0.65rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            color: var(--text);
+            background: var(--bg);
+            transition: border-color 0.15s;
+        }
+
+        .sg-field input.sg-low-conf,
+        .sg-field select.sg-low-conf {
+            border-color: #e74c3c;
+            background: #fff5f5;
+        }
+
+        .sg-field input:focus,
+        .sg-field select:focus {
+            outline: none;
+            border-color: var(--orange);
+        }
+
+        .scalar-gate-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            margin-top: 1.25rem;
+        }
     </style>
 </head>
 <body>
@@ -614,6 +725,23 @@
         </div>
     </div>
 
+    <!-- Scalar Gate -->
+    <div class="scalar-gate-section" id="scalarGateSection">
+        <div class="scalar-gate-card">
+            <div class="scalar-gate-header">Confirm Project Dimensions</div>
+            <div class="scalar-gate-subtitle">
+                Review extracted values before generating the pricing spreadsheet.
+                Low-confidence values are highlighted &mdash; verify or override them.
+            </div>
+            <div class="scalar-gate-warning" id="sgWarning" style="display:none;"></div>
+            <div class="scalar-gate-grid" id="scalarGateGrid"></div>
+            <div class="scalar-gate-actions">
+                <button class="precheck-back-btn" id="sgReset">Start Over</button>
+                <button class="precheck-confirm-btn" id="sgConfirm">Confirm &amp; Generate Excel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Results -->
     <div class="results-section" id="resultsSection">
         <div class="results-card">
@@ -670,6 +798,11 @@
     const errorMsg = document.getElementById('errorMsg');
     const resetLink = document.getElementById('resetLink');
     const errorResetLink = document.getElementById('errorResetLink');
+    const scalarGateSection = document.getElementById('scalarGateSection');
+    const scalarGateGrid = document.getElementById('scalarGateGrid');
+    const sgWarning = document.getElementById('sgWarning');
+    const sgConfirm = document.getElementById('sgConfirm');
+    const sgReset = document.getElementById('sgReset');
 
     // Drag-and-drop
     dropzone.addEventListener('click', () => fileInput.click());
@@ -917,6 +1050,11 @@
                 addLogEntry(data.message);
             });
 
+            evtSource.addEventListener('scalars_ready', (e) => {
+                const data = JSON.parse(e.data);
+                showScalarGate(data);
+            });
+
             evtSource.addEventListener('done', (e) => {
                 evtSource.close();
                 const stats = JSON.parse(e.data);
@@ -941,6 +1079,107 @@
             showError(err.message);
         }
     }
+
+    // ─── Scalar Gate ────────────────────────────────────────────────────
+
+    const _SELECT_OPTIONS = {
+        project_type: [
+            { value: 'single_family', label: 'Single Family' },
+            { value: 'multi_family', label: 'Multi-Family' },
+            { value: 'commercial', label: 'Commercial' },
+            { value: 'mixed_use', label: 'Mixed Use' },
+            { value: 'unknown', label: 'Unknown' },
+        ],
+        construction_type: [
+            { value: 'new_construction', label: 'New Construction' },
+            { value: 'renovation', label: 'Renovation (1.35x)' },
+            { value: 'gut_rehabilitation', label: 'Gut Rehabilitation (1.55x)' },
+            { value: 'addition', label: 'Addition (1.20x)' },
+            { value: 'unknown', label: 'Unknown' },
+        ],
+    };
+
+    function showScalarGate(data) {
+        // Hide progress, show scalar gate
+        progressSection.classList.remove('active');
+        scalarGateSection.classList.add('active');
+
+        // Warning banner
+        if (data.gate_required) {
+            sgWarning.textContent = 'One or more values have low confidence. Please verify before generating the spreadsheet.';
+            sgWarning.style.display = '';
+        } else if (data.complexity_warning) {
+            sgWarning.textContent = data.complexity_warning;
+            sgWarning.style.display = '';
+        } else {
+            sgWarning.style.display = 'none';
+        }
+
+        // Build fields
+        scalarGateGrid.innerHTML = '';
+        const fullWidthKeys = ['project_name', 'project_address'];
+
+        for (const s of data.scalars) {
+            const div = document.createElement('div');
+            div.className = 'sg-field' + (fullWidthKeys.includes(s.key) ? ' full-width' : '');
+
+            const confClass = 'sg-conf sg-conf-' + s.confidence;
+            const confLabel = s.confidence;
+            const inputClass = s.confidence === 'low' ? ' sg-low-conf' : '';
+
+            let inputHtml;
+            if (_SELECT_OPTIONS[s.key]) {
+                const opts = _SELECT_OPTIONS[s.key]
+                    .map(o => `<option value="${o.value}"${o.value === String(s.value) ? ' selected' : ''}>${o.label}</option>`)
+                    .join('');
+                inputHtml = `<select id="sg_${s.key}" class="${inputClass}" data-key="${s.key}">${opts}</select>`;
+            } else if (s.type === 'number') {
+                inputHtml = `<input type="number" id="sg_${s.key}" class="${inputClass}" data-key="${s.key}" value="${s.value}" min="0" placeholder="--">`;
+            } else {
+                inputHtml = `<input type="text" id="sg_${s.key}" class="${inputClass}" data-key="${s.key}" value="${escapeHtml(String(s.value))}" placeholder="--">`;
+            }
+
+            div.innerHTML = `
+                <label>${escapeHtml(s.label)} <span class="${confClass}">${confLabel}</span></label>
+                ${inputHtml}
+            `;
+            scalarGateGrid.appendChild(div);
+        }
+    }
+
+    async function confirmScalars() {
+        // Collect values from scalar gate fields
+        const scalars = {};
+        scalarGateGrid.querySelectorAll('[data-key]').forEach(el => {
+            scalars[el.dataset.key] = el.value;
+        });
+
+        // Hide scalar gate, show progress spinner for Excel generation
+        scalarGateSection.classList.remove('active');
+        progressSection.classList.add('active');
+        addLogEntry('Generating Excel with confirmed values...');
+
+        try {
+            const resp = await fetch('/api/confirm-scalars', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ job_id: currentJobId, scalars }),
+            });
+
+            if (!resp.ok) {
+                const err = await resp.json();
+                showError(err.error || 'Failed to confirm scalars');
+            }
+            // SSE stream will continue with progress messages and done event
+        } catch (err) {
+            showError(err.message);
+        }
+    }
+
+    sgConfirm.addEventListener('click', confirmScalars);
+    sgReset.addEventListener('click', resetUI);
+
+    // ─── Log & Results ──────────────────────────────────────────────────
 
     function addLogEntry(text) {
         const div = document.createElement('div');
@@ -995,6 +1234,7 @@
         submitBtn.disabled = false;
         submitBtn.textContent = 'Submit Bid';
         precheckSection.classList.remove('active');
+        scalarGateSection.classList.remove('active');
         progressSection.classList.remove('active');
         resultsSection.classList.remove('active');
         errorCard.classList.remove('active');

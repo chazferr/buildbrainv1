@@ -163,6 +163,8 @@ def stream(job_id):
                 else:
                     yield f"event: done\ndata: {json.dumps(job['stats'])}\n\n"
                 break
+            elif isinstance(msg, dict) and msg.get("type") == "scalars_ready":
+                yield f"event: scalars_ready\ndata: {json.dumps(msg['data'])}\n\n"
             else:
                 yield f"event: progress\ndata: {json.dumps({'message': msg})}\n\n"
 
@@ -174,6 +176,64 @@ def stream(job_id):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@app.route("/api/confirm-scalars", methods=["POST"])
+def confirm_scalars():
+    """Accept confirmed scalar values and continue to Excel generation."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    job_id = data.get("job_id")
+    if not job_id or job_id not in jobs:
+        return jsonify({"error": "Job not found"}), 404
+
+    job = jobs[job_id]
+    if job["status"] != "scalars_ready":
+        return jsonify({"error": "Job not in scalar gate state"}), 409
+
+    # Update project quantities with confirmed values
+    cached = job.get("_cached", {})
+    pq = cached.get("project_quantities", {})
+
+    confirmed = data.get("scalars", {})
+    _INT_FIELDS = {"unit_count", "floor_count", "total_building_sf", "footprint_sf", "perimeter_lf"}
+
+    for key, val in confirmed.items():
+        if val == "" or val is None:
+            continue
+        if key in _INT_FIELDS:
+            try:
+                pq[key] = int(val)
+            except (ValueError, TypeError):
+                pass
+        else:
+            pq[key] = val
+
+    # Recalculate complexity multiplier if construction_type changed
+    ctype = pq.get("construction_type", "new_construction")
+    _MULT_MAP = {
+        "new_construction": 1.0,
+        "renovation": 1.35,
+        "gut_rehabilitation": 1.55,
+        "addition": 1.20,
+    }
+    pq["complexity_multiplier"] = _MULT_MAP.get(ctype, 1.0)
+    if pq["complexity_multiplier"] != 1.0:
+        pq["complexity_warning"] = (
+            f"{ctype.replace('_', ' ').title()} project — "
+            f"{pq['complexity_multiplier']:.2f}x multiplier applied"
+        )
+
+    cached["project_quantities"] = pq
+
+    # Signal the background thread to continue
+    confirm_event = job.get("_confirm_event")
+    if confirm_event:
+        confirm_event.set()
+
+    return jsonify({"status": "ok"})
 
 
 @app.route("/api/download/<job_id>")
@@ -356,6 +416,43 @@ def pre_check():
 # ─── Background worker ──────────────────────────────────────────────────────
 
 
+def _build_scalar_summary(pq: dict) -> dict:
+    """Build scalar summary for the scalar gate UI."""
+    confidence = pq.get("_confidence", {})
+    scalars = []
+
+    _DISPLAY = [
+        ("project_name", "Project Name", "text"),
+        ("project_address", "Project Address", "text"),
+        ("project_type", "Project Type", "select"),
+        ("construction_type", "Construction Type", "select"),
+        ("unit_count", "Unit Count", "number"),
+        ("floor_count", "Floor Count", "number"),
+        ("total_building_sf", "Total Building SF", "number"),
+        ("footprint_sf", "Footprint SF", "number"),
+        ("perimeter_lf", "Perimeter LF", "number"),
+        ("roof_type", "Roof Type", "text"),
+    ]
+
+    for key, label, field_type in _DISPLAY:
+        val = pq.get(key)
+        conf = confidence.get(key, "medium")
+        scalars.append({
+            "key": key,
+            "label": label,
+            "value": val if val is not None else "",
+            "confidence": conf,
+            "type": field_type,
+        })
+
+    return {
+        "scalars": scalars,
+        "gate_required": pq.get("_scalar_gate_required", False),
+        "complexity_multiplier": pq.get("complexity_multiplier", 1.0),
+        "complexity_warning": pq.get("complexity_warning", ""),
+    }
+
+
 def _run_extraction(job_id: str):
     """Run the PDF extraction in a background thread."""
     job = jobs[job_id]
@@ -433,11 +530,44 @@ def _run_extraction(job_id: str):
         on_progress(f"Total SF: {project_quantities.get('total_building_sf', 'unknown')}")
         on_progress(f"Confidence: {project_quantities.get('confidence', 'unknown')}")
 
+        # ─── Scalar Gate: cache data, emit scalars, wait for confirmation ───
+        job["_cached"] = {
+            "requirements": requirements,
+            "trades": trades,
+            "sov_data": sov_data,
+            "stats": stats,
+            "project_quantities": project_quantities,
+        }
+
+        scalar_data = _build_scalar_summary(project_quantities)
+        q.put({"type": "scalars_ready", "data": scalar_data})
+        job["status"] = "scalars_ready"
+
+        # Block until /api/confirm-scalars is called (or 10 min timeout)
+        confirm_event = threading.Event()
+        job["_confirm_event"] = confirm_event
+        on_progress("Waiting for scalar confirmation...")
+        confirm_event.wait(timeout=600)
+
+        if not confirm_event.is_set():
+            job["error"] = "Scalar gate confirmation timed out (10 min)"
+            job["status"] = "error"
+            q.put(None)
+            return
+
+        # Read back (possibly updated) cached data
+        project_quantities = job["_cached"]["project_quantities"]
+        requirements = job["_cached"]["requirements"]
+        trades = job["_cached"]["trades"]
+        sov_data = job["_cached"]["sov_data"]
+        stats = job["_cached"]["stats"]
+
         on_progress("Building Excel workbook...")
         excel_bytes = build_excel_bytes(requirements, trades, sov_data=sov_data,
                                         failed_pages=stats.get("failed_pages", []),
                                         project_quantities=project_quantities,
-                                        addenda_findings=stats.get("addenda_findings", []))
+                                        addenda_findings=stats.get("addenda_findings", []),
+                                        progress_callback=on_progress)
 
         job["excel_bytes"] = excel_bytes
         job["stats"] = stats

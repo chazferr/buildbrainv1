@@ -226,7 +226,7 @@ def _apply_rate_table_override(trade_name, rate_profile, project_quantities):
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
-MODEL = "claude-opus-4-6"
+MODEL = "claude-sonnet-4-5-20250514"
 TEMPERATURE = 0
 DPI = 200
 MAX_IMAGE_BYTES = 4_800_000  # Stay under Claude's 5MB base64 limit

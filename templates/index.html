@@ -1433,12 +1433,24 @@
         scalarGateSection.classList.add('active');
 
         // Warning banner
-        if (data.gate_required) {
+        if (data.tsf_missing_warning) {
+            sgWarning.textContent = data.tsf_missing_warning;
+            sgWarning.style.display = '';
+            sgWarning.style.background = '#fde8e8';
+            sgWarning.style.color = '#c0392b';
+            sgWarning.style.borderColor = '#e74c3c';
+        } else if (data.gate_required) {
             sgWarning.textContent = 'One or more values have low confidence. Please verify before generating the spreadsheet.';
             sgWarning.style.display = '';
+            sgWarning.style.background = '';
+            sgWarning.style.color = '';
+            sgWarning.style.borderColor = '';
         } else if (data.complexity_warning) {
             sgWarning.textContent = data.complexity_warning;
             sgWarning.style.display = '';
+            sgWarning.style.background = '';
+            sgWarning.style.color = '';
+            sgWarning.style.borderColor = '';
         } else {
             sgWarning.style.display = 'none';
         }
@@ -1447,7 +1459,12 @@
         scalarGateGrid.innerHTML = '';
         const fullWidthKeys = ['project_name', 'project_address'];
 
-        for (const s of data.scalars) {
+        // Separate scalars into groups
+        const mainScalars = data.scalars.filter(s => !s.group);
+        const gcScalars = data.scalars.filter(s => s.group === 'gc_markup');
+        const siteScalars = data.scalars.filter(s => s.group === 'site_work');
+
+        function renderScalarField(s) {
             const div = document.createElement('div');
             div.className = 'sg-field' + (fullWidthKeys.includes(s.key) ? ' full-width' : '');
 
@@ -1461,6 +1478,8 @@
                     .map(o => `<option value="${o.value}"${o.value === String(s.value) ? ' selected' : ''}>${o.label}</option>`)
                     .join('');
                 inputHtml = `<select id="sg_${s.key}" class="${inputClass}" data-key="${s.key}">${opts}</select>`;
+            } else if (s.type === 'float') {
+                inputHtml = `<input type="number" id="sg_${s.key}" class="${inputClass}" data-key="${s.key}" value="${s.value}" min="0" step="0.1" placeholder="--">`;
             } else if (s.type === 'number') {
                 inputHtml = `<input type="number" id="sg_${s.key}" class="${inputClass}" data-key="${s.key}" value="${s.value}" min="0" placeholder="--">`;
             } else {
@@ -1471,7 +1490,34 @@
                 <label>${escapeHtml(s.label)} <span class="${confClass}">${confLabel}</span></label>
                 ${inputHtml}
             `;
-            scalarGateGrid.appendChild(div);
+            return div;
+        }
+
+        // Main scalars
+        for (const s of mainScalars) {
+            scalarGateGrid.appendChild(renderScalarField(s));
+        }
+
+        // GC Markup group
+        if (gcScalars.length > 0) {
+            const gcHeader = document.createElement('div');
+            gcHeader.className = 'sg-field full-width';
+            gcHeader.innerHTML = '<label style="font-size:0.95rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border);padding-bottom:0.4rem;margin-top:0.5rem;">GC Markup</label>';
+            scalarGateGrid.appendChild(gcHeader);
+            for (const s of gcScalars) {
+                scalarGateGrid.appendChild(renderScalarField(s));
+            }
+        }
+
+        // Site Work group
+        if (siteScalars.length > 0) {
+            const siteHeader = document.createElement('div');
+            siteHeader.className = 'sg-field full-width';
+            siteHeader.innerHTML = '<label style="font-size:0.95rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border);padding-bottom:0.4rem;margin-top:0.5rem;">Site Work</label>';
+            scalarGateGrid.appendChild(siteHeader);
+            for (const s of siteScalars) {
+                scalarGateGrid.appendChild(renderScalarField(s));
+            }
         }
     }
 

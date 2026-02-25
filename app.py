@@ -198,14 +198,22 @@ def confirm_scalars():
     pq = cached.get("project_quantities", {})
 
     confirmed = data.get("scalars", {})
-    _INT_FIELDS = {"unit_count", "floor_count", "total_building_sf", "footprint_sf", "perimeter_lf"}
+    _INT_FIELDS = {"unit_count", "floor_count", "total_building_sf", "footprint_sf",
+                   "perimeter_lf", "site_work_budget"}
+    _FLOAT_FIELDS = {"gc_conditions_pct", "gc_profit_pct", "gc_contingency_pct", "gc_permits_pct"}
 
     for key, val in confirmed.items():
         if val == "" or val is None:
             continue
-        if key in _INT_FIELDS:
+        if key in _FLOAT_FIELDS:
+            # Convert display % (e.g. "5.0") to decimal (0.05)
             try:
-                pq[key] = int(val)
+                pq[key] = float(val) / 100.0
+            except (ValueError, TypeError):
+                pass
+        elif key in _INT_FIELDS:
+            try:
+                pq[key] = int(float(val))
             except (ValueError, TypeError):
                 pass
         else:
@@ -459,12 +467,61 @@ def _build_scalar_summary(pq: dict) -> dict:
             "type": field_type,
         })
 
-    return {
+    # ── GC Markup fields (displayed as %, stored as decimals) ──
+    pt = pq.get("project_type", "unknown")
+    _GC_DEFAULTS = {
+        "single_family":  (0.05, 0.06, 0.05, 0.025),
+        "multi_family":   (0.08, 0.10, 0.08, 0.025),
+        "mixed_use":      (0.08, 0.10, 0.08, 0.025),
+        "commercial":     (0.10, 0.12, 0.10, 0.025),
+    }
+    _def = _GC_DEFAULTS.get(pt, (0.10, 0.12, 0.10, 0.025))
+
+    _GC_FIELDS = [
+        ("gc_conditions_pct", "GC Conditions %", _def[0]),
+        ("gc_profit_pct",     "GC Profit %",     _def[1]),
+        ("gc_contingency_pct","Contingency %",    _def[2]),
+        ("gc_permits_pct",    "Permits + Bond %", _def[3]),
+    ]
+    for key, label, default_val in _GC_FIELDS:
+        # Use existing pq value (decimal) or default
+        val = pq.get(key, default_val)
+        # Display as percentage (e.g. 0.05 → "5.0")
+        display_val = round(val * 100, 1) if isinstance(val, (int, float)) else ""
+        scalars.append({
+            "key": key,
+            "label": label,
+            "value": display_val,
+            "confidence": "high",
+            "type": "float",
+            "group": "gc_markup",
+        })
+
+    # ── Site Work Budget field ──
+    site_budget = pq.get("site_work_budget")
+    scalars.append({
+        "key": "site_work_budget",
+        "label": "Site Work Budget ($)",
+        "value": site_budget if site_budget is not None else "",
+        "confidence": "low" if not site_budget else "high",
+        "type": "number",
+        "group": "site_work",
+    })
+
+    scalar_data = {
         "scalars": scalars,
         "gate_required": pq.get("_scalar_gate_required", False),
         "complexity_multiplier": pq.get("complexity_multiplier", 1.0),
         "complexity_warning": pq.get("complexity_warning", ""),
     }
+
+    if not pq.get('total_building_sf'):
+        scalar_data["tsf_missing_warning"] = (
+            "CRITICAL: Total Building SF missing. "
+            "All trade estimates will be inaccurate."
+        )
+
+    return scalar_data
 
 
 def _run_extraction(job_id: str):

@@ -52,9 +52,8 @@ def _match_rate_profile(rate_tables: dict, project_quantities: dict) -> dict:
     """Find the best matching rate profile for this project.
     Returns the quotes dict from the best match, or empty dict.
 
-    Simple rule:
-      - single_family -> empty dict (use material_db pricing)
-      - anything else (multi_family, mixed_use, commercial, etc.) -> best matching profile
+    All project types (including single_family) go through the normal
+    scoring system to find the best matching profile.
     """
     if not rate_tables or 'profiles' not in rate_tables:
         return {}
@@ -62,12 +61,7 @@ def _match_rate_profile(rate_tables: dict, project_quantities: dict) -> dict:
     pq = project_quantities or {}
     pt = pq.get('project_type', 'single_family')
 
-    # Single family -> material_db pricing, no rate table
-    if pt == 'single_family':
-        print(f"[RATE TABLE] project_type=single_family -> using material_db pricing")
-        return {}
-
-    # Non-single-family -> find best matching profile
+    # Find best matching profile for any project type
     floors = pq.get('floor_count', 1) or 1
     units = pq.get('unit_count', 1) or 1
     total_sf = pq.get('total_building_sf', 0) or 0
@@ -264,7 +258,7 @@ def _apply_rate_table_override(trade_name, rate_profile, project_quantities):
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
-MODEL = "claude-sonnet-4-5-20250514"
+MODEL = "claude-sonnet-4-5-20250929"
 TEMPERATURE = 0
 DPI = 200
 MAX_IMAGE_BYTES = 4_800_000  # Stay under Claude's 5MB base64 limit
@@ -1519,8 +1513,15 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
     # Core dimensions — extracted or estimated
     unit_count    = q.get('unit_count') or 1
     floor_count   = q.get('floor_count') or 1
+
+    # Type-aware SF defaults (replaces hardcoded 699)
+    _default_sf = {'single_family': 1800, 'multi_family': 10000,
+                   'commercial': 8000, 'mixed_use': 12000}
+    project_type = q.get('project_type', 'unknown')
+    _fallback_total_sf = _default_sf.get(project_type, 2000)
+
     footprint_sf  = q.get('footprint_sf') or \
-                    (q.get('total_building_sf') or 699) / max(floor_count, 1)
+                    (q.get('total_building_sf') or _fallback_total_sf) / max(floor_count, 1)
     total_sf      = q.get('total_building_sf') or \
                     footprint_sf * floor_count
     perimeter_lf  = q.get('perimeter_lf') or \
@@ -1876,16 +1877,17 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
              "material_key": "gutter_ogee_5in", "material_quantity": 120,
              "description": "Ogee gutters 5\" with leaf screens + downspouts"},
         ],
-        "SITE WORK / CIVIL": [
-            {"work_item": None, "quantity": 0,
-             "material_key": None, "material_quantity": 0,
-             "description": "PLACEHOLDER \u2014 Civil scope requires sub quotes",
-             "override_amount": 148000,
-             "note": "\u26a0\ufe0f CIVIL SCOPE PLACEHOLDER $148,000 mid-point estimate. "
-                     "Based on: Sitework $45K + Paving $55K + Landscaping $22K + "
-                     "Fencing $8K + Site Concrete $18K. "
-                     "GET SUB QUOTES BEFORE BID. Range: $95,000\u2013$200,000."}
-        ],
+        "SITE WORK / CIVIL": [{
+            "work_item": None, "quantity": 0,
+            "material_key": None, "material_quantity": 0,
+            "description": "PLACEHOLDER \u2014 Civil scope requires sub quotes",
+            "override_amount": 160000,
+            "note": (
+                "\u26a0\ufe0f SITEWORK: $160,000 baseline. "
+                "Includes grading, utilities, paving, landscaping. "
+                "GET CIVIL SUB QUOTE BEFORE BID."
+            ),
+        }],
         "Conveying Equipment": [
             {"work_item": None, "quantity": 0,
              "material_key": None, "material_quantity": 0,
@@ -2014,6 +2016,8 @@ def process_page(
     """Send a page image to Claude and parse the extraction result."""
 
     b64_image = base64.standard_b64encode(image_bytes).decode("utf-8")
+    b64_kb = len(b64_image) // 1024
+    print(f"[VISION] {pdf_name} p.{page_num} — image size: {len(image_bytes)//1024}KB raw, {b64_kb}KB base64", flush=True)
     prompt_text = EXTRACTION_PROMPT.format(pdf_name=pdf_name, page_num=page_num)
 
     messages = [
@@ -2095,6 +2099,10 @@ If truly nothing is extractable, return:
             return extraction
 
         except (json.JSONDecodeError, ValidationError) as e:
+            print(f"[VISION PARSE] {pdf_name} p.{page_num} attempt {attempt+1}/4: "
+                  f"{type(e).__name__}: {e}", flush=True)
+            if 'raw_text' in dir():
+                print(f"[VISION RAW] first 500 chars: {raw_text[:500]}", flush=True)
             if attempt == 0:
                 retry_text = RETRY_PROMPT.format(pdf_name=pdf_name, page_num=page_num)
                 messages = [
@@ -2128,6 +2136,8 @@ If truly nothing is extractable, return:
                 stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
 
         except anthropic.APIStatusError as e:
+            print(f"[VISION API] {pdf_name} p.{page_num} attempt {attempt+1}/4: "
+                  f"HTTP {e.status_code}: {e.message}", flush=True)
             if e.status_code == 429:
                 wait = 2 ** attempt
                 time.sleep(wait)
@@ -2136,7 +2146,9 @@ If truly nothing is extractable, return:
                 time.sleep(5)
             else:
                 stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
-        except anthropic.APIError:
+        except anthropic.APIError as e:
+            print(f"[VISION API] {pdf_name} p.{page_num} attempt {attempt+1}/4: "
+                  f"APIError: {e}", flush=True)
             if attempt < 3:
                 time.sleep(5)
             else:
@@ -2256,7 +2268,8 @@ def _classify_page(doc: fitz.Document, page_idx: int) -> str:
         print(f"[CLASSIFY] p.{page_idx+1} detected as CAD drawing "
               f"(chars={char_count}, avg_line={avg_line_len:.0f}, "
               f"digit_ratio={digit_ratio:.2f}, short_ratio={short_ratio:.2f}, "
-              f"vectors={vector_count}, signals={signals}/5 [{', '.join(signal_details)}])")
+              f"vectors={vector_count}, signals={signals}/5 [{', '.join(signal_details)}])",
+              flush=True)
         return "image_drawing"
 
     if image_fraction > 0.4:
@@ -2304,7 +2317,11 @@ def _extract_text_page(
             extraction = PageExtraction(**data)
             return extraction
 
-        except (json.JSONDecodeError, ValidationError):
+        except (json.JSONDecodeError, ValidationError) as e:
+            print(f"[TEXT PARSE] {pdf_name} p.{page_num} attempt {attempt+1}/2: "
+                  f"{type(e).__name__}: {e}", flush=True)
+            if 'raw_text' in dir():
+                print(f"[TEXT RAW] first 500 chars: {raw_text[:500]}", flush=True)
             if attempt == 1:
                 stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
         except anthropic.APIStatusError as e:
@@ -2792,6 +2809,12 @@ def _extract_project_quantities_inner(trades: list, emit: Callable[[str], None],
 Extract these project quantities from the text below.
 Return ONLY valid JSON, no other text.
 
+CRITICAL: total_building_sf is the MOST IMPORTANT scalar — every trade estimate
+depends on it. Search carefully for Gross Floor Area, Building Area, energy code
+tables, zoning tables, or any reference to total square footage.
+If footprint_sf and floor_count are both known, COMPUTE total_building_sf =
+footprint_sf x floor_count rather than returning null.
+
 {{
   "project_type": "single_family" | "multi_family" | "commercial" | "mixed_use" | "warehouse" | "institutional" | "unknown",
   "construction_type": "new_construction" | "renovation" | "gut_rehabilitation" | "addition" | "unknown",
@@ -2949,6 +2972,14 @@ def validate_project_quantities(pq: dict, emit: Callable[[str], None]) -> dict:
         pq.pop(field, None)
         msg = (f"Extracted {field} = {value} appeared unreasonable ({reason}) "
                f"and was replaced with a conservative default. Please verify.")
+        findings.append(msg)
+        emit(f"[VALIDATION] {msg}")
+
+    # Auto-estimate total_building_sf from footprint x floors if missing
+    if not pq.get('total_building_sf') and pq.get('footprint_sf') and pq.get('floor_count'):
+        _est = round(pq['footprint_sf'] * pq['floor_count'])
+        pq['total_building_sf'] = _est
+        msg = f"Auto-estimated total_building_sf = {pq['footprint_sf']} x {pq['floor_count']} = {_est}"
         findings.append(msg)
         emit(f"[VALIDATION] {msg}")
 
@@ -3370,14 +3401,20 @@ def build_excel_bytes(
         for r in buyout_rows
     )
     if not site_already_in_buyout:
-        # Add a SITE WORK / CIVIL placeholder row with pricing from TRADE_MAP
-        site_items = get_baseline_quantities("SITE WORK / CIVIL", _extraction_for_detection,
-                                             project_quantities=project_quantities)
-        site_override = next((item.get("override_amount") for item in site_items
-                             if item.get("override_amount")), 0)
-        site_override_note = next((item.get("note") for item in site_items
-                                  if item.get("note") and item.get("override_amount")),
-                                 site_result["flag_note"])
+        # Check user-provided site budget FIRST
+        _user_site = (project_quantities or {}).get('site_work_budget')
+        if _user_site and isinstance(_user_site, (int, float)) and _user_site > 0:
+            site_override = round(_user_site)
+            site_override_note = f"User-provided site budget: ${site_override:,.0f}"
+        else:
+            # Fall back to TRADE_MAP / rate_table logic
+            site_items = get_baseline_quantities("SITE WORK / CIVIL", _extraction_for_detection,
+                                                 project_quantities=project_quantities)
+            site_override = next((item.get("override_amount") for item in site_items
+                                 if item.get("override_amount")), 0)
+            site_override_note = next((item.get("note") for item in site_items
+                                      if item.get("note") and item.get("override_amount")),
+                                     site_result["flag_note"])
         ws.cell(row=site_row_idx, column=1, value="02000").font = bold_font
         ws.cell(row=site_row_idx, column=2, value="SITE WORK / CIVIL").font = bold_font
         ws.cell(row=site_row_idx, column=3, value="See Scope Details tab").alignment = wrap_top
@@ -3627,20 +3664,46 @@ def build_excel_bytes(
     # Collect all building trade E values (excludes site row)
     building_vals = []
     for r in range(data_start, data_end + 1):
+        # Skip if this row is a site trade (CSI div 02)
+        _csi_cell = ws.cell(row=r, column=1).value
+        if str(_csi_cell or "").startswith("02"):
+            continue
         v = ws.cell(row=r, column=5).value
         if isinstance(v, (int, float)):
             building_vals.append(v)
     building_subtotal = sum(building_vals)
 
-    site_subtotal = ws.cell(row=site_row_idx, column=5).value or 0
-    if not isinstance(site_subtotal, (int, float)):
-        site_subtotal = 0
+    # Site subtotal: read from dedicated site row, or find div-02 trades in data range
+    if not site_already_in_buyout:
+        site_subtotal = ws.cell(row=site_row_idx, column=5).value or 0
+        if not isinstance(site_subtotal, (int, float)):
+            site_subtotal = 0
+    else:
+        # Site trade is within the buyout_rows range — sum div-02 cells
+        _site_vals = []
+        for r in range(data_start, data_end + 1):
+            _csi_cell = ws.cell(row=r, column=1).value
+            if str(_csi_cell or "").startswith("02"):
+                v = ws.cell(row=r, column=5).value
+                if isinstance(v, (int, float)):
+                    _site_vals.append(v)
+        site_subtotal = sum(_site_vals)
 
+    # GC markup: user-confirmed (pq) > rate_profile > project-type defaults
+    _pq_gc = project_quantities or {}
     _gc = rate_profile.get('gc_markups', {})
-    gc_oh_rate       = _gc.get('conditions_pct', 0.10)
-    gc_profit_rate   = _gc.get('profit_pct', 0.12)
-    contingency_rate = _gc.get('contingency_pct', 0.10)
-    permits_rate     = _gc.get('permits_bond_pct', 0.025)
+    _pt = _pq_gc.get('project_type', 'unknown')
+    _type_gc_defaults = {
+        'single_family':  (0.05, 0.06, 0.05, 0.025),
+        'multi_family':   (0.08, 0.10, 0.08, 0.025),
+        'mixed_use':      (0.08, 0.10, 0.08, 0.025),
+        'commercial':     (0.10, 0.12, 0.10, 0.025),
+    }
+    _td = _type_gc_defaults.get(_pt, (0.10, 0.12, 0.10, 0.025))
+    gc_oh_rate       = _pq_gc.get('gc_conditions_pct') or _gc.get('conditions_pct') or _td[0]
+    gc_profit_rate   = _pq_gc.get('gc_profit_pct') or _gc.get('profit_pct') or _td[1]
+    contingency_rate = _pq_gc.get('gc_contingency_pct') or _gc.get('contingency_pct') or _td[2]
+    permits_rate     = _pq_gc.get('gc_permits_pct') or _gc.get('permits_bond_pct') or _td[3]
     site_fee_rate    = 0.05
 
     gc_oh          = round(building_subtotal * gc_oh_rate)
@@ -3652,6 +3715,10 @@ def build_excel_bytes(
     site_fee       = round(site_subtotal * site_fee_rate)
     site_total     = site_subtotal + site_fee
     project_total  = building_total + site_total
+
+    print(f"[EXCEL TOTALS] building_sub={building_subtotal:,.0f} site_sub={site_subtotal:,.0f} "
+          f"GC={gc_oh+gc_profit+contingency+permits:,.0f} ({gc_oh_rate+gc_profit_rate+contingency_rate+permits_rate:.1%}) "
+          f"project_total={project_total:,.0f}", flush=True)
 
     currency_fmt = '$#,##0'
 
@@ -4268,19 +4335,25 @@ def build_results_json(
     # ── Build budget rows ────────────────────────────────────
     all_rows = []
 
-    # Site work row
-    site_items = get_baseline_quantities("SITE WORK / CIVIL", _extraction_for_detection,
-                                         project_quantities=pq)
-    site_override = next((item.get("override_amount") for item in site_items
-                         if item.get("override_amount")), 0)
-    site_note = next((item.get("note") for item in site_items
-                     if item.get("note") and item.get("override_amount")),
-                    site_result.get("flag_note", ""))
+    # Site work row — always add the priced SITE WORK / CIVIL row.
+    # Check user-provided site budget FIRST
+    _user_site_json = pq.get('site_work_budget')
+    if _user_site_json and isinstance(_user_site_json, (int, float)) and _user_site_json > 0:
+        site_override = round(_user_site_json)
+        site_note = f"User-provided site budget: ${site_override:,.0f}"
+    else:
+        site_items = get_baseline_quantities("SITE WORK / CIVIL", _extraction_for_detection,
+                                             project_quantities=pq)
+        site_override = next((item.get("override_amount") for item in site_items
+                             if item.get("override_amount")), 0)
+        site_note = next((item.get("note") for item in site_items
+                         if item.get("note") and item.get("override_amount")),
+                        site_result.get("flag_note", ""))
 
-    _rt_bv, _rt_nv = _apply_rate_table_override("SITE WORK / CIVIL", rate_profile, pq)
-    if _rt_bv is not None:
-        site_override = _rt_bv
-        site_note = _rt_nv
+        _rt_bv, _rt_nv = _apply_rate_table_override("SITE WORK / CIVIL", rate_profile, pq)
+        if _rt_bv is not None:
+            site_override = _rt_bv
+            site_note = _rt_nv
 
     all_rows.append({
         "cost_code": "02-000",
@@ -4396,8 +4469,9 @@ def build_results_json(
             "scope_items": [line.split(". ", 1)[-1] if ". " in line else line for line in scope_lines[:10]],
         })
 
-    # Recalculate General Requirements
-    direct_total = sum(r["original_budget"] for r in all_rows if r["trade"] != "General Requirements")
+    # Recalculate General Requirements (building trades only, exclude site div 02)
+    direct_total = sum(r["original_budget"] for r in all_rows
+                       if r["trade"] != "General Requirements" and r["div"] != "02")
     _gr_uc = pq.get('unit_count') or 1
     _gr_rate = 0.05 if _gr_uc >= 50 else (0.06 if _gr_uc >= 10 else 0.08)
     for row in all_rows:
@@ -4406,6 +4480,10 @@ def build_results_json(
             row["revised_budget"] = row["original_budget"]
             row["notes"] = f"{_gr_rate:.0%} of ${direct_total:,.0f} direct cost"
             break
+
+    # Debug: per-trade values
+    for _r in all_rows:
+        print(f"[JSON TRADE] div={_r['div']} {_r['trade'][:25]:<25} ${_r['original_budget']:>10,.0f}  src={_r.get('source','?')}", flush=True)
 
     # ── Group by CSI division ────────────────────────────────
     from collections import OrderedDict
@@ -4438,11 +4516,20 @@ def build_results_json(
     building_subtotal = sum(r["original_budget"] for r in all_rows if r["div"] != "02")
     site_subtotal = sum(r["original_budget"] for r in all_rows if r["div"] == "02")
 
+    # GC markup: user-confirmed (pq) > rate_profile > project-type defaults
     _gc = rate_profile.get('gc_markups', {})
-    gc_cond_pct = _gc.get('conditions_pct', 0.10)
-    gc_prof_pct = _gc.get('profit_pct', 0.12)
-    cont_pct = _gc.get('contingency_pct', 0.10)
-    perm_pct = _gc.get('permits_bond_pct', 0.025)
+    _pt_json = pq.get('project_type', 'unknown')
+    _type_gc_defaults_json = {
+        'single_family':  (0.05, 0.06, 0.05, 0.025),
+        'multi_family':   (0.08, 0.10, 0.08, 0.025),
+        'mixed_use':      (0.08, 0.10, 0.08, 0.025),
+        'commercial':     (0.10, 0.12, 0.10, 0.025),
+    }
+    _td_json = _type_gc_defaults_json.get(_pt_json, (0.10, 0.12, 0.10, 0.025))
+    gc_cond_pct = pq.get('gc_conditions_pct') or _gc.get('conditions_pct') or _td_json[0]
+    gc_prof_pct = pq.get('gc_profit_pct') or _gc.get('profit_pct') or _td_json[1]
+    cont_pct = pq.get('gc_contingency_pct') or _gc.get('contingency_pct') or _td_json[2]
+    perm_pct = pq.get('gc_permits_pct') or _gc.get('permits_bond_pct') or _td_json[3]
 
     gc_cond = round(building_subtotal * gc_cond_pct)
     gc_prof = round(building_subtotal * gc_prof_pct)
@@ -4453,6 +4540,10 @@ def build_results_json(
     site_fee = round(site_subtotal * 0.05)
     site_total = site_subtotal + site_fee
     project_total = building_total + site_total
+
+    print(f"[JSON TOTALS] building_sub={building_subtotal:,.0f} site_sub={site_subtotal:,.0f} "
+          f"GC={gc_cond+gc_prof+cont+perm:,.0f} ({gc_cond_pct+gc_prof_pct+cont_pct+perm_pct:.1%}) "
+          f"project_total={project_total:,.0f}", flush=True)
 
     totals = {
         "building_subtotal": building_subtotal,

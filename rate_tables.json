@@ -575,6 +575,71 @@
           "notes": "Commercial projects: subs include their O&P. GC margin lower than residential. Reference buyout had ~15.7% profit margin on $3.5M contract."
         }
       }
+    },
+    {
+      "id": "midstate_residential_2024",
+      "source_project": "Midstate House — Single Family Residential",
+      "characteristics": {
+        "project_type": ["single_family"],
+        "floor_count_min": 1,
+        "floor_count_max": 2,
+        "unit_count_min": 1,
+        "unit_count_max": 4,
+        "total_sf_min": 800,
+        "total_sf_max": 5000
+      },
+      "quotes": {
+        "concrete_foundation": {
+          "unit": "per_footprint_sf",
+          "recommended_rate": 25.0
+        },
+        "siding_vinyl": {
+          "unit": "per_total_sf",
+          "recommended_rate": 13.0
+        },
+        "windows_material": {
+          "unit": "per_total_sf",
+          "recommended_rate": 10.0
+        },
+        "hvac": {
+          "unit": "per_total_sf",
+          "recommended_rate": 7.80
+        },
+        "plumbing": {
+          "unit": "per_total_sf",
+          "recommended_rate": 8.60
+        },
+        "electrical": {
+          "unit": "per_total_sf",
+          "recommended_rate": 6.40
+        },
+        "drywall": {
+          "unit": "per_total_sf",
+          "recommended_rate": 2.85
+        },
+        "insulation": {
+          "unit": "per_total_sf",
+          "recommended_rate": 3.00
+        },
+        "roofing_epdm": {
+          "unit": "per_footprint_sf",
+          "recommended_rate": 11.50
+        },
+        "painting": {
+          "unit": "per_total_sf",
+          "recommended_rate": 2.25
+        },
+        "flooring": {
+          "unit": "per_total_sf",
+          "recommended_rate": 3.35
+        },
+        "gc_markups": {
+          "conditions_pct": 0.03,
+          "profit_pct": 0.03,
+          "contingency_pct": 0.00,
+          "permits_bond_pct": 0.025
+        }
+      }
     }
   ],
   "residential_default": {

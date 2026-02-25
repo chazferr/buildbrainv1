@@ -10,6 +10,7 @@ import csv
 import email
 import io
 import json
+import pathlib
 import re
 import threading
 import time
@@ -32,6 +33,184 @@ try:
     from docx import Document as DocxDocument
 except ImportError:
     DocxDocument = None
+
+# ─── Rate Table Loader ────────────────────────────────────────────────────────
+
+def _load_rate_tables():
+    """Load rate tables from rate_tables.json. Returns dict or empty dict on failure."""
+    rate_file = pathlib.Path(__file__).parent / "rate_tables.json"
+    if rate_file.exists():
+        try:
+            with open(rate_file, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[WARNING] Could not load rate_tables.json: {e}")
+    return {}
+
+
+def _match_rate_profile(rate_tables: dict, project_quantities: dict) -> dict:
+    """Find the best matching rate profile for this project.
+    Returns the quotes dict from the best match, or empty dict.
+    Single-family always returns empty dict (preserves residential pricing)."""
+    if not rate_tables or 'profiles' not in rate_tables:
+        return {}
+
+    pq = project_quantities or {}
+    pt = pq.get('project_type', 'single_family')
+    floors = pq.get('floor_count', 1) or 1
+    units = pq.get('unit_count', 1) or 1
+    total_sf = pq.get('total_building_sf', 0) or 0
+
+    # Single family never matches commercial profiles
+    if pt == 'single_family':
+        return {}
+
+    best_match = None
+    best_score = -1
+
+    for profile in rate_tables['profiles']:
+        chars = profile.get('characteristics', {})
+        score = 0
+
+        # Project type match (required)
+        if pt in chars.get('project_type', []):
+            score += 10
+        else:
+            continue
+
+        # Floor count in range
+        if chars.get('floor_count_min', 0) <= floors <= chars.get('floor_count_max', 999):
+            score += 5
+
+        # Unit count in range
+        if chars.get('unit_count_min', 0) <= units <= chars.get('unit_count_max', 9999):
+            score += 5
+
+        # SF in range
+        if chars.get('total_sf_min', 0) <= total_sf <= chars.get('total_sf_max', 99999999):
+            score += 3
+
+        if score > best_score:
+            best_score = score
+            best_match = profile
+
+    if best_match:
+        return best_match.get('quotes', {})
+    return {}
+
+
+# Module-level load (once at import time)
+_RATE_TABLES = _load_rate_tables()
+
+# Mapping from TRADE_MAP trade names to rate table quote keys
+_TRADE_TO_RATE_KEY = {
+    "Building Concrete": "concrete_foundation",
+    "Fire Sprinkler": "fire_sprinkler",
+    "Roofing": "roofing_epdm",
+    "HVAC": "hvac",
+    "Electrical": "electrical",
+    "Plumbing": "plumbing",
+    "Drywall": "drywall",
+    "Insulation": "insulation",
+    "Painting": "painting",
+    "Flooring": "flooring",
+    "Windows": "windows_material",
+    "Doors/Hdwr/Finish Carp": "doors_hardware_material",
+    "Cabinets": "cabinets_install",
+    "Specialties": "bathroom_accessories",
+    "Siding": "siding_vinyl",
+    "Sitework": "sitework",
+    "SITE WORK / CIVIL": "sitework",
+}
+
+
+def _apply_rate_table_override(trade_name, rate_profile, project_quantities):
+    """Apply rate table pricing for a trade if a profile matches.
+
+    Returns (budget_val, note_val) if rate table applies, or (None, None) if not.
+    """
+    if not rate_profile:
+        return None, None
+
+    rt_key = _TRADE_TO_RATE_KEY.get(trade_name)
+    if not rt_key or rt_key not in rate_profile:
+        return None, None
+
+    rt = rate_profile[rt_key]
+    rec_rate = rt.get('recommended_rate')
+    rt_unit = rt.get('unit', 'per_total_sf')
+
+    if rec_rate is not None and rec_rate > 0:
+        pq = project_quantities or {}
+        total_sf = pq.get('total_building_sf') or 1000
+        footprint_sf = pq.get('footprint_sf') or (total_sf / max(pq.get('floor_count', 1) or 1, 1))
+        unit_count = pq.get('unit_count') or 1
+        plumbing_fixtures = pq.get('plumbing_fixtures') or (unit_count * 5)
+        door_count = (pq.get('ext_door_count') or max(2, unit_count // 10)) + (pq.get('int_door_count') or unit_count * 4)
+        window_count = pq.get('window_count') or (unit_count * 3)
+
+        if rt_unit == 'per_total_sf':
+            budget_val = round(rec_rate * total_sf)
+            qty_label = f"${rec_rate:,.2f}/SF \u00d7 {total_sf:,.0f} SF"
+        elif rt_unit == 'per_footprint_sf':
+            budget_val = round(rec_rate * footprint_sf)
+            qty_label = f"${rec_rate:,.2f}/SF \u00d7 {footprint_sf:,.0f} footprint SF"
+        elif rt_unit == 'per_fixture':
+            budget_val = round(rec_rate * plumbing_fixtures)
+            qty_label = f"${rec_rate:,.0f}/fixture \u00d7 {plumbing_fixtures} fixtures"
+        elif rt_unit == 'per_opening':
+            count = window_count if 'window' in rt_key else door_count
+            budget_val = round(rec_rate * count)
+            qty_label = f"${rec_rate:,.0f}/opening \u00d7 {count} openings"
+        elif rt_unit == 'per_unit':
+            budget_val = round(rec_rate * unit_count)
+            qty_label = f"${rec_rate:,.0f}/unit \u00d7 {unit_count} units"
+        elif rt_unit == 'lump_sum':
+            bids = rt.get('bids', [])
+            if bids:
+                budget_val = bids[0].get('amount', round(rec_rate))
+            else:
+                budget_val = round(rec_rate)
+            qty_label = f"lump sum ${budget_val:,.0f}"
+        else:
+            budget_val = round(rec_rate * total_sf)
+            qty_label = f"${rec_rate:,.2f}/SF \u00d7 {total_sf:,.0f} SF"
+
+        # Build rich note citing bidders
+        bids = rt.get('bids', [])
+        scope_note = rt.get('notes', '')
+        bid_count = len(bids)
+        if bid_count > 0:
+            low_bidder = bids[0].get('bidder', 'Unknown')
+            low_amount = bids[0].get('amount', 0)
+            range_low = rt.get('range_low', rec_rate)
+            range_high = rt.get('range_high', rec_rate)
+            note_val = (
+                f"{scope_note} | {qty_label} | "
+                f"Based on {bid_count} actual bids "
+                f"(low: {low_bidder} @ ${low_amount:,.0f}). "
+                f"Range: ${range_low:,.2f}-${range_high:,.2f}/{rt_unit.replace('per_', '').replace('_', ' ')}."
+            )
+        else:
+            note_val = f"{scope_note} | {qty_label} | Rate from Lazarus project reference data."
+
+        return budget_val, note_val
+
+    elif rt_unit == 'lump_sum':
+        # lump_sum with no recommended_rate — use low bid amount
+        bids = rt.get('bids', [])
+        if bids and bids[0].get('amount'):
+            budget_val = bids[0]['amount']
+            scope_note = rt.get('notes', '')
+            low_bidder = bids[0].get('bidder', 'Unknown')
+            note_val = (
+                f"{scope_note} | lump sum ${budget_val:,.0f} | "
+                f"Low bid: {low_bidder} @ ${budget_val:,.0f}."
+            )
+            return budget_val, note_val
+
+    return None, None
+
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -2818,6 +2997,9 @@ def build_excel_bytes(
 
     site_result = _detect_site_scope(consolidated, trades)
 
+    # ── Rate table profile matching ──────────────────────────────────────
+    rate_profile = _match_rate_profile(_RATE_TABLES, project_quantities)
+
     def emit(msg: str):
         if progress_callback:
             progress_callback(msg)
@@ -3109,6 +3291,14 @@ def build_excel_bytes(
                         # Placeholder trade — write directly, skip calculate_trade_estimate
                         budget_val = override
                         note_val = override_note
+
+                        # Rate table override — replace TRADE_MAP hardcoded rate
+                        _rt_bv, _rt_nv = _apply_rate_table_override(
+                            trade_name, rate_profile, project_quantities)
+                        if _rt_bv is not None:
+                            budget_val = _rt_bv
+                            note_val = _rt_nv
+
                     else:
                         # Normal trade — run the pricing engine
                         wage_regime = "CT_DOL_RESIDENTIAL"
@@ -3127,6 +3317,14 @@ def build_excel_bytes(
                             f"+ Labor: ${trade_estimate['total_labor']:,.0f} "
                             f"= ${budget_val:,.0f} | \u00b115% accuracy | Sub quote overrides this"
                         )
+
+                        # Rate table override for normal trades
+                        _rt_bv, _rt_nv = _apply_rate_table_override(
+                            trade_name, rate_profile, project_quantities)
+                        if _rt_bv is not None:
+                            budget_val = _rt_bv
+                            note_val = _rt_nv
+
                 else:
                     budget_val = 0
                     note_val = "\u26a0\ufe0f No pricing found \u2014 estimator must price this trade"
@@ -3276,10 +3474,11 @@ def build_excel_bytes(
     if not isinstance(site_subtotal, (int, float)):
         site_subtotal = 0
 
-    gc_oh_rate       = 0.10
-    gc_profit_rate   = 0.12
-    contingency_rate = 0.10
-    permits_rate     = 0.025
+    _gc = rate_profile.get('gc_markups', {})
+    gc_oh_rate       = _gc.get('conditions_pct', 0.10)
+    gc_profit_rate   = _gc.get('profit_pct', 0.12)
+    contingency_rate = _gc.get('contingency_pct', 0.10)
+    permits_rate     = _gc.get('permits_bond_pct', 0.025)
     site_fee_rate    = 0.05
 
     gc_oh          = round(building_subtotal * gc_oh_rate)
@@ -3772,12 +3971,12 @@ def build_excel_bytes(
         ws5.cell(row=calc_row, column=c).border = thin_border
     calc_row += 1
 
-    # GC markups
+    # GC markups (use rate_profile if matched, else residential defaults)
     markup_items = [
-        ("GC General Conditions (10%)", 0.10),
-        ("GC Profit (12%)", 0.12),
-        ("Contingency (10%)", 0.10),
-        ("Permits + Bond (2.5%)", 0.025),
+        (f"GC General Conditions ({gc_oh_rate:.0%})", gc_oh_rate),
+        (f"GC Profit ({gc_profit_rate:.0%})", gc_profit_rate),
+        (f"Contingency ({contingency_rate:.0%})", contingency_rate),
+        (f"Permits + Bond ({permits_rate:.1%})", permits_rate),
     ]
     markup_total = 0
     for label, rate in markup_items:

@@ -9,6 +9,7 @@ Construction document extraction and pricing engine. Upload bid documents (PDFs,
 - **Pre-check flow** — quick scan of cover sheets to detect project type, unit count, SF, and construction type before full extraction
 - **Scalar gate** — after extraction, review and confirm project dimensions (with confidence scoring) before Excel is generated
 - **Commercial/multifamily routing** — system-type detection for HVAC, roofing, plumbing, and framing based on project type
+- **Rate table pricing** — JSON rate tables built from real sub proposals (16+ subs on Lazarus project); profile matching by project type, floors, units, SF; rich notes citing bidder names and bid amounts; GC markups: 28.5% commercial vs 34.5% residential
 - **Complexity multipliers** — renovation (1.35x), gut rehab (1.55x), addition (1.20x) applied automatically
 - **Buyout/SOV mapping** — optional reference buyout spreadsheet for automatic trade SOV matching
 - **Real-time progress** — SSE streaming shows extraction status page-by-page
@@ -98,6 +99,7 @@ Key dimensions extracted and scored:
 buildbrain_poc/
   ├── app.py                  # Flask web server + scalar gate API
   ├── engine.py               # Extraction engine, pricing, Excel generation
+  ├── rate_tables.json        # Rate tables from real sub proposals (Lazarus project)
   ├── extract_to_excel.py     # CLI version
   ├── wage_rates.py           # CT prevailing wage rate tables
   ├── material_db.py          # Material unit price database

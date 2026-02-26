@@ -885,9 +885,10 @@ _BUYOUT_TRADES: list[tuple[int, str, str, list[str]]] = [
     (5,  "3",  "Site Concrete",          ["site concrete", "sidewalk", "curb", "ramp",
                                            "concrete flatwork"]),
     (6,  "3",  "Building Concrete",      ["concrete", "foundation", "footing", "slab"]),
-    (29, "4",  "Masonry",                ["cmu", "masonry", "brick", "block", "cast stone",
+    (29, "4",  "Masonry",                ["cmu", "masonry", "brick", "cmu block", "cast stone",
                                            "brick veneer", "concrete masonry unit",
-                                           "stonework", "stone veneer"]),
+                                           "stonework", "stone veneer", "block wall",
+                                           "block veneer"]),
     # Div 5 — Metals
     (7,  "5",  "Structural Steel",       ["structural", "steel", "metal connect", "simpson",
                                            "strap", "clip", "anchor bolt"]),
@@ -3004,6 +3005,7 @@ def _extract_project_quantities_inner(trades: list, emit: Callable[[str], None],
         scope_text.append(f"{t.trade}: {t.scope_description} [{t.evidence}]")
 
     combined = "\n".join(scope_text)
+    emit(f"[QUANTITIES] combined text length: {len(combined)} chars, {len(scope_text)} trade entries")
 
     # ── CALL 1: Project identity (focused, unambiguous) ──────────────────────
     prompt_identity = f"""You are analyzing construction documents.
@@ -3358,6 +3360,8 @@ def process_files(
         all_requirements.extend(reqs)
         all_trades.extend(trades)
 
+    emit(f"[SCALAR INPUT] {len(all_trades)} trades feeding scalar extraction")
+
     # Dedup
     emit("Deduplicating results...")
     all_requirements = dedup_requirements(all_requirements)
@@ -3589,13 +3593,22 @@ def build_excel_bytes(
         sov_summary["bond"] = sov_data.get("bond")
         sov_summary["permit"] = sov_data.get("permit")
 
+    # Pre-check: does extraction contain real masonry scope?
+    _MASONRY_KW_XL = ['masonry', 'cmu', 'brick', 'cast stone', 'brick veneer',
+                      'concrete masonry', 'stone veneer', 'stonework']
+    _has_masonry_scope_xl = any(
+        any(kw in (t.trade + ' ' + t.scope_description).lower() for kw in _MASONRY_KW_XL)
+        for t in trades
+    )
+
     # Filter to trades with pricing data OR pricing engine coverage
     buyout_rows = [
         row for row in consolidated
-        if row.get("budget") is not None
-        or row["trade"] in sov_matched
-        or get_baseline_quantities(row["trade"], _extraction_for_detection,
-                                   project_quantities=project_quantities)
+        if (row["trade"] != "Masonry" or _has_masonry_scope_xl)
+        and (row.get("budget") is not None
+             or row["trade"] in sov_matched
+             or get_baseline_quantities(row["trade"], _extraction_for_detection,
+                                        project_quantities=project_quantities))
     ]
     # Safety fallback: if nothing has pricing, show everything
     if not buyout_rows:
@@ -4623,8 +4636,21 @@ def build_results_json(
         "scope_items": [],
     })
 
+    # Pre-check: does extraction contain real masonry scope?
+    _MASONRY_KW = ['masonry', 'cmu', 'brick', 'cast stone', 'brick veneer',
+                   'concrete masonry', 'stone veneer', 'stonework']
+    _has_masonry_scope = any(
+        any(kw in (t.trade + ' ' + t.scope_description).lower() for kw in _MASONRY_KW)
+        for t in trades
+    )
+
     for row_data in consolidated:
         trade_name = row_data["trade"]
+
+        # Guard: skip Masonry placeholder if no masonry scope was extracted
+        if trade_name == "Masonry" and not _has_masonry_scope:
+            continue
+
         budget_val = None
         note_val = None
         source = "none"

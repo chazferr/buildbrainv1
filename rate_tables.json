@@ -640,6 +640,123 @@
           "permits_bond_pct": 0.025
         }
       }
+    },
+    {
+      "id": "laurel_estates_community_2025",
+      "source_project": "Laurel Estates Community Building — 40 Farm Crest Drive, Waterbury CT 06704",
+      "characteristics": {
+        "project_type": ["community_center", "institutional", "light_commercial"],
+        "floor_count_min": 1,
+        "floor_count_max": 3,
+        "unit_count_min": 0,
+        "unit_count_max": 0,
+        "total_sf_min": 5000,
+        "total_sf_max": 50000,
+        "region": "CT",
+        "prevailing_wage": false,
+        "notes": "Open shop non-union. 2-story community center with CMU/brick exterior, wood framing, commercial MEP. CHFA funded. No residential units."
+      },
+      "quotes": {
+        "sitework": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "SRC (GC self-perform)", "amount": 343216, "per_unit": 17.42, "scope": "Site demolition $76,510 + grading/utilities/drainage $117,450 + soil erosion $11,844 + excavation $53,572 + bollards/dumpster $21,585 + landscaping $15,000 + asphalt paving $47,255.", "status": "awarded"}],
+          "recommended_rate": 17.42, "range_low": 15.0, "range_high": 22.0,
+          "notes": "Suburban CT community center. Full site package."
+        },
+        "concrete_foundation": {
+          "unit": "per_footprint_sf",
+          "bids": [{"bidder": "CT Custom Concrete", "amount": 291550, "per_unit": 29.6, "scope": "Building concrete & waterproofing $226,550 + site concrete $65,000.", "status": "awarded"}],
+          "recommended_rate": 29.6, "range_low": 23.0, "range_high": 38.0,
+          "notes": "Per footprint SF. Includes foundation + site concrete flatwork."
+        },
+        "rough_carpentry_combined": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "84 Lumber / International / Marek", "amount": 281748, "per_unit": 14.3, "scope": "Wood framing structural and interior. 2-story community center Type VB.", "status": "awarded"}],
+          "recommended_rate": 14.3, "range_low": 12.0, "range_high": 18.0,
+          "notes": "Material + labor combined. 2-story wood frame over concrete."
+        },
+        "masonry": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "7 Concrete", "amount": 511655, "per_unit": 25.97, "scope": "CMU block, cast stone, and brick veneer. Full exterior masonry envelope.", "date": "2025-09-12", "status": "awarded"}],
+          "recommended_rate": 26.0, "range_low": 20.0, "range_high": 35.0,
+          "notes": "CMU + brick veneer + cast stone per total SF. Largest single trade on institutional buildings. Flag for estimator review."
+        },
+        "roofing_epdm": {
+          "unit": "per_footprint_sf",
+          "bids": [{"bidder": "H Kulak and Son", "amount": 131457, "per_unit": 13.35, "scope": "Roofing, gutters, downspouts, and siding combined.", "status": "awarded"}],
+          "recommended_rate": 13.35, "range_low": 10.0, "range_high": 18.0,
+          "notes": "Combined roofing + siding per footprint SF."
+        },
+        "insulation": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "Jo / US Insulation / TBD", "amount": 50000, "per_unit": 2.54, "scope": "Full building insulation. 2-story community center.", "status": "awarded"}],
+          "recommended_rate": 2.54, "range_low": 2.0, "range_high": 4.0,
+          "notes": "Per total SF. Lighter scope than multifamily — no unit separation walls."
+        },
+        "drywall": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "JO / CYR / New Hope", "amount": 94850, "per_unit": 4.81, "scope": "All drywall and finish taping. 2-story community center.", "status": "awarded"}],
+          "recommended_rate": 4.81, "range_low": 4.0, "range_high": 7.0,
+          "notes": "Per total SF. Much lower than multifamily $25/SF — no unit separation walls."
+        },
+        "windows_material": {
+          "unit": "per_opening",
+          "opening_count_basis": 40,
+          "bids": [{"bidder": "Marvin / Branford", "amount": 71854, "per_unit": 1796, "scope": "Commercial windows including storefront glazing.", "status": "awarded"}],
+          "recommended_rate": 1796, "range_low": 1200, "range_high": 2500,
+          "notes": "Per opening. Commercial specs — higher per-unit than residential."
+        },
+        "doors_hardware_material": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "New Hope + Inovia/Naugatuck", "amount": 125915, "per_unit": 6.39, "scope": "Doors & hardware $32K + storefronts $14,640 + finish carpentry $79,275.", "status": "awarded"}],
+          "recommended_rate": 6.39, "range_low": 5.0, "range_high": 9.0,
+          "notes": "Per total SF. Use $/SF for institutional — NOT per-unit formula."
+        },
+        "flooring": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "New Hope Construction", "amount": 95342, "per_unit": 4.84, "scope": "Flooring, tile and stone. VCT, tile, rubber. No gypcrete.", "status": "awarded"}],
+          "recommended_rate": 4.84, "range_low": 4.0, "range_high": 8.0,
+          "notes": "Per total SF. No gypcrete — community center, not residential."
+        },
+        "painting": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "New Hope Construction", "amount": 58000, "per_unit": 2.94, "scope": "Interior painting. Prime + 2 coats. Material + labor.", "status": "awarded"}],
+          "recommended_rate": 2.94, "range_low": 2.5, "range_high": 4.5,
+          "notes": "Per total SF."
+        },
+        "hvac": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "RDR HVAC", "amount": 240000, "per_unit": 12.18, "scope": "Full HVAC. Commercial RTUs + distribution. 2-story community center.", "date": "2025-09-19", "status": "awarded"}],
+          "recommended_rate": 12.18, "range_low": 10.0, "range_high": 18.0,
+          "notes": "CRITICAL: $12/SF vs multifamily $45/SF. Fewer zones, no unit-by-unit equipment."
+        },
+        "electrical": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "Lynx", "amount": 304500, "per_unit": 15.46, "scope": "Switchgear + distribution $250,500 + fixtures $54,000. Includes fire alarm.", "date": "2025-09-19", "status": "awarded"}],
+          "recommended_rate": 15.46, "range_low": 12.0, "range_high": 20.0,
+          "notes": "Per total SF. Includes fixtures and fire alarm."
+        },
+        "fire_sprinkler": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "Elite Fire Protection", "amount": 55770, "per_unit": 2.83, "scope": "NFPA 13. 2-story community center.", "date": "2025-09-19", "status": "awarded"}],
+          "recommended_rate": 2.83, "range_low": 2.5, "range_high": 4.5,
+          "notes": "CRITICAL: $2.83/SF vs multifamily $17.50/SF. Open floor plates, simpler system."
+        },
+        "plumbing": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "P and L", "amount": 72800, "per_unit": 3.7, "scope": "Full plumbing. Restrooms, janitor sinks, kitchen prep. ~20 fixtures.", "date": "2025-09-19", "status": "awarded"}],
+          "recommended_rate": 3.7, "range_low": 3.0, "range_high": 6.0,
+          "notes": "CRITICAL: $3.70/SF vs multifamily $43/SF per fixture. Public restrooms only."
+        },
+        "gc_markups": {
+          "conditions_pct": 0.082,
+          "profit_pct": 0.08,
+          "contingency_pct": 0.05,
+          "permits_bond_pct": 0.025,
+          "total_pct": 0.237,
+          "notes": "Open shop. GC self-performing site work. CHFA funded — firm budget. 8.2% conditions on $2.93M subtotal."
+        }
+      }
     }
   ],
   "residential_default": {

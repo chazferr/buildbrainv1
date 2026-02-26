@@ -76,7 +76,7 @@ def _match_rate_profile(rate_tables: dict, project_quantities: dict) -> dict:
 
     # Find best matching profile for any project type
     floors = pq.get('floor_count', 1) or 1
-    units = pq.get('unit_count', 1) or 1
+    units = pq.get('unit_count') or 0
     total_sf = pq.get('total_building_sf', 0) or 0
 
     best_match = None
@@ -143,6 +143,7 @@ _TRADE_TO_RATE_KEY = {
     "Sitework": "sitework",
     "SITE WORK / CIVIL": "sitework",
     "Rough Carpentry": "rough_carpentry_combined",
+    "Masonry": "masonry",
 }
 
 

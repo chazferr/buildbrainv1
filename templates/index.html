@@ -364,7 +364,7 @@ input[type=file]{display:none}
                     <div class="pc-field full"><label>Project Name <span class="pc-dot" id="pcd_project_name"></span></label><input type="text" id="pc_project_name" placeholder="Not detected"></div>
                     <div class="pc-field full"><label>Project Address <span class="pc-dot" id="pcd_project_address"></span></label><input type="text" id="pc_project_address" placeholder="Not detected"></div>
                     <div class="pc-field"><label>Project Type <span class="pc-dot" id="pcd_project_type"></span></label>
-                        <select id="pc_project_type"><option value="single_family">Single Family</option><option value="multi_family">Multi-Family</option><option value="commercial">Commercial</option><option value="mixed_use">Mixed Use</option><option value="unknown">Unknown</option></select>
+                        <select id="pc_project_type"><option value="single_family">Single Family</option><option value="multi_family">Multi-Family</option><option value="commercial">Commercial</option><option value="mixed_use">Mixed Use</option><option value="community_center">Community Center / Institutional</option><option value="light_commercial">Light Commercial</option><option value="unknown">Unknown</option></select>
                         <div class="pricing-source-ind" id="pcPricingSource"></div></div>
                     <div class="pc-field"><label>Construction Type <span class="pc-dot" id="pcd_construction_type"></span></label>
                         <select id="pc_construction_type"><option value="new_construction">New Construction</option><option value="renovation">Renovation (1.35x)</option><option value="gut_rehabilitation">Gut Rehabilitation (1.55x)</option><option value="addition">Addition (1.20x)</option><option value="unknown">Unknown</option></select></div>
@@ -555,7 +555,7 @@ function parseProcCounters(msg){
 
 /* ─── Scalar Gate → Scalars Tab ─── */
 const _SEL_OPTS={
-    project_type:[{v:'single_family',l:'Single Family'},{v:'multi_family',l:'Multi-Family'},{v:'commercial',l:'Commercial'},{v:'mixed_use',l:'Mixed Use'},{v:'unknown',l:'Unknown'}],
+    project_type:[{v:'single_family',l:'Single Family'},{v:'multi_family',l:'Multi-Family'},{v:'commercial',l:'Commercial'},{v:'mixed_use',l:'Mixed Use'},{v:'community_center',l:'Community Center / Institutional'},{v:'light_commercial',l:'Light Commercial'},{v:'unknown',l:'Unknown'}],
     construction_type:[{v:'new_construction',l:'New Construction'},{v:'renovation',l:'Renovation (1.35x)'},{v:'gut_rehabilitation',l:'Gut Rehabilitation (1.55x)'},{v:'addition',l:'Addition (1.20x)'},{v:'unknown',l:'Unknown'}]
 };
 
@@ -888,6 +888,8 @@ const _PRICING_SRC={
     'mixed_use':'\ud83d\udcca Pricing from: Rate Tables (real CT sub quotes)',
     'commercial':'\ud83d\udcca Pricing from: Rate Tables (real CT sub quotes)',
     'institutional':'\ud83d\udcca Pricing from: Rate Tables (real CT sub quotes)',
+    'community_center':'\ud83d\udcca Pricing from: Rate Tables (Laurel Estates community center rates)',
+    'light_commercial':'\ud83d\udcca Pricing from: Rate Tables (real CT sub quotes)',
     'unknown':'\u26a0\ufe0f Pricing from: Best available source',
 };
 function updatePricingSource(){

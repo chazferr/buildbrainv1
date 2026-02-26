@@ -545,10 +545,13 @@ def _build_scalar_summary(pq: dict) -> dict:
     # ── GC Markup fields (displayed as %, stored as decimals) ──
     pt = pq.get("project_type", "unknown")
     _GC_DEFAULTS = {
-        "single_family":  (0.05, 0.06, 0.05, 0.025),
-        "multi_family":   (0.08, 0.10, 0.08, 0.025),
-        "mixed_use":      (0.08, 0.10, 0.08, 0.025),
-        "commercial":     (0.10, 0.12, 0.10, 0.025),
+        "single_family":    (0.05, 0.06, 0.05, 0.025),
+        "multi_family":     (0.08, 0.10, 0.08, 0.025),
+        "mixed_use":        (0.08, 0.10, 0.08, 0.025),
+        "commercial":       (0.10, 0.12, 0.10, 0.025),
+        "community_center": (0.082, 0.08, 0.05, 0.025),
+        "institutional":    (0.082, 0.08, 0.05, 0.025),
+        "light_commercial": (0.08, 0.10, 0.08, 0.025),
     }
     _def = _GC_DEFAULTS.get(pt, (0.10, 0.12, 0.10, 0.025))
 

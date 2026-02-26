@@ -99,9 +99,11 @@ def _match_rate_profile(rate_tables: dict, project_quantities: dict) -> dict:
     if best_match:
         pid = best_match.get('id', 'unknown')
         print(f"[RATE TABLE] project_type={pt} -> matched profile '{pid}' (score={best_score})")
+        print(f"[PRICING SOURCE] project_type='{pt}' -> rate_tables")
         return best_match.get('quotes', {})
 
     print(f"[RATE TABLE] project_type={pt} -> no profiles in rate_tables.json, falling back to material_db")
+    print(f"[PRICING SOURCE] project_type='{pt}' -> material_db")
     return {}
 
 
@@ -4668,4 +4670,5 @@ def build_results_json(
         "scope_details": scope_details,
         "flags": flags,
         "scalars": scalars,
+        "pricing_source": "rate_tables" if rate_profile else "material_db",
     }

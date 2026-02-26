@@ -712,6 +712,8 @@ function buildPricingTab(data){
 
     divs.forEach((div,di)=>{
         div.rows.forEach((row,ri)=>{
+            // Skip trades with zero or null budget
+            if(row.original_budget===0||row.original_budget===null||row.original_budget===undefined) return;
             const srcClass=row.source_note?.includes('rate_table')?'src-calc':
                            row.source_note?.includes('material_db')?'src-extract':
                            row.source_note?.includes('placeholder')?'src-placeholder':'src-calc';

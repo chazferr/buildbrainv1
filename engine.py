@@ -885,9 +885,9 @@ _BUYOUT_TRADES: list[tuple[int, str, str, list[str]]] = [
     (5,  "3",  "Site Concrete",          ["site concrete", "sidewalk", "curb", "ramp",
                                            "concrete flatwork"]),
     (6,  "3",  "Building Concrete",      ["concrete", "foundation", "footing", "slab"]),
-    (29, "4",  "Masonry",                ["cmu", "masonry", "brick", "cmu block", "cast stone",
-                                           "brick veneer", "concrete masonry unit",
-                                           "concrete block", "stonework", "stone veneer",
+    (29, "4",  "Masonry",                ["masonry", "cmu", "cmu block", "cast stone",
+                                           "brick veneer", "brick wall",
+                                           "stonework", "stone veneer",
                                            "block wall", "block veneer"]),
     # Div 5 — Metals
     (7,  "5",  "Structural Steel",       ["structural", "steel", "metal connect", "simpson",
@@ -3006,6 +3006,7 @@ def _extract_project_quantities_inner(trades: list, emit: Callable[[str], None],
 
     combined = "\n".join(scope_text)
     emit(f"[QUANTITIES] combined text length: {len(combined)} chars, {len(scope_text)} trade entries")
+    emit(f"[QUANTITIES SAMPLE] first 300 chars: {combined[:300]}")
 
     # ── CALL 1: Project identity (focused, unambiguous) ──────────────────────
     prompt_identity = f"""You are analyzing construction documents.
@@ -3594,8 +3595,8 @@ def build_excel_bytes(
         sov_summary["permit"] = sov_data.get("permit")
 
     # Pre-check: does extraction contain real masonry scope?
-    _MASONRY_KW_XL = ['masonry', 'cmu', 'brick', 'cast stone', 'brick veneer',
-                      'concrete masonry', 'concrete block', 'stone veneer', 'stonework']
+    _MASONRY_KW_XL = ['masonry', 'cmu', 'brick veneer', 'cast stone',
+                      'brick wall', 'block wall', 'stone veneer', 'stonework']
     _has_masonry_scope_xl = any(
         any(kw in (t.trade + ' ' + t.scope_description).lower() for kw in _MASONRY_KW_XL)
         for t in trades
@@ -4637,12 +4638,20 @@ def build_results_json(
     })
 
     # Pre-check: does extraction contain real masonry scope?
-    _MASONRY_KW = ['masonry', 'cmu', 'brick', 'cast stone', 'brick veneer',
-                   'concrete masonry', 'concrete block', 'stone veneer', 'stonework']
+    _MASONRY_KW = ['masonry', 'cmu', 'brick veneer', 'cast stone',
+                   'brick wall', 'block wall', 'stone veneer', 'stonework']
     _has_masonry_scope = any(
         any(kw in (t.trade + ' ' + t.scope_description).lower() for kw in _MASONRY_KW)
         for t in trades
     )
+    # Debug: show what triggered masonry check
+    if _has_masonry_scope:
+        _matching = [t.trade for t in trades
+                     if any(kw in (t.trade + ' ' + (t.scope_description or '')).lower()
+                            for kw in _MASONRY_KW)]
+        print(f"[MASONRY CHECK] _has_masonry_scope=True, matching trades: {_matching[:5]}", flush=True)
+    else:
+        print(f"[MASONRY CHECK] _has_masonry_scope=False — skipping Masonry trade", flush=True)
 
     for row_data in consolidated:
         trade_name = row_data["trade"]

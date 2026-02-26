@@ -2153,27 +2153,6 @@ def process_page(
     print(f"[VISION] {pdf_name} p.{page_num} — image size: {len(image_bytes)//1024}KB raw, {b64_kb}KB base64", flush=True)
     prompt_text = EXTRACTION_PROMPT.format(pdf_name=pdf_name, page_num=page_num)
 
-    # ── Try Gemini first ──────────────────────────────────────────────────
-    if gemini_api_key:
-        gemini_raw = _call_gemini_vision(
-            png_bytes=image_bytes,
-            prompt_text=prompt_text,
-            gemini_api_key=gemini_api_key,
-            pdf_name=pdf_name,
-            page_num=page_num,
-            emit=lambda m: print(m, flush=True),
-        )
-        if gemini_raw is not None:
-            try:
-                json_text = extract_json_from_text(gemini_raw)
-                data = json.loads(json_text)
-                extraction = PageExtraction(**data)
-                stats["api_calls"] += 1
-                return extraction
-            except (json.JSONDecodeError, ValidationError) as e:
-                print(f"[GEMINI PARSE FAIL] {pdf_name} p.{page_num}: {e} — falling back to Claude", flush=True)
-
-    # ── Fall back to Claude Vision ────────────────────────────────────────
     messages = [
         {
             "role": "user",
@@ -2239,7 +2218,6 @@ If truly nothing is extractable, return:
                 temperature=TEMPERATURE,
                 messages=messages,
             )
-            print(f"[CLAUDE VISION] {pdf_name} p.{page_num}", flush=True)
 
             usage = response.usage
             stats["input_tokens"] += usage.input_tokens
@@ -2685,42 +2663,6 @@ def _process_image(client, file_path, emit, global_stats, file_stats, gemini_api
     b64_image = base64.standard_b64encode(image_bytes).decode("utf-8")
     prompt_text = EXTRACTION_PROMPT.format(pdf_name=file_name, page_num=1)
 
-    # ── Try Gemini first ──────────────────────────────────────────────────
-    if gemini_api_key:
-        gemini_raw = _call_gemini_vision(
-            png_bytes=image_bytes,
-            prompt_text=prompt_text,
-            gemini_api_key=gemini_api_key,
-            pdf_name=file_name,
-            page_num=1,
-            emit=emit,
-        )
-        if gemini_raw is not None:
-            try:
-                data = json.loads(extract_json_from_text(gemini_raw))
-                extraction = PageExtraction(**data)
-                page_stats["api_calls"] += 1
-                # Skip Claude loop — Gemini succeeded
-                per_file["input_tokens"] = page_stats["input_tokens"]
-                per_file["output_tokens"] = page_stats["output_tokens"]
-                per_file["api_calls"] = page_stats["api_calls"]
-                per_file["failed_pages"] = page_stats["failed_pages"]
-                file_stats[file_name] = per_file
-                for k in ["input_tokens", "output_tokens", "api_calls"]:
-                    global_stats[k] += per_file[k]
-                global_stats["total_pages"] += 1
-                global_stats["failed_pages"].extend(per_file["failed_pages"])
-                reqs = list(extraction.submission_requirements)
-                trades = list(extraction.trades_and_scope)
-                if extraction.flags:
-                    emit(f"\u26a0\ufe0f {file_name} PARSE FAILED \u2014 flagged for manual review")
-                else:
-                    emit(f"{file_name} OK (reqs={len(reqs)}, trades={len(trades)})")
-                return reqs, trades
-            except (json.JSONDecodeError, ValidationError) as e:
-                emit(f"[GEMINI PARSE FAIL] {file_name}: {e} — falling back to Claude")
-
-    # ── Fall back to Claude Vision ────────────────────────────────────────
     messages = [{"role": "user", "content": [
         {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64_image}},
         {"type": "text", "text": prompt_text},
@@ -2753,7 +2695,6 @@ If truly nothing is extractable, return:
 
             response = client.messages.create(model=MODEL, max_tokens=4096,
                                               temperature=TEMPERATURE, messages=messages)
-            emit(f"[CLAUDE VISION] {file_name}")
             page_stats["input_tokens"] += response.usage.input_tokens
             page_stats["output_tokens"] += response.usage.output_tokens
             page_stats["api_calls"] += 1

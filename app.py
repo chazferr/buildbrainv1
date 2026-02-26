@@ -32,6 +32,8 @@ API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 if not API_KEY:
     raise RuntimeError("ANTHROPIC_API_KEY not set. Export it or add to .env file.")
 
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
 # ─── Flask app ────────────────────────────────────────────────────────────────
 
 app = Flask(__name__)
@@ -610,6 +612,7 @@ def _run_extraction(job_id: str):
             job["file_paths"],
             API_KEY,
             progress_callback=on_progress,
+            gemini_api_key=GEMINI_API_KEY,
         )
 
         # Parse SOV from reference buyout spreadsheet if provided

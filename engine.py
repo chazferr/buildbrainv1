@@ -21,8 +21,21 @@ from typing import Callable, Optional
 
 import anthropic
 import fitz  # PyMuPDF
+import google.generativeai as genai
 import pandas as pd
 from pydantic import BaseModel, ValidationError, field_validator
+
+# ─── Gemini Vision ───────────────────────────────────────────────────────────
+GEMINI_MODEL = "gemini-3.1-pro-preview"
+_gemini_configured = False
+
+
+def _get_gemini_client(api_key: str):
+    global _gemini_configured
+    if not _gemini_configured:
+        genai.configure(api_key=api_key)
+        _gemini_configured = True
+    return genai.GenerativeModel(model_name=GEMINI_MODEL)
 
 from wage_rates import get_wage, CT_WAGE_RATES
 from material_db import get_material_price, MATERIAL_DB
@@ -2072,12 +2085,64 @@ def _detect_site_scope(consolidated: list[dict], trades: list) -> dict:
 # ─── Page processing ────────────────────────────────────────────────────────
 
 
+def _call_gemini_vision(
+    png_bytes: bytes,
+    prompt_text: str,
+    gemini_api_key: str,
+    pdf_name: str = "",
+    page_num: int = 0,
+    emit: Callable = None,
+) -> str:
+    """
+    Send page image to Gemini 3.1 Pro for extraction.
+    Returns raw text response matching Claude format.
+    Falls back to Claude if Gemini fails.
+    """
+    import PIL.Image
+    import io as _io
+
+    _emit = emit or (lambda x: None)
+
+    try:
+        model = _get_gemini_client(gemini_api_key)
+        image = PIL.Image.open(_io.BytesIO(png_bytes))
+
+        response = model.generate_content(
+            [image, prompt_text],
+            request_options={"timeout": 120},
+            generation_config=genai.GenerationConfig(
+                temperature=0.1,
+                max_output_tokens=4096,
+            ),
+            media_resolution="media_resolution_high",
+        )
+
+        raw_text = response.text
+
+        # Strip markdown fences if Gemini wraps JSON
+        if raw_text.strip().startswith("```"):
+            raw_text = raw_text.strip()
+            raw_text = raw_text.split("\n", 1)[1]
+            raw_text = raw_text.rsplit("```", 1)[0]
+
+        _emit(f"[GEMINI] {pdf_name} p.{page_num} — "
+              f"{len(png_bytes)//1024}KB")
+
+        return raw_text.strip()
+
+    except Exception as e:
+        _emit(f"[GEMINI FALLBACK] {pdf_name} p.{page_num}"
+              f" — Gemini failed ({e}), using Claude")
+        return None  # caller handles fallback
+
+
 def process_page(
     client: anthropic.Anthropic,
     image_bytes: bytes,
     pdf_name: str,
     page_num: int,
     stats: dict,
+    gemini_api_key: str = "",
 ) -> Optional[PageExtraction]:
     """Send a page image to Claude and parse the extraction result."""
 
@@ -2086,6 +2151,27 @@ def process_page(
     print(f"[VISION] {pdf_name} p.{page_num} — image size: {len(image_bytes)//1024}KB raw, {b64_kb}KB base64", flush=True)
     prompt_text = EXTRACTION_PROMPT.format(pdf_name=pdf_name, page_num=page_num)
 
+    # ── Try Gemini first ──────────────────────────────────────────────────
+    if gemini_api_key:
+        gemini_raw = _call_gemini_vision(
+            png_bytes=image_bytes,
+            prompt_text=prompt_text,
+            gemini_api_key=gemini_api_key,
+            pdf_name=pdf_name,
+            page_num=page_num,
+            emit=lambda m: print(m, flush=True),
+        )
+        if gemini_raw is not None:
+            try:
+                json_text = extract_json_from_text(gemini_raw)
+                data = json.loads(json_text)
+                extraction = PageExtraction(**data)
+                stats["api_calls"] += 1
+                return extraction
+            except (json.JSONDecodeError, ValidationError) as e:
+                print(f"[GEMINI PARSE FAIL] {pdf_name} p.{page_num}: {e} — falling back to Claude", flush=True)
+
+    # ── Fall back to Claude Vision ────────────────────────────────────────
     messages = [
         {
             "role": "user",
@@ -2151,6 +2237,7 @@ If truly nothing is extractable, return:
                 temperature=TEMPERATURE,
                 messages=messages,
             )
+            print(f"[CLAUDE VISION] {pdf_name} p.{page_num}", flush=True)
 
             usage = response.usage
             stats["input_tokens"] += usage.input_tokens
@@ -2412,7 +2499,7 @@ def _extract_text_page(
     )
 
 
-def _process_pdf(client, file_path, emit, global_stats, file_stats):
+def _process_pdf(client, file_path, emit, global_stats, file_stats, gemini_api_key=""):
     """Process a PDF file page by page using parallel extraction (8 workers)."""
     file_name = file_path.name
     file_path_str = str(file_path)
@@ -2477,7 +2564,8 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
                     vision_stats = {"input_tokens": 0, "output_tokens": 0,
                                     "api_calls": 0, "failed_pages": []}
                     vision_extraction = process_page(
-                        client, png_bytes, file_name, page_num, vision_stats
+                        client, png_bytes, file_name, page_num, vision_stats,
+                        gemini_api_key=gemini_api_key,
                     )
                     # Accumulate Vision stats regardless
                     page_stats["input_tokens"] += vision_stats["input_tokens"]
@@ -2511,7 +2599,8 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
                 return page_idx, None
 
             extraction = process_page(
-                client, png_bytes, file_name, page_num, page_stats
+                client, png_bytes, file_name, page_num, page_stats,
+                gemini_api_key=gemini_api_key,
             )
 
         # Thread-safe stats accumulation
@@ -2575,7 +2664,7 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats):
     return reqs, trades
 
 
-def _process_image(client, file_path, emit, global_stats, file_stats):
+def _process_image(client, file_path, emit, global_stats, file_stats, gemini_api_key=""):
     """Process a standalone image file via Vision API."""
     file_name = file_path.name
     emit(f"Processing image {file_name}...")
@@ -2593,6 +2682,43 @@ def _process_image(client, file_path, emit, global_stats, file_stats):
 
     b64_image = base64.standard_b64encode(image_bytes).decode("utf-8")
     prompt_text = EXTRACTION_PROMPT.format(pdf_name=file_name, page_num=1)
+
+    # ── Try Gemini first ──────────────────────────────────────────────────
+    if gemini_api_key:
+        gemini_raw = _call_gemini_vision(
+            png_bytes=image_bytes,
+            prompt_text=prompt_text,
+            gemini_api_key=gemini_api_key,
+            pdf_name=file_name,
+            page_num=1,
+            emit=emit,
+        )
+        if gemini_raw is not None:
+            try:
+                data = json.loads(extract_json_from_text(gemini_raw))
+                extraction = PageExtraction(**data)
+                page_stats["api_calls"] += 1
+                # Skip Claude loop — Gemini succeeded
+                per_file["input_tokens"] = page_stats["input_tokens"]
+                per_file["output_tokens"] = page_stats["output_tokens"]
+                per_file["api_calls"] = page_stats["api_calls"]
+                per_file["failed_pages"] = page_stats["failed_pages"]
+                file_stats[file_name] = per_file
+                for k in ["input_tokens", "output_tokens", "api_calls"]:
+                    global_stats[k] += per_file[k]
+                global_stats["total_pages"] += 1
+                global_stats["failed_pages"].extend(per_file["failed_pages"])
+                reqs = list(extraction.submission_requirements)
+                trades = list(extraction.trades_and_scope)
+                if extraction.flags:
+                    emit(f"\u26a0\ufe0f {file_name} PARSE FAILED \u2014 flagged for manual review")
+                else:
+                    emit(f"{file_name} OK (reqs={len(reqs)}, trades={len(trades)})")
+                return reqs, trades
+            except (json.JSONDecodeError, ValidationError) as e:
+                emit(f"[GEMINI PARSE FAIL] {file_name}: {e} — falling back to Claude")
+
+    # ── Fall back to Claude Vision ────────────────────────────────────────
     messages = [{"role": "user", "content": [
         {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64_image}},
         {"type": "text", "text": prompt_text},
@@ -2625,6 +2751,7 @@ If truly nothing is extractable, return:
 
             response = client.messages.create(model=MODEL, max_tokens=4096,
                                               temperature=TEMPERATURE, messages=messages)
+            emit(f"[CLAUDE VISION] {file_name}")
             page_stats["input_tokens"] += response.usage.input_tokens
             page_stats["output_tokens"] += response.usage.output_tokens
             page_stats["api_calls"] += 1
@@ -3173,6 +3300,7 @@ def process_files(
     file_paths: list[Path],
     api_key: str,
     progress_callback: Optional[Callable[[str], None]] = None,
+    gemini_api_key: str = "",
 ) -> tuple[list[SubmissionRequirement], list[TradeAndScope], dict]:
     """
     Process a list of files (PDFs, images, DOCX, EML, XLSX, CSV, TXT):
@@ -3217,9 +3345,9 @@ def process_files(
         emit(f"Opening {file_path.name}...")
 
         if ext == ".pdf":
-            reqs, trades = _process_pdf(client, file_path, emit, global_stats, file_stats)
+            reqs, trades = _process_pdf(client, file_path, emit, global_stats, file_stats, gemini_api_key=gemini_api_key)
         elif ext in image_exts:
-            reqs, trades = _process_image(client, file_path, emit, global_stats, file_stats)
+            reqs, trades = _process_image(client, file_path, emit, global_stats, file_stats, gemini_api_key=gemini_api_key)
         elif ext in text_exts:
             reqs, trades = _process_text_file(client, file_path, emit, global_stats, file_stats)
         else:

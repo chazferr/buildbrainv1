@@ -887,8 +887,8 @@ _BUYOUT_TRADES: list[tuple[int, str, str, list[str]]] = [
     (6,  "3",  "Building Concrete",      ["concrete", "foundation", "footing", "slab"]),
     (29, "4",  "Masonry",                ["cmu", "masonry", "brick", "cmu block", "cast stone",
                                            "brick veneer", "concrete masonry unit",
-                                           "stonework", "stone veneer", "block wall",
-                                           "block veneer"]),
+                                           "concrete block", "stonework", "stone veneer",
+                                           "block wall", "block veneer"]),
     # Div 5 — Metals
     (7,  "5",  "Structural Steel",       ["structural", "steel", "metal connect", "simpson",
                                            "strap", "clip", "anchor bolt"]),
@@ -3595,7 +3595,7 @@ def build_excel_bytes(
 
     # Pre-check: does extraction contain real masonry scope?
     _MASONRY_KW_XL = ['masonry', 'cmu', 'brick', 'cast stone', 'brick veneer',
-                      'concrete masonry', 'stone veneer', 'stonework']
+                      'concrete masonry', 'concrete block', 'stone veneer', 'stonework']
     _has_masonry_scope_xl = any(
         any(kw in (t.trade + ' ' + t.scope_description).lower() for kw in _MASONRY_KW_XL)
         for t in trades
@@ -4638,7 +4638,7 @@ def build_results_json(
 
     # Pre-check: does extraction contain real masonry scope?
     _MASONRY_KW = ['masonry', 'cmu', 'brick', 'cast stone', 'brick veneer',
-                   'concrete masonry', 'stone veneer', 'stonework']
+                   'concrete masonry', 'concrete block', 'stone veneer', 'stonework']
     _has_masonry_scope = any(
         any(kw in (t.trade + ' ' + t.scope_description).lower() for kw in _MASONRY_KW)
         for t in trades

@@ -10,14 +10,16 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://127.0.0.1:5000
  * Running on http://10.0.0.18:5000
 Press CTRL+C to quit
-127.0.0.1 - - [25/Feb/2026 14:50:22] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 14:50:39] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 18:03:47] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 18:04:34] "POST /api/pre-check HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 18:04:46] "POST /api/upload HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 18:04:46] "GET /api/stream/c7e0191b61c1 HTTP/1.1" 200 -
-Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
+127.0.0.1 - - [25/Feb/2026 21:50:19] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 21:53:37] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 21:54:06] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 21:54:19] "POST /api/upload HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 21:54:19] "GET /api/stream/873fa80da578 HTTP/1.1" 200 -
 Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
+Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
+[VISION] Site Drawings.pdf p.1 — image size: 2327KB raw, 3102KB base64
+[VISION] Site Drawings.pdf p.3 — image size: 2325KB raw, 3101KB base64
+[VISION] Site Drawings.pdf p.2 — image size: 3265KB raw, 4354KB base64
 [CLASSIFY] p.2 detected as CAD drawing (chars=6341, avg_line=14, digit_ratio=0.03, short_ratio=0.62, vectors=975, signals=3/5 [short_lines, short_ratio, vectors])
 [CLASSIFY] p.3 detected as CAD drawing (chars=2968, avg_line=9, digit_ratio=0.20, short_ratio=0.73, vectors=28012, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
 [CLASSIFY] p.4 detected as CAD drawing (chars=7354, avg_line=14, digit_ratio=0.04, short_ratio=0.52, vectors=6794, signals=3/5 [short_lines, short_ratio, vectors])
@@ -28,19 +30,18 @@ Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
 [CLASSIFY] p.9 detected as CAD drawing (chars=4267, avg_line=12, digit_ratio=0.14, short_ratio=0.57, vectors=44939, signals=3/5 [short_lines, short_ratio, vectors])
 [VISION] Midstate House Drawings.pdf p.2 — image size: 1374KB raw, 1832KB base64
 [VISION] Midstate House Drawings.pdf p.3 — image size: 1460KB raw, 1946KB base64
+[VISION] Midstate House Drawings.pdf p.5 — image size: 1733KB raw, 2311KB base64
 [VISION] Midstate House Drawings.pdf p.4 — image size: 1794KB raw, 2393KB base64
 [VISION] Midstate House Drawings.pdf p.6 — image size: 1244KB raw, 1659KB base64
 [VISION] Midstate House Drawings.pdf p.7 — image size: 2156KB raw, 2875KB base64
 [VISION] Midstate House Drawings.pdf p.8 — image size: 2084KB raw, 2778KB base64
-[VISION] Midstate House Drawings.pdf p.5 — image size: 1733KB raw, 2311KB base64
 [VISION] Midstate House Drawings.pdf p.9 — image size: 1870KB raw, 2494KB base64
-[VISION] Site Drawings.pdf p.1 — image size: 2327KB raw, 3102KB base64
-[VISION] Site Drawings.pdf p.2 — image size: 3265KB raw, 4354KB base64
-[VISION] Site Drawings.pdf p.3 — image size: 2325KB raw, 3101KB base64
-127.0.0.1 - - [25/Feb/2026 18:06:01] "POST /api/confirm-scalars HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 21:55:27] "POST /api/confirm-scalars HTTP/1.1" 200 -
 [RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
-[EXCEL TOTALS] building_sub=144,803 site_sub=190,000 GC=32,580 (22.5%) project_total=376,883
+[PRICING SOURCE] project_type='single_family' -> rate_tables
+[EXCEL TOTALS] building_sub=154,306 site_sub=190,000 GC=28,546 (18.5%) project_total=382,352
 [RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
+[PRICING SOURCE] project_type='single_family' -> rate_tables
 [JSON TRADE] div=02 SITE WORK / CIVIL         $   190,000  src=user
 [JSON TRADE] div=02 Sitework                  $         0  src=none
 [JSON TRADE] div=02 Paving & Striping         $         0  src=none
@@ -49,135 +50,25 @@ Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
 [JSON TRADE] div=03 Building Concrete         $    25,000  src=rate_table
 [JSON TRADE] div=05 Structural Steel          $     6,500  src=placeholder
 [JSON TRADE] div=06 Rough Carpentry           $    24,526  src=material_db
-[JSON TRADE] div=08 Doors/Hdwr/Finish Carp    $     5,031  src=material_db
+[JSON TRADE] div=08 Doors/Hdwr/Finish Carp    $     8,100  src=placeholder
 [JSON TRADE] div=08 Windows                   $    10,000  src=rate_table
 [JSON TRADE] div=07 Insulation                $     3,000  src=rate_table
 [JSON TRADE] div=07 Roofing                   $    11,500  src=rate_table
 [JSON TRADE] div=07 Siding                    $    13,000  src=rate_table
-[JSON TRADE] div=09 Drywall                   $     2,850  src=rate_table
-[JSON TRADE] div=09 Countertops & Finishes    $     5,500  src=placeholder
-[JSON TRADE] div=13 Cabinets                  $     4,370  src=material_db
-[JSON TRADE] div=15 Plumbing                  $     8,600  src=rate_table
-[JSON TRADE] div=15 HVAC                      $     7,800  src=rate_table
-[JSON TRADE] div=16 Electrical                $     6,400  src=rate_table
-[JSON TRADE] div=01 General Requirements      $    10,726  src=calculated
-[JSON TOTALS] building_sub=144,803 site_sub=190,000 GC=32,580 (22.5%) project_total=376,883
-127.0.0.1 - - [25/Feb/2026 18:06:02] "GET /api/results/c7e0191b61c1 HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 18:06:20] "GET /api/download/c7e0191b61c1 HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 18:15:38] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 18:15:48] "GET /favicon.ico HTTP/1.1" 404 -
-127.0.0.1 - - [25/Feb/2026 18:17:11] "POST /api/pre-check HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 18:17:17] "POST /api/upload HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 18:17:17] "GET /api/stream/13d60becc78b HTTP/1.1" 200 -
-Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
-Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
-[CLASSIFY] p.2 detected as CAD drawing (chars=6341, avg_line=14, digit_ratio=0.03, short_ratio=0.62, vectors=975, signals=3/5 [short_lines, short_ratio, vectors])
-[CLASSIFY] p.3 detected as CAD drawing (chars=2968, avg_line=9, digit_ratio=0.20, short_ratio=0.73, vectors=28012, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
-[CLASSIFY] p.4 detected as CAD drawing (chars=7354, avg_line=14, digit_ratio=0.04, short_ratio=0.52, vectors=6794, signals=3/5 [short_lines, short_ratio, vectors])
-[CLASSIFY] p.5 detected as CAD drawing (chars=3152, avg_line=12, digit_ratio=0.14, short_ratio=0.60, vectors=31738, signals=3/5 [short_lines, short_ratio, vectors])
-[CLASSIFY] p.6 detected as CAD drawing (chars=2081, avg_line=8, digit_ratio=0.18, short_ratio=0.81, vectors=11199, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
-[CLASSIFY] p.7 detected as CAD drawing (chars=4837, avg_line=16, digit_ratio=0.09, short_ratio=0.39, vectors=62728, signals=2/5 [short_lines, vectors])
-[CLASSIFY] p.8 detected as CAD drawing (chars=7212, avg_line=13, digit_ratio=0.09, short_ratio=0.64, vectors=15683, signals=3/5 [short_lines, short_ratio, vectors])
-[CLASSIFY] p.9 detected as CAD drawing (chars=4267, avg_line=12, digit_ratio=0.14, short_ratio=0.57, vectors=44939, signals=3/5 [short_lines, short_ratio, vectors])
-[VISION] Midstate House Drawings.pdf p.3 — image size: 1460KB raw, 1946KB base64
-[VISION] Midstate House Drawings.pdf p.2 — image size: 1374KB raw, 1832KB base64
-[VISION] Midstate House Drawings.pdf p.4 — image size: 1794KB raw, 2393KB base64
-[VISION] Midstate House Drawings.pdf p.6 — image size: 1244KB raw, 1659KB base64
-[VISION] Midstate House Drawings.pdf p.5 — image size: 1733KB raw, 2311KB base64
-[VISION] Midstate House Drawings.pdf p.8 — image size: 2084KB raw, 2778KB base64
-[VISION] Midstate House Drawings.pdf p.7 — image size: 2156KB raw, 2875KB base64
-[VISION] Midstate House Drawings.pdf p.9 — image size: 1870KB raw, 2494KB base64
-[VISION] Site Drawings.pdf p.1 — image size: 2327KB raw, 3102KB base64
-[VISION] Site Drawings.pdf p.2 — image size: 3265KB raw, 4354KB base64
-[VISION] Site Drawings.pdf p.3 — image size: 2325KB raw, 3101KB base64
-127.0.0.1 - - [25/Feb/2026 18:18:33] "POST /api/confirm-scalars HTTP/1.1" 200 -
-[RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
-[EXCEL TOTALS] building_sub=146,261 site_sub=190,000 GC=32,909 (22.5%) project_total=378,670
-[RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
-[JSON TRADE] div=02 SITE WORK / CIVIL         $   190,000  src=user
-[JSON TRADE] div=02 Sitework                  $         0  src=none
-[JSON TRADE] div=02 Paving & Striping         $         0  src=none
-[JSON TRADE] div=02 Landscaping               $         0  src=none
-[JSON TRADE] div=03 Site Concrete             $         0  src=none
-[JSON TRADE] div=03 Building Concrete         $    25,000  src=rate_table
-[JSON TRADE] div=05 Structural Steel          $     6,500  src=placeholder
-[JSON TRADE] div=06 Rough Carpentry           $    24,526  src=material_db
-[JSON TRADE] div=08 Doors/Hdwr/Finish Carp    $     5,031  src=material_db
-[JSON TRADE] div=08 Windows                   $    10,000  src=rate_table
-[JSON TRADE] div=07 Insulation                $     3,000  src=rate_table
-[JSON TRADE] div=07 Roofing                   $    11,500  src=rate_table
-[JSON TRADE] div=07 Siding                    $    13,000  src=rate_table
-[JSON TRADE] div=07 Flashing & Waterproofing  $     4,200  src=placeholder
-[JSON TRADE] div=09 Countertops & Finishes    $     5,500  src=placeholder
-[JSON TRADE] div=13 Cabinets                  $     4,370  src=material_db
-[JSON TRADE] div=15 Plumbing                  $     8,600  src=rate_table
-[JSON TRADE] div=15 HVAC                      $     7,800  src=rate_table
-[JSON TRADE] div=16 Electrical                $     6,400  src=rate_table
-[JSON TRADE] div=01 General Requirements      $    10,834  src=calculated
-[JSON TOTALS] building_sub=146,261 site_sub=190,000 GC=32,909 (22.5%) project_total=378,670
-127.0.0.1 - - [25/Feb/2026 18:18:33] "GET /api/results/13d60becc78b HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 18:19:25] "GET /api/download/13d60becc78b HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:11:26] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:12:15] "POST /api/pre-check HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:12:29] "POST /api/upload HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:12:29] "GET /api/stream/733a0c008aa2 HTTP/1.1" 200 -
-Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
-Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
-[CLASSIFY] p.2 detected as CAD drawing (chars=6341, avg_line=14, digit_ratio=0.03, short_ratio=0.62, vectors=975, signals=3/5 [short_lines, short_ratio, vectors])
-[CLASSIFY] p.3 detected as CAD drawing (chars=2968, avg_line=9, digit_ratio=0.20, short_ratio=0.73, vectors=28012, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
-[CLASSIFY] p.4 detected as CAD drawing (chars=7354, avg_line=14, digit_ratio=0.04, short_ratio=0.52, vectors=6794, signals=3/5 [short_lines, short_ratio, vectors])
-[CLASSIFY] p.5 detected as CAD drawing (chars=3152, avg_line=12, digit_ratio=0.14, short_ratio=0.60, vectors=31738, signals=3/5 [short_lines, short_ratio, vectors])
-[CLASSIFY] p.6 detected as CAD drawing (chars=2081, avg_line=8, digit_ratio=0.18, short_ratio=0.81, vectors=11199, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
-[CLASSIFY] p.7 detected as CAD drawing (chars=4837, avg_line=16, digit_ratio=0.09, short_ratio=0.39, vectors=62728, signals=2/5 [short_lines, vectors])
-[CLASSIFY] p.8 detected as CAD drawing (chars=7212, avg_line=13, digit_ratio=0.09, short_ratio=0.64, vectors=15683, signals=3/5 [short_lines, short_ratio, vectors])
-[CLASSIFY] p.9 detected as CAD drawing (chars=4267, avg_line=12, digit_ratio=0.14, short_ratio=0.57, vectors=44939, signals=3/5 [short_lines, short_ratio, vectors])
-[VISION] Midstate House Drawings.pdf p.2 — image size: 1374KB raw, 1832KB base64
-[VISION] Midstate House Drawings.pdf p.3 — image size: 1460KB raw, 1946KB base64
-[VISION] Midstate House Drawings.pdf p.4 — image size: 1794KB raw, 2393KB base64
-[VISION] Midstate House Drawings.pdf p.5 — image size: 1733KB raw, 2311KB base64
-[VISION] Midstate House Drawings.pdf p.6 — image size: 1244KB raw, 1659KB base64
-[VISION] Midstate House Drawings.pdf p.7 — image size: 2156KB raw, 2875KB base64
-[VISION] Midstate House Drawings.pdf p.8 — image size: 2084KB raw, 2778KB base64
-[VISION] Midstate House Drawings.pdf p.9 — image size: 1870KB raw, 2494KB base64
-[VISION] Site Drawings.pdf p.1 — image size: 2327KB raw, 3102KB base64
-[VISION] Site Drawings.pdf p.3 — image size: 2325KB raw, 3101KB base64
-[VISION] Site Drawings.pdf p.2 — image size: 3265KB raw, 4354KB base64
-127.0.0.1 - - [25/Feb/2026 19:13:57] "POST /api/confirm-scalars HTTP/1.1" 200 -
-[RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
-[EXCEL TOTALS] building_sub=155,387 site_sub=190,000 GC=34,962 (22.5%) project_total=389,849
-[RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
-[JSON TRADE] div=02 SITE WORK / CIVIL         $   190,000  src=user
-[JSON TRADE] div=02 Sitework                  $         0  src=none
-[JSON TRADE] div=02 Paving & Striping         $         0  src=none
-[JSON TRADE] div=02 Landscaping               $         0  src=none
-[JSON TRADE] div=03 Building Concrete         $    25,000  src=rate_table
-[JSON TRADE] div=05 Structural Steel          $     6,500  src=placeholder
-[JSON TRADE] div=06 Rough Carpentry           $    24,526  src=material_db
-[JSON TRADE] div=08 Doors/Hdwr/Finish Carp    $     5,031  src=material_db
-[JSON TRADE] div=08 Windows                   $    10,000  src=rate_table
-[JSON TRADE] div=07 Insulation                $     3,000  src=rate_table
-[JSON TRADE] div=07 Roofing                   $    11,500  src=rate_table
-[JSON TRADE] div=07 Siding                    $    13,000  src=rate_table
-[JSON TRADE] div=07 Flashing & Waterproofing  $     4,200  src=placeholder
 [JSON TRADE] div=09 Drywall                   $     2,850  src=rate_table
 [JSON TRADE] div=09 Flooring                  $     3,350  src=rate_table
 [JSON TRADE] div=09 Painting                  $     2,250  src=rate_table
 [JSON TRADE] div=09 Countertops & Finishes    $     5,500  src=placeholder
-[JSON TRADE] div=13 Cabinets                  $     4,370  src=material_db
+[JSON TRADE] div=10 Specialties               $     4,500  src=placeholder
 [JSON TRADE] div=15 Plumbing                  $     8,600  src=rate_table
 [JSON TRADE] div=15 HVAC                      $     7,800  src=rate_table
 [JSON TRADE] div=16 Electrical                $     6,400  src=rate_table
-[JSON TRADE] div=01 General Requirements      $    11,510  src=calculated
-[JSON TOTALS] building_sub=155,387 site_sub=190,000 GC=34,962 (22.5%) project_total=389,849
-127.0.0.1 - - [25/Feb/2026 19:13:57] "GET /api/results/733a0c008aa2 HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:14:54] "POST /api/ask HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:15:23] "POST /api/ask HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:15:38] "GET /api/download/733a0c008aa2 HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:16:16] "GET /api/download/733a0c008aa2 HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:18:19] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:37:58] "POST /api/pre-check HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:38:52] "POST /api/upload HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 19:38:52] "GET /api/stream/f412969fc490 HTTP/1.1" 200 -
+[JSON TRADE] div=01 General Requirements      $    11,430  src=calculated
+[JSON TOTALS] building_sub=154,306 site_sub=190,000 GC=28,546 (18.5%) project_total=382,352
+127.0.0.1 - - [25/Feb/2026 21:55:27] "GET /api/results/873fa80da578 HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 21:59:35] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 22:00:00] "POST /api/upload HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 22:00:00] "GET /api/stream/b4f021ae7b0c HTTP/1.1" 200 -
 Pre-check: 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf — read 5 of 344 pages (limit: 5)
 Pre-check: 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf — read 5 of 66 pages (limit: 5)
 Pre-check: 25-0131_Laurel Estates Community Building-ComCheck_signed.pdf — read 2 of 2 pages (limit: 5)
@@ -227,61 +118,10 @@ Pre-check: EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf — read 4 of 4 pages (limi
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.87 — image size: 416KB raw, 555KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.98 — image size: 432KB raw, 577KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.99 — image size: 305KB raw, 407KB base64
-[TEXT PARSE] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.79 attempt 1/2: JSONDecodeError: Unterminated string starting at: line 290 column 21 (char 11229)
-[TEXT RAW] first 500 chars: ```json
-{
-  "submission_requirements": [
-    {
-      "category": "Submittals",
-      "requirement": "Submit ASTM A 653 Galvanized Steel Deck for Roof Deck",
-      "mandatory": true,
-      "source_pdf": "24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf",
-      "source_page": 79,
-      "evidence": "ASTM A 653 - A 653 Galvanized Steel Deck for Roof Deck"
-    },
-    {
-      "category": "Submittals",
-      "requirement": "Submit ASTM C 920 Sealant for Expansion Joints",
-      "mandatory"
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.108 — image size: 455KB raw, 607KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.109 — image size: 371KB raw, 494KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.123 — image size: 369KB raw, 492KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.128 — image size: 413KB raw, 551KB base64
-[TEXT PARSE] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.118 attempt 1/2: JSONDecodeError: Invalid control character at: line 9 column 30 (char 295)
-[TEXT RAW] first 500 chars: ```json
-{
-  "submission_requirements": [
-    {
-      "category": "Submittals",
-      "requirement": "Submit Concrete Mix Design (89456)",
-      "mandatory": true,
-      "source_pdf": "24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf",
-      "source_page": 118,
-      "evidence": ".6C'/A5C'=	;		A5'#'D&	0E89456	"
-    },
-    {
-      "category": "Submittals",
-      "requirement": "Submit Reinforcing Steel Shop Drawings (89456)",
-      "mandatory": true,
-      "source_pdf": "24-0920_Laure
-[TEXT PARSE] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.118 attempt 2/2: JSONDecodeError: Invalid control character at: line 9 column 30 (char 295)
-[TEXT RAW] first 500 chars: ```json
-{
-  "submission_requirements": [
-    {
-      "category": "Submittals",
-      "requirement": "Submit Concrete Mix Design (89456)",
-      "mandatory": true,
-      "source_pdf": "24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf",
-      "source_page": 118,
-      "evidence": ".6C'/A5C'=	;		A5'#'D&	0E89456	"
-    },
-    {
-      "category": "Submittals",
-      "requirement": "Submit Reinforcing Steel Shop Drawings (89456)",
-      "mandatory": true,
-      "source_pdf": "24-0920_Laure
-[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.118 — image size: 197KB raw, 263KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.184 — image size: 489KB raw, 652KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.191 — image size: 122KB raw, 163KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.194 — image size: 443KB raw, 591KB base64
@@ -333,25 +173,25 @@ Pre-check: EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf — read 4 of 4 pages (limi
 [CLASSIFY] p.64 detected as CAD drawing (chars=1667, avg_line=13, digit_ratio=0.08, short_ratio=0.62, vectors=12092, signals=3/5 [short_lines, short_ratio, vectors])
 [CLASSIFY] p.65 detected as CAD drawing (chars=3286, avg_line=11, digit_ratio=0.11, short_ratio=0.74, vectors=1859, signals=3/5 [short_lines, short_ratio, vectors])
 [CLASSIFY] p.66 detected as CAD drawing (chars=2476, avg_line=16, digit_ratio=0.06, short_ratio=0.37, vectors=3951, signals=2/5 [short_lines, vectors])
-[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.4 — image size: 1730KB raw, 2307KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.3 — image size: 1411KB raw, 1881KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.5 — image size: 3270KB raw, 4360KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.4 — image size: 1730KB raw, 2307KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 — image size: 4483KB raw, 5977KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.12 — image size: 1732KB raw, 2309KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 — image size: 3933KB raw, 5245KB base64
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkyqKcZfmtgHNVHpmVW'}
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkz1nQppgqzV55wwq7U'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVwjbKPh1A6pkzQPU45J'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVwjgf7Yhkk76LXJBn1U'}
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.16 — image size: 2187KB raw, 2916KB base64
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkzQ6bJSAFu8VmkaFSF'}
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkzWDwZZDERZCf4DdoN'}
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkztcqTPTAFGUSsGPTZ'}
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkzzdUxstG96QMzD5H1'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVwk5H9MdSUeokcW8vfe'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVwkAMzR8nbxYQE9x9Zu'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVwkaUKfpJmRW9PHHqKA'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVwkfm4g7pceqkfQKk89'}
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.18 — image size: 1875KB raw, 2500KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.19 — image size: 1616KB raw, 2154KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.20 — image size: 1477KB raw, 1970KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.21 — image size: 1982KB raw, 2642KB base64
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVm1RpJeaZPNeAtZCTB5'}
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVm1an4gDKSHf7YCG6yq'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVwmBuXsj6TJoxp7S534'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVwmFQdQMY1FWcuBfuWN'}
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.30 — image size: 1959KB raw, 2613KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.37 — image size: 958KB raw, 1277KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.38 — image size: 875KB raw, 1166KB base64
@@ -379,9 +219,10 @@ Pre-check: EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf — read 4 of 4 pages (limi
 [VISION] 25-0131_Laurel Estates Community Building-ComCheck_signed.pdf p.2 — image size: 410KB raw, 547KB base64
 [CLASSIFY] p.4 detected as CAD drawing (chars=2045, avg_line=16, digit_ratio=0.09, short_ratio=0.68, vectors=144, signals=3/5 [short_lines, short_ratio, vectors])
 [VISION] EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf p.4 — image size: 268KB raw, 358KB base64
-127.0.0.1 - - [25/Feb/2026 20:26:16] "POST /api/pre-check HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 20:26:40] "POST /api/upload HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 20:26:40] "GET /api/stream/2c30e589d0fb HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 22:24:20] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 22:25:22] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 22:29:28] "POST /api/upload HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 22:29:28] "GET /api/stream/3ea47c061e5c HTTP/1.1" 200 -
 Pre-check: 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf — read 5 of 344 pages (limit: 5)
 Pre-check: 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf — read 5 of 66 pages (limit: 5)
 Pre-check: 25-0131_Laurel Estates Community Building-ComCheck_signed.pdf — read 2 of 2 pages (limit: 5)
@@ -477,22 +318,6 @@ Pre-check: EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf — read 4 of 4 pages (limi
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.220 — image size: 94KB raw, 126KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.236 — image size: 545KB raw, 726KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.238 — image size: 526KB raw, 701KB base64
-[TEXT PARSE] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.227 attempt 1/2: JSONDecodeError: Unterminated string starting at: line 303 column 21 (char 12336)
-[TEXT RAW] first 500 chars: ```json
-{
-  "submission_requirements": [
-    {
-      "category": "Submittals",
-      "requirement": "Submit product data for fire-rated door assemblies per ASTM E2074",
-      "mandatory": true,
-      "source_pdf": "24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf",
-      "source_page": 227,
-      "evidence": "Product Data: Submit per ASTM E2074"
-    },
-    {
-      "category": "Submittals",
-      "requirement": "Submit shop drawings for fire-rated door assemblies per ASTM E2074",
-   
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.272 — image size: 511KB raw, 681KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.277 — image size: 559KB raw, 746KB base64
 [VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.279 — image size: 456KB raw, 608KB base64
@@ -538,24 +363,24 @@ Pre-check: EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf — read 4 of 4 pages (limi
 [CLASSIFY] p.65 detected as CAD drawing (chars=3286, avg_line=11, digit_ratio=0.11, short_ratio=0.74, vectors=1859, signals=3/5 [short_lines, short_ratio, vectors])
 [CLASSIFY] p.66 detected as CAD drawing (chars=2476, avg_line=16, digit_ratio=0.06, short_ratio=0.37, vectors=3951, signals=2/5 [short_lines, vectors])
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.3 — image size: 1411KB raw, 1881KB base64
-[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.4 — image size: 1730KB raw, 2307KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.5 — image size: 3270KB raw, 4360KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.4 — image size: 1730KB raw, 2307KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 — image size: 4483KB raw, 5977KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.12 — image size: 1732KB raw, 2309KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 — image size: 3933KB raw, 5245KB base64
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpe5r9GWykV2D8kNZmp'}
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpeAzCxpXS6ENb16w9m'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVz1vL4drQV7ZvhoJL9f'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVz1zzrcM5PdQvuSxRN9'}
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.16 — image size: 2187KB raw, 2916KB base64
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpecAXzAcodvYjZDAjk'}
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpekFx3GsngsC4SbLaf'}
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpf6nUsPUKr6Ev2LvVM'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVz2RC9PS82bWiRUjCCU'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVz2WojeoEDYAhuA6ND1'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVz2ukNDh4fcFznVW8Qh'}
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.18 — image size: 1875KB raw, 2500KB base64
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpfGimstyNMBLEXwvh4'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVz341CsFNpPt6u7mg7B'}
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.19 — image size: 1616KB raw, 2154KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.20 — image size: 1477KB raw, 1970KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.21 — image size: 1982KB raw, 2642KB base64
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpfekb3xQYeiTTizBTP'}
-[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpfpPXUFcwgPwvUQa1t'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVz3PuXuy94TnjKAavaW'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVz3ZkN8awExRzYUmojD'}
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.30 — image size: 1959KB raw, 2613KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.37 — image size: 958KB raw, 1277KB base64
 [VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.38 — image size: 875KB raw, 1166KB base64
@@ -583,11 +408,13 @@ Pre-check: EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf — read 4 of 4 pages (limi
 [VISION] 25-0131_Laurel Estates Community Building-ComCheck_signed.pdf p.2 — image size: 410KB raw, 547KB base64
 [CLASSIFY] p.4 detected as CAD drawing (chars=2045, avg_line=16, digit_ratio=0.09, short_ratio=0.68, vectors=144, signals=3/5 [short_lines, short_ratio, vectors])
 [VISION] EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf p.4 — image size: 268KB raw, 358KB base64
-127.0.0.1 - - [25/Feb/2026 20:38:58] "POST /api/confirm-scalars HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 22:41:55] "POST /api/confirm-scalars HTTP/1.1" 200 -
 [RATE TABLE] project_type=multi_family -> matched profile 'lazarus_2025' (score=18)
-[EXCEL TOTALS] building_sub=5,193,619 site_sub=175,000 GC=1,480,182 (28.5%) project_total=6,857,551
+[PRICING SOURCE] project_type='multi_family' -> rate_tables
+[EXCEL TOTALS] building_sub=5,476,909 site_sub=190,000 GC=1,560,920 (28.5%) project_total=7,237,329
 [RATE TABLE] project_type=multi_family -> matched profile 'lazarus_2025' (score=18)
-[JSON TRADE] div=02 SITE WORK / CIVIL         $   175,000  src=user
+[PRICING SOURCE] project_type='multi_family' -> rate_tables
+[JSON TRADE] div=02 SITE WORK / CIVIL         $   190,000  src=user
 [JSON TRADE] div=02 Sitework                  $         0  src=none
 [JSON TRADE] div=02 Paving & Striping         $         0  src=none
 [JSON TRADE] div=02 Landscaping               $         0  src=none
@@ -614,8 +441,432 @@ Pre-check: EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf — read 4 of 4 pages (limi
 [JSON TRADE] div=15 HVAC                      $   485,640  src=rate_table
 [JSON TRADE] div=16 Electrical                $   356,136  src=rate_table
 [JSON TRADE] div=16 Smart Home / Security     $    12,000  src=placeholder
-[JSON TRADE] div=01 General Requirements      $   247,315  src=calculated
+[JSON TRADE] div=01 General Requirements      $   260,805  src=calculated
 [JSON TRADE] div=15 Fire Sprinkler            $   188,860  src=rate_table
-[JSON TOTALS] building_sub=5,193,619 site_sub=175,000 GC=1,480,182 (28.5%) project_total=6,857,551
-127.0.0.1 - - [25/Feb/2026 20:38:59] "GET /api/results/2c30e589d0fb HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 20:39:56] "GET /api/download/2c30e589d0fb HTTP/1.1" 200 -
+[JSON TRADE] div=04 Masonry                   $   269,800  src=placeholder
+[JSON TOTALS] building_sub=5,476,909 site_sub=190,000 GC=1,560,920 (28.5%) project_total=7,237,329
+127.0.0.1 - - [25/Feb/2026 22:41:56] "GET /api/results/3ea47c061e5c HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 22:45:59] "POST /api/confirm-scalars HTTP/1.1" 409 -
+Multiple definitions in dictionary at byte 0xc8b492 for key /PageMode
+127.0.0.1 - - [25/Feb/2026 23:46:26] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 23:50:33] "POST /api/upload HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 23:50:33] "GET /api/stream/ae69a53b1dfb HTTP/1.1" 200 -
+Pre-check: 07182025 FINAL RFP 8476.pdf — read 10 of 253 pages (limit: 10)
+Pre-check: Const_Set_693 E Main St_Wtbry_06-30-2025.pdf — read 10 of 38 pages (limit: 10)
+Pre-check: MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf — read 10 of 23 pages (limit: 10)
+[CLASSIFY] p.22 detected as CAD drawing (chars=237, avg_line=10, digit_ratio=0.27, short_ratio=0.96, vectors=0, signals=3/5 [short_lines, high_digits, short_ratio])
+[CLASSIFY] p.127 detected as CAD drawing (chars=1708, avg_line=14, digit_ratio=0.03, short_ratio=0.62, vectors=84, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.129 detected as CAD drawing (chars=1198, avg_line=11, digit_ratio=0.03, short_ratio=0.69, vectors=35, signals=2/5 [short_lines, short_ratio])
+[VISION] 07182025 FINAL RFP 8476.pdf p.1 — image size: 423KB raw, 565KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.2 — image size: 408KB raw, 544KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.3 — image size: 392KB raw, 523KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.4 — image size: 631KB raw, 842KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.6 — image size: 456KB raw, 608KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.5 — image size: 400KB raw, 533KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.7 — image size: 375KB raw, 500KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.8 — image size: 416KB raw, 555KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.9 — image size: 432KB raw, 576KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.10 — image size: 364KB raw, 486KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.11 — image size: 423KB raw, 564KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.12 — image size: 262KB raw, 350KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.13 — image size: 129KB raw, 172KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.14 — image size: 33KB raw, 44KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.16 — image size: 32KB raw, 43KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.17 — image size: 418KB raw, 558KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.18 — image size: 416KB raw, 555KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.19 — image size: 98KB raw, 130KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.20 — image size: 466KB raw, 622KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.21 — image size: 35KB raw, 47KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.22 — image size: 65KB raw, 87KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.23 — image size: 38KB raw, 50KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.24 — image size: 539KB raw, 718KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.25 — image size: 498KB raw, 665KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.26 — image size: 459KB raw, 612KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.27 — image size: 363KB raw, 484KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.28 — image size: 324KB raw, 432KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.29 — image size: 1026KB raw, 1368KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.30 — image size: 858KB raw, 1145KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.31 — image size: 898KB raw, 1198KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.32 — image size: 430KB raw, 573KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.33 — image size: 818KB raw, 1091KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.34 — image size: 246KB raw, 328KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.35 — image size: 478KB raw, 637KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.36 — image size: 508KB raw, 677KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.37 — image size: 355KB raw, 473KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.38 — image size: 573KB raw, 764KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.39 — image size: 279KB raw, 372KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.40 — image size: 367KB raw, 489KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.41 — image size: 328KB raw, 438KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.42 — image size: 526KB raw, 701KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.43 — image size: 245KB raw, 327KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.44 — image size: 684KB raw, 912KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.45 — image size: 552KB raw, 736KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.46 — image size: 530KB raw, 707KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.47 — image size: 337KB raw, 449KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.48 — image size: 622KB raw, 830KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.49 — image size: 257KB raw, 342KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.50 — image size: 608KB raw, 811KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.51 — image size: 443KB raw, 591KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.52 — image size: 600KB raw, 800KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.53 — image size: 320KB raw, 427KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.54 — image size: 609KB raw, 812KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.55 — image size: 335KB raw, 447KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.56 — image size: 352KB raw, 469KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.57 — image size: 378KB raw, 504KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.58 — image size: 367KB raw, 489KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.59 — image size: 269KB raw, 359KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.60 — image size: 288KB raw, 384KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.61 — image size: 326KB raw, 435KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.62 — image size: 317KB raw, 423KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.63 — image size: 671KB raw, 895KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.64 — image size: 741KB raw, 988KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.65 — image size: 792KB raw, 1056KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.66 — image size: 336KB raw, 448KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.67 — image size: 498KB raw, 664KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.68 — image size: 600KB raw, 801KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.69 — image size: 481KB raw, 641KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.70 — image size: 1002KB raw, 1336KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.71 — image size: 448KB raw, 597KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.72 — image size: 588KB raw, 784KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.73 — image size: 300KB raw, 400KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.74 — image size: 617KB raw, 822KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.75 — image size: 531KB raw, 708KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.76 — image size: 342KB raw, 456KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.77 — image size: 568KB raw, 757KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.78 — image size: 809KB raw, 1078KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.79 — image size: 541KB raw, 721KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.80 — image size: 565KB raw, 753KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.81 — image size: 433KB raw, 577KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.82 — image size: 528KB raw, 704KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.83 — image size: 177KB raw, 237KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.84 — image size: 565KB raw, 753KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.85 — image size: 726KB raw, 968KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.86 — image size: 707KB raw, 943KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.87 — image size: 379KB raw, 506KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.88 — image size: 476KB raw, 635KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.89 — image size: 539KB raw, 719KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.90 — image size: 405KB raw, 540KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.91 — image size: 635KB raw, 847KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.92 — image size: 352KB raw, 470KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.93 — image size: 419KB raw, 559KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.94 — image size: 559KB raw, 745KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.95 — image size: 880KB raw, 1174KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.96 — image size: 756KB raw, 1009KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.97 — image size: 488KB raw, 651KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.98 — image size: 312KB raw, 417KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.99 — image size: 517KB raw, 689KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.100 — image size: 617KB raw, 823KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.101 — image size: 34KB raw, 45KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.102 — image size: 260KB raw, 346KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.103 — image size: 30KB raw, 40KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.104 — image size: 269KB raw, 359KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.105 — image size: 117KB raw, 156KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.106 — image size: 31KB raw, 42KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.107 — image size: 358KB raw, 478KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.108 — image size: 495KB raw, 660KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.109 — image size: 514KB raw, 686KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.110 — image size: 228KB raw, 304KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.111 — image size: 136KB raw, 182KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.112 — image size: 498KB raw, 664KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.113 — image size: 146KB raw, 195KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.114 — image size: 151KB raw, 202KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.115 — image size: 200KB raw, 267KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.116 — image size: 166KB raw, 221KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.117 — image size: 29KB raw, 39KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.118 — image size: 116KB raw, 155KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.119 — image size: 411KB raw, 549KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.120 — image size: 534KB raw, 713KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.121 — image size: 487KB raw, 650KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.122 — image size: 347KB raw, 463KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.123 — image size: 328KB raw, 438KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.124 — image size: 231KB raw, 308KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.125 — image size: 170KB raw, 227KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.126 — image size: 213KB raw, 284KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.127 — image size: 450KB raw, 600KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.128 — image size: 342KB raw, 456KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.129 — image size: 385KB raw, 514KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.130 — image size: 263KB raw, 351KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.131 — image size: 352KB raw, 470KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.132 — image size: 282KB raw, 376KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.133 — image size: 275KB raw, 367KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.134 — image size: 320KB raw, 427KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.135 — image size: 131KB raw, 175KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.136 — image size: 307KB raw, 410KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.137 — image size: 202KB raw, 269KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.143 — image size: 413KB raw, 551KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.144 — image size: 288KB raw, 385KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.145 — image size: 229KB raw, 306KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.146 — image size: 319KB raw, 426KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.147 — image size: 333KB raw, 445KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.148 — image size: 237KB raw, 316KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.149 — image size: 265KB raw, 353KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.150 — image size: 508KB raw, 678KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.151 — image size: 531KB raw, 708KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.152 — image size: 401KB raw, 535KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.153 — image size: 173KB raw, 230KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.154 — image size: 28KB raw, 37KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.155 — image size: 417KB raw, 556KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.156 — image size: 380KB raw, 507KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.157 — image size: 326KB raw, 434KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.158 — image size: 334KB raw, 445KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.159 — image size: 362KB raw, 483KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.160 — image size: 49KB raw, 65KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.161 — image size: 389KB raw, 519KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.162 — image size: 497KB raw, 662KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.163 — image size: 148KB raw, 197KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.164 — image size: 130KB raw, 173KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.165 — image size: 469KB raw, 625KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.166 — image size: 460KB raw, 613KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.167 — image size: 278KB raw, 371KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.168 — image size: 361KB raw, 482KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.169 — image size: 365KB raw, 487KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.170 — image size: 327KB raw, 436KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.171 — image size: 326KB raw, 435KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.172 — image size: 340KB raw, 453KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.173 — image size: 329KB raw, 439KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.174 — image size: 394KB raw, 525KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.175 — image size: 380KB raw, 507KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.176 — image size: 375KB raw, 500KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.177 — image size: 348KB raw, 465KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.178 — image size: 363KB raw, 484KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.179 — image size: 328KB raw, 437KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.180 — image size: 403KB raw, 537KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.181 — image size: 323KB raw, 430KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.182 — image size: 318KB raw, 424KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.183 — image size: 353KB raw, 470KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.184 — image size: 345KB raw, 460KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.185 — image size: 353KB raw, 471KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.186 — image size: 26KB raw, 34KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.188 — image size: 311KB raw, 415KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.189 — image size: 27KB raw, 36KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.232 — image size: 127KB raw, 170KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.233 — image size: 467KB raw, 623KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.234 — image size: 485KB raw, 646KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.235 — image size: 284KB raw, 379KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.236 — image size: 538KB raw, 718KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.237 — image size: 545KB raw, 726KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.238 — image size: 348KB raw, 464KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.239 — image size: 328KB raw, 437KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.240 — image size: 394KB raw, 526KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.241 — image size: 378KB raw, 504KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.242 — image size: 413KB raw, 551KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.243 — image size: 402KB raw, 536KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.244 — image size: 393KB raw, 524KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.245 — image size: 403KB raw, 537KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.246 — image size: 367KB raw, 490KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.247 — image size: 379KB raw, 505KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.248 — image size: 422KB raw, 562KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.249 — image size: 360KB raw, 480KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.250 — image size: 367KB raw, 490KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.251 — image size: 402KB raw, 536KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.252 — image size: 350KB raw, 467KB base64
+[VISION] 07182025 FINAL RFP 8476.pdf p.253 — image size: 371KB raw, 495KB base64
+[CLASSIFY] p.1 detected as CAD drawing (chars=194, avg_line=19, digit_ratio=0.21, short_ratio=0.30, vectors=36184, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.2 detected as CAD drawing (chars=7256, avg_line=14, digit_ratio=0.12, short_ratio=0.61, vectors=87379, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.3 detected as CAD drawing (chars=4210, avg_line=13, digit_ratio=0.13, short_ratio=0.61, vectors=13082, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.4 detected as CAD drawing (chars=2764, avg_line=13, digit_ratio=0.11, short_ratio=0.56, vectors=27431, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.5 detected as CAD drawing (chars=200, avg_line=8, digit_ratio=0.13, short_ratio=0.77, vectors=47108, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.6 detected as CAD drawing (chars=188, avg_line=9, digit_ratio=0.14, short_ratio=0.71, vectors=41546, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.7 detected as CAD drawing (chars=186, avg_line=10, digit_ratio=0.14, short_ratio=0.68, vectors=41148, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.8 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=20739, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.9 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=37009, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.10 detected as CAD drawing (chars=198, avg_line=16, digit_ratio=0.17, short_ratio=0.50, vectors=22352, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.11 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=31574, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.12 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=22233, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.13 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=17771, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.14 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=26586, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.15 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=15947, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.16 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=15145, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.17 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=16720, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.18 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=22135, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.19 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=9710, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.20 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=24125, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.21 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=15860, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.22 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=45562, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.23 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=54441, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.24 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=27512, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.25 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=10676, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.26 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=24795, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.27 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=30469, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.28 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=45863, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.29 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=13187, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.30 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=37225, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.31 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=34072, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.32 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=16041, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.33 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=28793, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.34 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=28216, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.35 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=27682, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.36 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=17775, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.37 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=18821, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.38 detected as CAD drawing (chars=162, avg_line=20, digit_ratio=0.16, short_ratio=0.25, vectors=16304, signals=3/5 [short_lines, high_digits, vectors])
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.1 — image size: 2574KB raw, 3432KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.3 — image size: 1283KB raw, 1711KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.2 — image size: 1975KB raw, 2634KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.5 — image size: 4246KB raw, 5662KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.6 — image size: 3686KB raw, 4914KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.4 — image size: 1219KB raw, 1625KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.7 — image size: 3868KB raw, 5157KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.8 — image size: 1913KB raw, 2551KB base64
+[VISION API] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.7 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5281188 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5t4XAU4w9B5Qp8w9PY'}
+[VISION API] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.5 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5798412 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5t75wbwrtoNtsTQDgT'}
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.9 — image size: 3463KB raw, 4618KB base64
+[VISION API] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.7 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5281188 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5tYLEqt4fpwgfUJ43T'}
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.10 — image size: 1171KB raw, 1562KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.11 — image size: 2099KB raw, 2799KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.12 — image size: 2319KB raw, 3093KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.13 — image size: 1752KB raw, 2336KB base64
+[VISION API] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.5 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5798412 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5tpoBt5GMBjMEZhnr6'}
+[VISION API] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.7 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5281188 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5u5Ebaqsks2qnuEMsz'}
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.14 — image size: 2782KB raw, 3709KB base64
+[VISION API] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.5 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5798412 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5uQsnwUV58fHo7fG2Z'}
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.15 — image size: 1169KB raw, 1559KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.16 — image size: 1381KB raw, 1841KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.17 — image size: 1221KB raw, 1628KB base64
+[VISION API] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.7 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5281188 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5ugSRmqqj3Efrsk8Ft'}
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.18 — image size: 2545KB raw, 3393KB base64
+[VISION API] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.5 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5798412 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5uvrr8ZkH8A88kXj1t'}
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.19 — image size: 943KB raw, 1257KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.20 — image size: 2115KB raw, 2820KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.21 — image size: 1416KB raw, 1889KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.22 — image size: 2587KB raw, 3450KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.23 — image size: 1212KB raw, 1616KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.24 — image size: 2991KB raw, 3988KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.25 — image size: 904KB raw, 1206KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.26 — image size: 2648KB raw, 3530KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.27 — image size: 2165KB raw, 2887KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.28 — image size: 2408KB raw, 3210KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.29 — image size: 1219KB raw, 1626KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.30 — image size: 2456KB raw, 3274KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.31 — image size: 1389KB raw, 1852KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.32 — image size: 1403KB raw, 1871KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.33 — image size: 1738KB raw, 2317KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.34 — image size: 1629KB raw, 2172KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.35 — image size: 1270KB raw, 1693KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.36 — image size: 1406KB raw, 1875KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.37 — image size: 1689KB raw, 2252KB base64
+[VISION] Const_Set_693 E Main St_Wtbry_06-30-2025.pdf p.38 — image size: 1589KB raw, 2119KB base64
+[CLASSIFY] p.1 detected as CAD drawing (chars=204, avg_line=19, digit_ratio=0.14, short_ratio=0.36, vectors=26518, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.6 detected as CAD drawing (chars=204, avg_line=19, digit_ratio=0.14, short_ratio=0.36, vectors=26353, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.8 detected as CAD drawing (chars=204, avg_line=19, digit_ratio=0.14, short_ratio=0.36, vectors=32327, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.12 detected as CAD drawing (chars=204, avg_line=19, digit_ratio=0.14, short_ratio=0.36, vectors=26551, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.13 detected as CAD drawing (chars=228, avg_line=10, digit_ratio=0.12, short_ratio=0.70, vectors=20165, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.17 detected as CAD drawing (chars=204, avg_line=19, digit_ratio=0.14, short_ratio=0.36, vectors=23064, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.18 detected as CAD drawing (chars=212, avg_line=14, digit_ratio=0.13, short_ratio=0.53, vectors=27953, signals=3/5 [short_lines, short_ratio, vectors])
+[VISION] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.1 — image size: 4273KB raw, 5698KB base64
+[VISION] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.6 — image size: 3733KB raw, 4977KB base64
+[VISION] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.8 — image size: 4191KB raw, 5589KB base64
+[VISION] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.12 — image size: 3712KB raw, 4950KB base64
+[VISION] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.13 — image size: 2883KB raw, 3844KB base64
+[VISION] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.16 — image size: 3307KB raw, 4409KB base64
+[VISION API] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.8 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5723312 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5zFvvf8a6z68Eqs1mQ'}
+[VISION] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.17 — image size: 3385KB raw, 4513KB base64
+[VISION] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.18 — image size: 3591KB raw, 4789KB base64
+[VISION API] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.1 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5835116 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5zXCwCNZcXkKrmMuZu'}
+[VISION API] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.8 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5723312 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5zoq4mUU9B6EBxQmBX'}
+[VISION API] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.1 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5835116 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW5zzEdZtjq9meuC7rbV'}
+[VISION] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.23 — image size: 2705KB raw, 3607KB base64
+[VISION API] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.8 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5723312 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW61HVDRhecVspjBASQt'}
+[VISION API] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.1 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5835116 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW61UENcG3G9uPWjsQp7'}
+[VISION API] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.8 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5723312 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW61oNJxDK6oGT7TEGVU'}
+[VISION API] MEP_ 8.12.5_2025-06-30 693 E Main Street Wtby Rev04.pdf p.1 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5835116 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW61yLazD8DMkemRcrvB'}
+[CLASSIFY] p.24 detected as CAD drawing (chars=309, avg_line=16, digit_ratio=0.04, short_ratio=0.58, vectors=101, signals=3/5 [short_lines, short_ratio, vectors])
+[VISION] RFP 8476 Addendum 2.pdf p.22 — image size: 3619KB raw, 4825KB base64
+[VISION] RFP 8476 Addendum 2.pdf p.23 — image size: 3096KB raw, 4128KB base64
+[VISION] RFP 8476 Addendum 2.pdf p.24 — image size: 265KB raw, 353KB base64
+[VISION] RFP 8476 Addendum 2.pdf p.25 — image size: 4235KB raw, 5647KB base64
+[VISION] RFP 8476 Addendum 2.pdf p.27 — image size: 953KB raw, 1271KB base64
+[VISION] RFP 8476 Addendum 2.pdf p.28 — image size: 1077KB raw, 1436KB base64
+[VISION] RFP 8476 Addendum 2.pdf p.29 — image size: 1003KB raw, 1338KB base64
+[VISION API] RFP 8476 Addendum 2.pdf p.25 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5783152 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW647bV2YvVJvdPq553q'}
+[VISION] RFP 8476 Addendum 2.pdf p.30 — image size: 1014KB raw, 1352KB base64
+[VISION] RFP 8476 Addendum 2.pdf p.31 — image size: 2840KB raw, 3787KB base64
+[VISION] RFP 8476 Addendum 2.pdf p.32 — image size: 1241KB raw, 1655KB base64
+[VISION API] RFP 8476 Addendum 2.pdf p.25 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5783152 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW64d9EWUej6BroyzuwJ'}
+[VISION API] RFP 8476 Addendum 2.pdf p.25 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5783152 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW658bXwRtwKhbzY6mZz'}
+[VISION API] RFP 8476 Addendum 2.pdf p.25 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5783152 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW65dw96HPcjXfdkyHPm'}
+[CLASSIFY] p.1 detected as CAD drawing (chars=3134, avg_line=9, digit_ratio=0.17, short_ratio=0.78, vectors=32600, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.2 detected as CAD drawing (chars=1552, avg_line=9, digit_ratio=0.17, short_ratio=0.70, vectors=29530, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.3 detected as CAD drawing (chars=1722, avg_line=10, digit_ratio=0.13, short_ratio=0.74, vectors=32709, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.4 detected as CAD drawing (chars=2534, avg_line=11, digit_ratio=0.12, short_ratio=0.53, vectors=22214, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.5 detected as CAD drawing (chars=2434, avg_line=14, digit_ratio=0.07, short_ratio=0.39, vectors=3983, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.6 detected as CAD drawing (chars=3161, avg_line=8, digit_ratio=0.21, short_ratio=0.80, vectors=11255, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.7 detected as CAD drawing (chars=1800, avg_line=9, digit_ratio=0.16, short_ratio=0.71, vectors=6753, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.8 detected as CAD drawing (chars=2069, avg_line=12, digit_ratio=0.10, short_ratio=0.47, vectors=7175, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.9 detected as CAD drawing (chars=1716, avg_line=12, digit_ratio=0.09, short_ratio=0.43, vectors=5713, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.10 detected as CAD drawing (chars=3721, avg_line=11, digit_ratio=0.12, short_ratio=0.50, vectors=9502, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.11 detected as CAD drawing (chars=2903, avg_line=14, digit_ratio=0.09, short_ratio=0.35, vectors=5111, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.12 detected as CAD drawing (chars=1909, avg_line=11, digit_ratio=0.14, short_ratio=0.54, vectors=3577, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.13 detected as CAD drawing (chars=963, avg_line=18, digit_ratio=0.10, short_ratio=0.35, vectors=725, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.14 detected as CAD drawing (chars=1293, avg_line=19, digit_ratio=0.02, short_ratio=0.24, vectors=2374, signals=2/5 [short_lines, vectors])
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.1 — image size: 3819KB raw, 5093KB base64
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.2 — image size: 2257KB raw, 3010KB base64
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.3 — image size: 2538KB raw, 3384KB base64
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.4 — image size: 2818KB raw, 3758KB base64
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.5 — image size: 2079KB raw, 2773KB base64
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.7 — image size: 1893KB raw, 2524KB base64
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.6 — image size: 2709KB raw, 3613KB base64
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.8 — image size: 2073KB raw, 2764KB base64
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.9 — image size: 4503KB raw, 6005KB base64
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.10 — image size: 1774KB raw, 2365KB base64
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.11 — image size: 4492KB raw, 5990KB base64
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.9 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6149360 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW67WGaGtZXaoWgaoKVo'}
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.12 — image size: 3481KB raw, 4642KB base64
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.13 — image size: 1009KB raw, 1345KB base64
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.11 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6134212 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW67hLLGG4mMamz1sdwd'}
+[VISION] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.14 — image size: 3864KB raw, 5152KB base64
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.14 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5276012 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW67zbuUXNTtXFHeuaXF'}
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.9 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6149360 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW686BGN2nNkNBbzcxVS'}
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.11 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6134212 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW68Beg1t9VCSqzPhpWn'}
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.14 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5276012 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW68TuiuKsjsMQCFKwZG'}
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.9 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6149360 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW68buvpM2bDTsoEFXqz'}
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.11 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6134212 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW68fL4WPTpUdmQ7fzp1'}
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.14 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5276012 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW68wj3d5v4F18EZHtvh'}
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.9 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6149360 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW695vfXRy5UHesTHmSU'}
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.11 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6134212 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW69C1Xwru9gwpgFotGg'}
+[VISION API] Structural_8.12.25_693EASTMAINSTREET-WATERBURY-STRUCTURAL-REV10-MAY15-2025.pdf p.14 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5276012 bytes > 5242880 bytes'}, 'request_id': 'req_011CYW69TddRgwXVfH2JFDsW'}
+[VISION] Wage Rates.pdf p.1 — image size: 330KB raw, 440KB base64
+[VISION] Wage Rates.pdf p.2 — image size: 413KB raw, 551KB base64
+[VISION] Wage Rates.pdf p.3 — image size: 328KB raw, 438KB base64
+[VISION] Wage Rates.pdf p.4 — image size: 248KB raw, 331KB base64
+[VISION] Wage Rates.pdf p.5 — image size: 456KB raw, 608KB base64
+[VISION] Wage Rates.pdf p.7 — image size: 311KB raw, 415KB base64
+[VISION] Wage Rates.pdf p.6 — image size: 450KB raw, 600KB base64
+[VISION] Wage Rates.pdf p.8 — image size: 250KB raw, 334KB base64
+[VISION] Wage Rates.pdf p.9 — image size: 345KB raw, 460KB base64
+[VISION] Wage Rates.pdf p.10 — image size: 350KB raw, 467KB base64
+[VISION] Wage Rates.pdf p.11 — image size: 258KB raw, 344KB base64
+[VISION] Wage Rates.pdf p.12 — image size: 292KB raw, 390KB base64
+127.0.0.1 - - [26/Feb/2026 00:00:51] "POST /api/confirm-scalars HTTP/1.1" 200 -
+[RATE TABLE] project_type=mixed_use -> matched profile 'lazarus_2025' (score=23)
+[PRICING SOURCE] project_type='mixed_use' -> rate_tables
+[EXCEL TOTALS] building_sub=2,478,446 site_sub=160,000 GC=706,358 (28.5%) project_total=3,352,804
+[RATE TABLE] project_type=mixed_use -> matched profile 'lazarus_2025' (score=23)
+[PRICING SOURCE] project_type='mixed_use' -> rate_tables
+[JSON TRADE] div=02 SITE WORK / CIVIL         $   264,900  src=rate_table
+[JSON TRADE] div=02 Sitework                  $         0  src=none
+[JSON TRADE] div=02 Paving & Striping         $         0  src=none
+[JSON TRADE] div=02 Landscaping               $         0  src=none
+[JSON TRADE] div=03 Building Concrete         $   249,235  src=rate_table
+[JSON TRADE] div=05 Structural Steel          $     6,500  src=placeholder
+[JSON TRADE] div=06 Rough Carpentry           $   266,610  src=rate_table
+[JSON TRADE] div=08 Doors/Hdwr/Finish Carp    $    94,500  src=rate_table
+[JSON TRADE] div=08 Windows                   $    21,150  src=rate_table
+[JSON TRADE] div=07 Insulation                $    58,392  src=rate_table
+[JSON TRADE] div=07 Roofing                   $    87,826  src=rate_table
+[JSON TRADE] div=07 Flashing & Waterproofing  $     4,200  src=placeholder
+[JSON TRADE] div=09 Drywall                   $   178,025  src=rate_table
+[JSON TRADE] div=09 Flooring                  $    99,694  src=rate_table
+[JSON TRADE] div=09 Painting                  $    28,484  src=rate_table
+[JSON TRADE] div=09 Countertops & Finishes    $     5,500  src=placeholder
+[JSON TRADE] div=10 Specialties               $    34,760  src=rate_table
+[JSON TRADE] div=13 Cabinets                  $     6,200  src=rate_table
+[JSON TRADE] div=14 Conveying Equipment       $    15,000  src=placeholder
+[JSON TRADE] div=15 Plumbing                  $   312,000  src=rate_table
+[JSON TRADE] div=15 HVAC                      $   320,445  src=rate_table
+[JSON TRADE] div=16 Electrical                $   234,993  src=rate_table
+[JSON TRADE] div=16 Smart Home / Security     $    12,000  src=placeholder
+[JSON TRADE] div=01 General Requirements      $   140,289  src=calculated
+[JSON TRADE] div=15 Fire Sprinkler            $   124,618  src=rate_table
+[JSON TRADE] div=04 Masonry                   $   178,025  src=placeholder
+[JSON TOTALS] building_sub=2,478,446 site_sub=264,900 GC=706,358 (28.5%) project_total=3,462,949
+127.0.0.1 - - [26/Feb/2026 00:00:51] "GET /api/results/ae69a53b1dfb HTTP/1.1" 200 -

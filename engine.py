@@ -2863,7 +2863,13 @@ def extract_project_quantities(trades: list, emit: Callable[[str], None], api_ke
 
 
 def _extract_project_quantities_inner(trades: list, emit: Callable[[str], None], api_key: str) -> dict:
-    """Inner implementation of extract_project_quantities (no timeout wrapper)."""
+    """Inner implementation of extract_project_quantities (no timeout wrapper).
+
+    Uses two sequential API calls:
+      Call 1 — Project identity: project_type, construction_type, unit_count, floor_count
+      Call 2 — Physical dimensions: uses Call 1 results as context for remaining fields
+    This prevents fixture/room counts from being confused with dwelling units.
+    """
     # Compile all scope text from extractions
     scope_text = []
     for t in trades[:200]:
@@ -2871,9 +2877,68 @@ def _extract_project_quantities_inner(trades: list, emit: Callable[[str], None],
 
     combined = "\n".join(scope_text)
 
-    prompt = f"""You are analyzing construction documents.
-Extract these project quantities from the text below.
-Return ONLY valid JSON, no other text.
+    # ── CALL 1: Project identity (focused, unambiguous) ──────────────────────
+    prompt_identity = f"""You are analyzing construction documents.
+Extract ONLY the 4 fields below. Return ONLY valid JSON, no other text.
+
+{{
+  "project_type": "single_family" | "multi_family" | "commercial" | "mixed_use" | "warehouse" | "institutional" | "unknown",
+  "construction_type": "new_construction" | "renovation" | "gut_rehabilitation" | "addition" | "unknown",
+  "unit_count": <integer — see definition below>,
+  "floor_count": <number of stories above grade>
+}}
+
+CRITICAL DEFINITION — unit_count:
+Count ONLY self-contained residential dwelling units — apartments, condos,
+townhomes, or SRO sleeping rooms that are someone's primary residence.
+A dwelling unit has its own entrance, bathroom, and sleeping area.
+
+DO NOT COUNT:
+- Rooms in a community center, library, office, school, or church
+- Plumbing fixtures (toilets, sinks, showers)
+- Parking spaces, storage units, or amenity rooms
+- Meeting rooms, classrooms, gym spaces, or offices
+- Any space that is not a residential dwelling unit
+
+If the building is a community center, library, school, office building,
+church, recreation center, or any non-residential use: unit_count = 0.
+If single family home: unit_count = 1.
+If genuinely uncertain: return 0, not a guess.
+
+construction_type: look for keywords like 'new construction', 'renovation',
+'rehabilitation', 'existing building', 'alteration', 'addition'.
+
+If a value cannot be determined, use null — never guess.
+
+CONSTRUCTION DOCUMENTS TEXT:
+{combined}
+"""
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+
+        # Call 1: Project identity
+        emit("Extracting project identity (type, units, floors)...")
+        resp1 = client.messages.create(
+            model=MODEL,
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt_identity}]
+        )
+        text1 = resp1.content[0].text.strip().replace('```json', '').replace('```', '').strip()
+        identity = json.loads(text1)
+
+        _pt = identity.get('project_type', 'unknown')
+        _ct = identity.get('construction_type', 'unknown')
+        _uc = identity.get('unit_count') or 0
+        _fc = identity.get('floor_count') or 1
+        emit(f"Identity: {_pt}, {_ct}, {_uc} units, {_fc} floors")
+
+        # ── CALL 2: Physical dimensions (uses Call 1 as context) ─────────────
+        prompt_dimensions = f"""You are analyzing construction documents.
+This is a {_pt} building with {_uc} residential dwelling units and {_fc} floors.
+Construction type: {_ct}.
+
+Extract physical dimensions. Return ONLY valid JSON, no other text.
 
 CRITICAL: total_building_sf is the MOST IMPORTANT scalar — every trade estimate
 depends on it. Search carefully for Gross Floor Area, Building Area, energy code
@@ -2882,28 +2947,24 @@ If footprint_sf and floor_count are both known, COMPUTE total_building_sf =
 footprint_sf x floor_count rather than returning null.
 
 {{
-  "project_type": "single_family" | "multi_family" | "commercial" | "mixed_use" | "warehouse" | "institutional" | "unknown",
-  "construction_type": "new_construction" | "renovation" | "gut_rehabilitation" | "addition" | "unknown",
-  "unit_count": <number of residential units, or 1 if single family>,
-  "floor_count": <number of stories above grade>,
-  "floor_to_floor_height_ft": <typical floor-to-floor height in feet, from section drawings or notes>,
+  "floor_to_floor_height_ft": <typical floor-to-floor height in feet>,
   "footprint_sf": <building footprint in SF, ground floor only>,
   "total_building_sf": <total gross SF all floors>,
   "perimeter_lf": <building perimeter in LF>,
-  "unit_avg_sf": <average unit size in SF>,
+  "unit_avg_sf": <average dwelling unit size in SF, or null if no units>,
   "roof_type": "epdm_flat" | "tpo_flat" | "asphalt_shingle" | "built_up" | "metal" | "unknown",
   "hvac_system_type": "commercial_rtu" | "residential_minisplit" | "residential_ducted" | "commercial_vrf" | "unknown",
   "foundation_type": "slab_on_grade" | "strip_footing" | "mat_foundation" | "deep_foundation" | "unknown",
-  "window_count": <total windows>,
-  "ext_door_count": <exterior doors>,
-  "int_door_count": <interior doors per unit x units>,
-  "plumbing_fixtures": <total fixtures all units>,
-  "hvac_zones": <number of HVAC zones or units>,
+  "window_count": <total windows in building>,
+  "ext_door_count": <total exterior doors>,
+  "int_door_count": <total interior doors in building, count from door schedule if available, else null>,
+  "plumbing_fixtures": <total plumbing fixtures in building>,
+  "hvac_zones": <number of HVAC zones>,
   "electrical_panels": <number of electrical panels>,
-  "circuits_per_unit": <estimated circuits per unit>,
+  "circuits_per_unit": <estimated circuits per dwelling unit, or null if no units>,
   "parking_spaces": <if applicable>,
   "elevator_count": <number of elevators>,
-  "ada_units": <number of ADA accessible units>,
+  "ada_units": <number of ADA accessible dwelling units, or 0 if no units>,
   "confidence": "high" | "medium" | "low",
   "notes": "brief explanation of how quantities were derived"
 }}
@@ -2911,24 +2972,14 @@ footprint_sf x floor_count rather than returning null.
 Look for system types in scope descriptions, not just cover sheet data.
 Examples of what to look for:
 
-roof_type: keywords like 'EPDM', 'TPO', 'asphalt shingle',
-'CertainTeed', 'built-up', 'flat roof', 'shingle', 'membrane'
+roof_type: 'EPDM', 'TPO', 'asphalt shingle', 'CertainTeed', 'built-up',
+'flat roof', 'shingle', 'membrane'
 
-hvac_system_type: keywords like 'mini-split', 'Mitsubishi',
-'Daikin', 'ductless', 'RTU', 'rooftop unit', 'fan coil',
-'VRF', 'forced air', 'heat pump', 'PTAC'
+hvac_system_type: 'mini-split', 'Mitsubishi', 'Daikin', 'ductless', 'RTU',
+'rooftop unit', 'fan coil', 'VRF', 'forced air', 'heat pump', 'PTAC'
 
-foundation_type: keywords like 'slab on grade', 'slab-on-grade',
-'strip footing', 'mat foundation', 'spread footing', 'grade beam',
-'pile', 'caisson', 'crawl space'
-
-construction_type: keywords like 'new construction', 'renovation',
-'rehabilitation', 'existing building', 'alteration', 'addition'
-
-If you find brand names like 'CertainTeed XT-25' in roofing scope,
-classify as asphalt_shingle. If you find 'Mitsubishi' or 'mini-split'
-in HVAC scope, classify as residential_minisplit.
-Only return 'unknown' if genuinely not mentioned anywhere.
+foundation_type: 'slab on grade', 'strip footing', 'mat foundation',
+'spread footing', 'grade beam', 'pile', 'caisson', 'crawl space'
 
 For footprint_sf: if you find a slab or concrete calculation
 in scope descriptions (e.g. 'slab on grade 699 SF' or
@@ -2939,8 +2990,6 @@ estimate footprint_sf = total_building_sf / floor_count.
 For perimeter_lf: if footprint_sf is known and perimeter_lf
 is not explicitly stated, estimate it as:
 perimeter_lf = round(sqrt(footprint_sf) * 4)
-This assumes a roughly square footprint — flag as medium
-confidence if estimated this way.
 
 If a value cannot be determined from the documents, use null — never guess.
 
@@ -2948,16 +2997,21 @@ CONSTRUCTION DOCUMENTS TEXT:
 {combined}
 """
 
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
+        emit("Extracting physical dimensions...")
+        resp2 = client.messages.create(
             model=MODEL,
             max_tokens=1000,
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "user", "content": prompt_dimensions}]
         )
-        text = response.content[0].text.strip()
-        text = text.replace('```json', '').replace('```', '').strip()
-        quantities = json.loads(text)
+        text2 = resp2.content[0].text.strip().replace('```json', '').replace('```', '').strip()
+        dimensions = json.loads(text2)
+
+        # Merge: identity fields take priority
+        quantities = {**dimensions}
+        quantities['project_type'] = _pt
+        quantities['construction_type'] = _ct
+        quantities['unit_count'] = _uc
+        quantities['floor_count'] = _fc
 
         # Default floor height by project type if not extracted
         if not quantities.get('floor_to_floor_height_ft'):

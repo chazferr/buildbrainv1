@@ -3535,18 +3535,15 @@ def build_excel_bytes(
         sov_summary["bond"] = sov_data.get("bond")
         sov_summary["permit"] = sov_data.get("permit")
 
-    # Pre-check: does extraction contain real masonry scope?
-    _MASONRY_KW_XL = ['masonry', 'cmu', 'brick veneer', 'cast stone',
-                      'brick wall', 'block wall', 'stone veneer', 'stonework']
-    _has_masonry_scope_xl = any(
-        any(kw in (t.trade + ' ' + t.scope_description).lower() for kw in _MASONRY_KW_XL)
-        for t in trades
-    )
+    # Masonry guard: only include if rate profile has masonry quote OR extraction has a dollar budget
+    _rt_has_masonry = bool(rate_profile.get('masonry'))
 
     # Filter to trades with pricing data OR pricing engine coverage
     buyout_rows = [
         row for row in consolidated
-        if (row["trade"] != "Masonry" or _has_masonry_scope_xl)
+        if (row["trade"] != "Masonry"
+            or _rt_has_masonry
+            or (row.get("budget") is not None and row.get("budget", 0) > 0))
         and (row.get("budget") is not None
              or row["trade"] in sov_matched
              or get_baseline_quantities(row["trade"], _extraction_for_detection,
@@ -4578,28 +4575,21 @@ def build_results_json(
         "scope_items": [],
     })
 
-    # Pre-check: does extraction contain real masonry scope?
-    _MASONRY_KW = ['masonry', 'cmu', 'brick veneer', 'cast stone',
-                   'brick wall', 'block wall', 'stone veneer', 'stonework']
-    _has_masonry_scope = any(
-        any(kw in (t.trade + ' ' + t.scope_description).lower() for kw in _MASONRY_KW)
-        for t in trades
-    )
-    # Debug: show what triggered masonry check
-    if _has_masonry_scope:
-        _matching = [t.trade for t in trades
-                     if any(kw in (t.trade + ' ' + (t.scope_description or '')).lower()
-                            for kw in _MASONRY_KW)]
-        print(f"[MASONRY CHECK] _has_masonry_scope=True, matching trades: {_matching[:5]}", flush=True)
-    else:
-        print(f"[MASONRY CHECK] _has_masonry_scope=False — skipping Masonry trade", flush=True)
+    # Masonry guard: only include if rate profile has masonry quote OR extraction has a dollar budget
+    _rt_has_masonry = bool(rate_profile.get('masonry'))
+    print(f"[MASONRY CHECK] rate_profile has masonry={_rt_has_masonry}", flush=True)
 
     for row_data in consolidated:
         trade_name = row_data["trade"]
 
-        # Guard: skip Masonry placeholder if no masonry scope was extracted
-        if trade_name == "Masonry" and not _has_masonry_scope:
-            continue
+        # Guard: skip Masonry unless rate profile prices it or docs had a real dollar amount
+        if trade_name == "Masonry":
+            _extracted_budget = row_data.get("budget")
+            _has_real_budget = _extracted_budget is not None and _extracted_budget > 0
+            if not _rt_has_masonry and not _has_real_budget:
+                print(f"[MASONRY CHECK] Skipping — no rate profile quote, no extracted budget", flush=True)
+                continue
+            print(f"[MASONRY CHECK] Including — rt={_rt_has_masonry}, extracted=${_extracted_budget}", flush=True)
 
         budget_val = None
         note_val = None

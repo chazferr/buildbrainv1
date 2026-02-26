@@ -10,11 +10,117 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://127.0.0.1:5000
  * Running on http://10.0.0.18:5000
 Press CTRL+C to quit
-127.0.0.1 - - [25/Feb/2026 14:43:33] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 14:44:31] "GET / HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 14:45:08] "POST /api/pre-check HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 14:45:24] "POST /api/upload HTTP/1.1" 200 -
-127.0.0.1 - - [25/Feb/2026 14:45:24] "GET /api/stream/83555c680ee6 HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:50:22] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 14:50:39] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 18:03:47] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 18:04:34] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 18:04:46] "POST /api/upload HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 18:04:46] "GET /api/stream/c7e0191b61c1 HTTP/1.1" 200 -
+Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
+Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
+[CLASSIFY] p.2 detected as CAD drawing (chars=6341, avg_line=14, digit_ratio=0.03, short_ratio=0.62, vectors=975, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.3 detected as CAD drawing (chars=2968, avg_line=9, digit_ratio=0.20, short_ratio=0.73, vectors=28012, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.4 detected as CAD drawing (chars=7354, avg_line=14, digit_ratio=0.04, short_ratio=0.52, vectors=6794, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.5 detected as CAD drawing (chars=3152, avg_line=12, digit_ratio=0.14, short_ratio=0.60, vectors=31738, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.6 detected as CAD drawing (chars=2081, avg_line=8, digit_ratio=0.18, short_ratio=0.81, vectors=11199, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.7 detected as CAD drawing (chars=4837, avg_line=16, digit_ratio=0.09, short_ratio=0.39, vectors=62728, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.8 detected as CAD drawing (chars=7212, avg_line=13, digit_ratio=0.09, short_ratio=0.64, vectors=15683, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.9 detected as CAD drawing (chars=4267, avg_line=12, digit_ratio=0.14, short_ratio=0.57, vectors=44939, signals=3/5 [short_lines, short_ratio, vectors])
+[VISION] Midstate House Drawings.pdf p.2 — image size: 1374KB raw, 1832KB base64
+[VISION] Midstate House Drawings.pdf p.3 — image size: 1460KB raw, 1946KB base64
+[VISION] Midstate House Drawings.pdf p.4 — image size: 1794KB raw, 2393KB base64
+[VISION] Midstate House Drawings.pdf p.6 — image size: 1244KB raw, 1659KB base64
+[VISION] Midstate House Drawings.pdf p.7 — image size: 2156KB raw, 2875KB base64
+[VISION] Midstate House Drawings.pdf p.8 — image size: 2084KB raw, 2778KB base64
+[VISION] Midstate House Drawings.pdf p.5 — image size: 1733KB raw, 2311KB base64
+[VISION] Midstate House Drawings.pdf p.9 — image size: 1870KB raw, 2494KB base64
+[VISION] Site Drawings.pdf p.1 — image size: 2327KB raw, 3102KB base64
+[VISION] Site Drawings.pdf p.2 — image size: 3265KB raw, 4354KB base64
+[VISION] Site Drawings.pdf p.3 — image size: 2325KB raw, 3101KB base64
+127.0.0.1 - - [25/Feb/2026 18:06:01] "POST /api/confirm-scalars HTTP/1.1" 200 -
+[RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
+[EXCEL TOTALS] building_sub=144,803 site_sub=190,000 GC=32,580 (22.5%) project_total=376,883
+[RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
+[JSON TRADE] div=02 SITE WORK / CIVIL         $   190,000  src=user
+[JSON TRADE] div=02 Sitework                  $         0  src=none
+[JSON TRADE] div=02 Paving & Striping         $         0  src=none
+[JSON TRADE] div=02 Landscaping               $         0  src=none
+[JSON TRADE] div=03 Site Concrete             $         0  src=none
+[JSON TRADE] div=03 Building Concrete         $    25,000  src=rate_table
+[JSON TRADE] div=05 Structural Steel          $     6,500  src=placeholder
+[JSON TRADE] div=06 Rough Carpentry           $    24,526  src=material_db
+[JSON TRADE] div=08 Doors/Hdwr/Finish Carp    $     5,031  src=material_db
+[JSON TRADE] div=08 Windows                   $    10,000  src=rate_table
+[JSON TRADE] div=07 Insulation                $     3,000  src=rate_table
+[JSON TRADE] div=07 Roofing                   $    11,500  src=rate_table
+[JSON TRADE] div=07 Siding                    $    13,000  src=rate_table
+[JSON TRADE] div=09 Drywall                   $     2,850  src=rate_table
+[JSON TRADE] div=09 Countertops & Finishes    $     5,500  src=placeholder
+[JSON TRADE] div=13 Cabinets                  $     4,370  src=material_db
+[JSON TRADE] div=15 Plumbing                  $     8,600  src=rate_table
+[JSON TRADE] div=15 HVAC                      $     7,800  src=rate_table
+[JSON TRADE] div=16 Electrical                $     6,400  src=rate_table
+[JSON TRADE] div=01 General Requirements      $    10,726  src=calculated
+[JSON TOTALS] building_sub=144,803 site_sub=190,000 GC=32,580 (22.5%) project_total=376,883
+127.0.0.1 - - [25/Feb/2026 18:06:02] "GET /api/results/c7e0191b61c1 HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 18:06:20] "GET /api/download/c7e0191b61c1 HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 18:15:38] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 18:15:48] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [25/Feb/2026 18:17:11] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 18:17:17] "POST /api/upload HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 18:17:17] "GET /api/stream/13d60becc78b HTTP/1.1" 200 -
+Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
+Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
+[CLASSIFY] p.2 detected as CAD drawing (chars=6341, avg_line=14, digit_ratio=0.03, short_ratio=0.62, vectors=975, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.3 detected as CAD drawing (chars=2968, avg_line=9, digit_ratio=0.20, short_ratio=0.73, vectors=28012, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.4 detected as CAD drawing (chars=7354, avg_line=14, digit_ratio=0.04, short_ratio=0.52, vectors=6794, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.5 detected as CAD drawing (chars=3152, avg_line=12, digit_ratio=0.14, short_ratio=0.60, vectors=31738, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.6 detected as CAD drawing (chars=2081, avg_line=8, digit_ratio=0.18, short_ratio=0.81, vectors=11199, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.7 detected as CAD drawing (chars=4837, avg_line=16, digit_ratio=0.09, short_ratio=0.39, vectors=62728, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.8 detected as CAD drawing (chars=7212, avg_line=13, digit_ratio=0.09, short_ratio=0.64, vectors=15683, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.9 detected as CAD drawing (chars=4267, avg_line=12, digit_ratio=0.14, short_ratio=0.57, vectors=44939, signals=3/5 [short_lines, short_ratio, vectors])
+[VISION] Midstate House Drawings.pdf p.3 — image size: 1460KB raw, 1946KB base64
+[VISION] Midstate House Drawings.pdf p.2 — image size: 1374KB raw, 1832KB base64
+[VISION] Midstate House Drawings.pdf p.4 — image size: 1794KB raw, 2393KB base64
+[VISION] Midstate House Drawings.pdf p.6 — image size: 1244KB raw, 1659KB base64
+[VISION] Midstate House Drawings.pdf p.5 — image size: 1733KB raw, 2311KB base64
+[VISION] Midstate House Drawings.pdf p.8 — image size: 2084KB raw, 2778KB base64
+[VISION] Midstate House Drawings.pdf p.7 — image size: 2156KB raw, 2875KB base64
+[VISION] Midstate House Drawings.pdf p.9 — image size: 1870KB raw, 2494KB base64
+[VISION] Site Drawings.pdf p.1 — image size: 2327KB raw, 3102KB base64
+[VISION] Site Drawings.pdf p.2 — image size: 3265KB raw, 4354KB base64
+[VISION] Site Drawings.pdf p.3 — image size: 2325KB raw, 3101KB base64
+127.0.0.1 - - [25/Feb/2026 18:18:33] "POST /api/confirm-scalars HTTP/1.1" 200 -
+[RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
+[EXCEL TOTALS] building_sub=146,261 site_sub=190,000 GC=32,909 (22.5%) project_total=378,670
+[RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
+[JSON TRADE] div=02 SITE WORK / CIVIL         $   190,000  src=user
+[JSON TRADE] div=02 Sitework                  $         0  src=none
+[JSON TRADE] div=02 Paving & Striping         $         0  src=none
+[JSON TRADE] div=02 Landscaping               $         0  src=none
+[JSON TRADE] div=03 Site Concrete             $         0  src=none
+[JSON TRADE] div=03 Building Concrete         $    25,000  src=rate_table
+[JSON TRADE] div=05 Structural Steel          $     6,500  src=placeholder
+[JSON TRADE] div=06 Rough Carpentry           $    24,526  src=material_db
+[JSON TRADE] div=08 Doors/Hdwr/Finish Carp    $     5,031  src=material_db
+[JSON TRADE] div=08 Windows                   $    10,000  src=rate_table
+[JSON TRADE] div=07 Insulation                $     3,000  src=rate_table
+[JSON TRADE] div=07 Roofing                   $    11,500  src=rate_table
+[JSON TRADE] div=07 Siding                    $    13,000  src=rate_table
+[JSON TRADE] div=07 Flashing & Waterproofing  $     4,200  src=placeholder
+[JSON TRADE] div=09 Countertops & Finishes    $     5,500  src=placeholder
+[JSON TRADE] div=13 Cabinets                  $     4,370  src=material_db
+[JSON TRADE] div=15 Plumbing                  $     8,600  src=rate_table
+[JSON TRADE] div=15 HVAC                      $     7,800  src=rate_table
+[JSON TRADE] div=16 Electrical                $     6,400  src=rate_table
+[JSON TRADE] div=01 General Requirements      $    10,834  src=calculated
+[JSON TOTALS] building_sub=146,261 site_sub=190,000 GC=32,909 (22.5%) project_total=378,670
+127.0.0.1 - - [25/Feb/2026 18:18:33] "GET /api/results/13d60becc78b HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 18:19:25] "GET /api/download/13d60becc78b HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:11:26] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:12:15] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:12:29] "POST /api/upload HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:12:29] "GET /api/stream/733a0c008aa2 HTTP/1.1" 200 -
 Pre-check: Midstate House Drawings.pdf — read 9 of 9 pages (limit: 10)
 Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
 [CLASSIFY] p.2 detected as CAD drawing (chars=6341, avg_line=14, digit_ratio=0.03, short_ratio=0.62, vectors=975, signals=3/5 [short_lines, short_ratio, vectors])
@@ -34,17 +140,16 @@ Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
 [VISION] Midstate House Drawings.pdf p.8 — image size: 2084KB raw, 2778KB base64
 [VISION] Midstate House Drawings.pdf p.9 — image size: 1870KB raw, 2494KB base64
 [VISION] Site Drawings.pdf p.1 — image size: 2327KB raw, 3102KB base64
-[VISION] Site Drawings.pdf p.2 — image size: 3265KB raw, 4354KB base64
 [VISION] Site Drawings.pdf p.3 — image size: 2325KB raw, 3101KB base64
-127.0.0.1 - - [25/Feb/2026 14:46:35] "POST /api/confirm-scalars HTTP/1.1" 200 -
+[VISION] Site Drawings.pdf p.2 — image size: 3265KB raw, 4354KB base64
+127.0.0.1 - - [25/Feb/2026 19:13:57] "POST /api/confirm-scalars HTTP/1.1" 200 -
 [RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
-[EXCEL TOTALS] building_sub=140,084 site_sub=190,000 GC=31,518 (22.5%) project_total=371,102
+[EXCEL TOTALS] building_sub=155,387 site_sub=190,000 GC=34,962 (22.5%) project_total=389,849
 [RATE TABLE] project_type=single_family -> matched profile 'midstate_residential_2024' (score=20)
 [JSON TRADE] div=02 SITE WORK / CIVIL         $   190,000  src=user
 [JSON TRADE] div=02 Sitework                  $         0  src=none
 [JSON TRADE] div=02 Paving & Striping         $         0  src=none
 [JSON TRADE] div=02 Landscaping               $         0  src=none
-[JSON TRADE] div=03 Site Concrete             $         0  src=none
 [JSON TRADE] div=03 Building Concrete         $    25,000  src=rate_table
 [JSON TRADE] div=05 Structural Steel          $     6,500  src=placeholder
 [JSON TRADE] div=06 Rough Carpentry           $    24,526  src=material_db
@@ -53,11 +158,464 @@ Pre-check: Site Drawings.pdf — read 3 of 3 pages (limit: 10)
 [JSON TRADE] div=07 Insulation                $     3,000  src=rate_table
 [JSON TRADE] div=07 Roofing                   $    11,500  src=rate_table
 [JSON TRADE] div=07 Siding                    $    13,000  src=rate_table
+[JSON TRADE] div=07 Flashing & Waterproofing  $     4,200  src=placeholder
 [JSON TRADE] div=09 Drywall                   $     2,850  src=rate_table
+[JSON TRADE] div=09 Flooring                  $     3,350  src=rate_table
+[JSON TRADE] div=09 Painting                  $     2,250  src=rate_table
 [JSON TRADE] div=09 Countertops & Finishes    $     5,500  src=placeholder
+[JSON TRADE] div=13 Cabinets                  $     4,370  src=material_db
 [JSON TRADE] div=15 Plumbing                  $     8,600  src=rate_table
 [JSON TRADE] div=15 HVAC                      $     7,800  src=rate_table
 [JSON TRADE] div=16 Electrical                $     6,400  src=rate_table
-[JSON TRADE] div=01 General Requirements      $    10,377  src=calculated
-[JSON TOTALS] building_sub=140,084 site_sub=190,000 GC=31,518 (22.5%) project_total=371,102
-127.0.0.1 - - [25/Feb/2026 14:46:36] "GET /api/results/83555c680ee6 HTTP/1.1" 200 -
+[JSON TRADE] div=01 General Requirements      $    11,510  src=calculated
+[JSON TOTALS] building_sub=155,387 site_sub=190,000 GC=34,962 (22.5%) project_total=389,849
+127.0.0.1 - - [25/Feb/2026 19:13:57] "GET /api/results/733a0c008aa2 HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:14:54] "POST /api/ask HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:15:23] "POST /api/ask HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:15:38] "GET /api/download/733a0c008aa2 HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:16:16] "GET /api/download/733a0c008aa2 HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:18:19] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:37:58] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:38:52] "POST /api/upload HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 19:38:52] "GET /api/stream/f412969fc490 HTTP/1.1" 200 -
+Pre-check: 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf — read 5 of 344 pages (limit: 5)
+Pre-check: 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf — read 5 of 66 pages (limit: 5)
+Pre-check: 25-0131_Laurel Estates Community Building-ComCheck_signed.pdf — read 2 of 2 pages (limit: 5)
+Pre-check: EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf — read 4 of 4 pages (limit: 5)
+[CLASSIFY] p.1 detected as CAD drawing (chars=234, avg_line=7, digit_ratio=0.08, short_ratio=0.78, vectors=149, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.6 detected as CAD drawing (chars=2223, avg_line=21, digit_ratio=0.19, short_ratio=0.29, vectors=2116, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.18 detected as CAD drawing (chars=1276, avg_line=21, digit_ratio=0.16, short_ratio=0.25, vectors=1229, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.55 detected as CAD drawing (chars=3110, avg_line=20, digit_ratio=0.37, short_ratio=0.35, vectors=3031, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.62 detected as CAD drawing (chars=3247, avg_line=22, digit_ratio=0.22, short_ratio=0.30, vectors=3167, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.70 detected as CAD drawing (chars=3190, avg_line=17, digit_ratio=0.30, short_ratio=0.37, vectors=3108, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.74 detected as CAD drawing (chars=3470, avg_line=19, digit_ratio=0.26, short_ratio=0.39, vectors=3396, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.83 detected as CAD drawing (chars=2776, avg_line=20, digit_ratio=0.18, short_ratio=0.35, vectors=2689, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.87 detected as CAD drawing (chars=2022, avg_line=22, digit_ratio=0.20, short_ratio=0.33, vectors=1945, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.98 detected as CAD drawing (chars=2146, avg_line=21, digit_ratio=0.27, short_ratio=0.26, vectors=2050, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.99 detected as CAD drawing (chars=1606, avg_line=20, digit_ratio=0.22, short_ratio=0.35, vectors=1553, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.108 detected as CAD drawing (chars=2314, avg_line=19, digit_ratio=0.16, short_ratio=0.46, vectors=2212, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.109 detected as CAD drawing (chars=1906, avg_line=16, digit_ratio=0.16, short_ratio=0.39, vectors=1829, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.123 detected as CAD drawing (chars=1844, avg_line=22, digit_ratio=0.23, short_ratio=0.21, vectors=1769, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.128 detected as CAD drawing (chars=2058, avg_line=19, digit_ratio=0.19, short_ratio=0.35, vectors=1980, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.184 detected as CAD drawing (chars=2559, avg_line=17, digit_ratio=0.05, short_ratio=0.51, vectors=2440, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.191 detected as CAD drawing (chars=572, avg_line=10, digit_ratio=0.02, short_ratio=0.63, vectors=551, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.194 detected as CAD drawing (chars=2161, avg_line=21, digit_ratio=0.18, short_ratio=0.21, vectors=2081, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.199 detected as CAD drawing (chars=2408, avg_line=16, digit_ratio=0.14, short_ratio=0.50, vectors=2293, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.220 detected as CAD drawing (chars=377, avg_line=14, digit_ratio=0.05, short_ratio=0.52, vectors=355, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.236 detected as CAD drawing (chars=2840, avg_line=18, digit_ratio=0.16, short_ratio=0.41, vectors=2751, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.238 detected as CAD drawing (chars=2819, avg_line=15, digit_ratio=0.05, short_ratio=0.51, vectors=2728, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.272 detected as CAD drawing (chars=2718, avg_line=19, digit_ratio=0.08, short_ratio=0.51, vectors=2613, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.277 detected as CAD drawing (chars=3060, avg_line=17, digit_ratio=0.06, short_ratio=0.52, vectors=2976, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.279 detected as CAD drawing (chars=2426, avg_line=15, digit_ratio=0.03, short_ratio=0.58, vectors=2321, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.285 detected as CAD drawing (chars=2847, avg_line=21, digit_ratio=0.18, short_ratio=0.28, vectors=2755, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.298 detected as CAD drawing (chars=2868, avg_line=19, digit_ratio=0.18, short_ratio=0.46, vectors=2772, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.302 detected as CAD drawing (chars=2109, avg_line=20, digit_ratio=0.24, short_ratio=0.23, vectors=2036, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.310 detected as CAD drawing (chars=2555, avg_line=20, digit_ratio=0.27, short_ratio=0.33, vectors=2481, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.320 detected as CAD drawing (chars=2164, avg_line=17, digit_ratio=0.16, short_ratio=0.43, vectors=2085, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.330 detected as CAD drawing (chars=1252, avg_line=22, digit_ratio=0.16, short_ratio=0.30, vectors=1211, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.331 detected as CAD drawing (chars=2349, avg_line=19, digit_ratio=0.19, short_ratio=0.37, vectors=2263, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.339 detected as CAD drawing (chars=3005, avg_line=18, digit_ratio=0.20, short_ratio=0.38, vectors=2915, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.342 detected as CAD drawing (chars=3243, avg_line=16, digit_ratio=0.28, short_ratio=0.42, vectors=3158, signals=3/5 [short_lines, high_digits, vectors])
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.1 — image size: 54KB raw, 73KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.6 — image size: 429KB raw, 572KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.18 — image size: 257KB raw, 343KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.55 — image size: 570KB raw, 761KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.62 — image size: 602KB raw, 803KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.70 — image size: 592KB raw, 789KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.74 — image size: 623KB raw, 831KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.83 — image size: 509KB raw, 679KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.87 — image size: 416KB raw, 555KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.98 — image size: 432KB raw, 577KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.99 — image size: 305KB raw, 407KB base64
+[TEXT PARSE] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.79 attempt 1/2: JSONDecodeError: Unterminated string starting at: line 290 column 21 (char 11229)
+[TEXT RAW] first 500 chars: ```json
+{
+  "submission_requirements": [
+    {
+      "category": "Submittals",
+      "requirement": "Submit ASTM A 653 Galvanized Steel Deck for Roof Deck",
+      "mandatory": true,
+      "source_pdf": "24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf",
+      "source_page": 79,
+      "evidence": "ASTM A 653 - A 653 Galvanized Steel Deck for Roof Deck"
+    },
+    {
+      "category": "Submittals",
+      "requirement": "Submit ASTM C 920 Sealant for Expansion Joints",
+      "mandatory"
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.108 — image size: 455KB raw, 607KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.109 — image size: 371KB raw, 494KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.123 — image size: 369KB raw, 492KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.128 — image size: 413KB raw, 551KB base64
+[TEXT PARSE] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.118 attempt 1/2: JSONDecodeError: Invalid control character at: line 9 column 30 (char 295)
+[TEXT RAW] first 500 chars: ```json
+{
+  "submission_requirements": [
+    {
+      "category": "Submittals",
+      "requirement": "Submit Concrete Mix Design (89456)",
+      "mandatory": true,
+      "source_pdf": "24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf",
+      "source_page": 118,
+      "evidence": ".6C'/A5C'=	;		A5'#'D&	0E89456	"
+    },
+    {
+      "category": "Submittals",
+      "requirement": "Submit Reinforcing Steel Shop Drawings (89456)",
+      "mandatory": true,
+      "source_pdf": "24-0920_Laure
+[TEXT PARSE] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.118 attempt 2/2: JSONDecodeError: Invalid control character at: line 9 column 30 (char 295)
+[TEXT RAW] first 500 chars: ```json
+{
+  "submission_requirements": [
+    {
+      "category": "Submittals",
+      "requirement": "Submit Concrete Mix Design (89456)",
+      "mandatory": true,
+      "source_pdf": "24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf",
+      "source_page": 118,
+      "evidence": ".6C'/A5C'=	;		A5'#'D&	0E89456	"
+    },
+    {
+      "category": "Submittals",
+      "requirement": "Submit Reinforcing Steel Shop Drawings (89456)",
+      "mandatory": true,
+      "source_pdf": "24-0920_Laure
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.118 — image size: 197KB raw, 263KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.184 — image size: 489KB raw, 652KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.191 — image size: 122KB raw, 163KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.194 — image size: 443KB raw, 591KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.199 — image size: 484KB raw, 645KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.220 — image size: 94KB raw, 126KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.236 — image size: 545KB raw, 726KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.238 — image size: 526KB raw, 701KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.272 — image size: 511KB raw, 681KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.277 — image size: 559KB raw, 746KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.279 — image size: 456KB raw, 608KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.285 — image size: 537KB raw, 716KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.298 — image size: 537KB raw, 717KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.302 — image size: 404KB raw, 539KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.310 — image size: 482KB raw, 643KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.320 — image size: 415KB raw, 554KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.330 — image size: 252KB raw, 336KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.331 — image size: 459KB raw, 612KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.339 — image size: 552KB raw, 736KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.342 — image size: 589KB raw, 785KB base64
+[CLASSIFY] p.3 detected as CAD drawing (chars=5961, avg_line=10, digit_ratio=0.02, short_ratio=0.70, vectors=479, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.4 detected as CAD drawing (chars=5721, avg_line=15, digit_ratio=0.09, short_ratio=0.58, vectors=7704, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.5 detected as CAD drawing (chars=28038, avg_line=13, digit_ratio=0.18, short_ratio=0.78, vectors=3369, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.11 detected as CAD drawing (chars=8267, avg_line=22, digit_ratio=0.03, short_ratio=0.51, vectors=116862, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.12 detected as CAD drawing (chars=1423, avg_line=19, digit_ratio=0.07, short_ratio=0.22, vectors=25772, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.13 detected as CAD drawing (chars=2718, avg_line=20, digit_ratio=0.04, short_ratio=0.28, vectors=4054, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.16 detected as CAD drawing (chars=7850, avg_line=18, digit_ratio=0.10, short_ratio=0.72, vectors=14025, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.18 detected as CAD drawing (chars=6873, avg_line=16, digit_ratio=0.03, short_ratio=0.66, vectors=15148, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.19 detected as CAD drawing (chars=4772, avg_line=17, digit_ratio=0.06, short_ratio=0.61, vectors=80995, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.20 detected as CAD drawing (chars=1956, avg_line=13, digit_ratio=0.14, short_ratio=0.51, vectors=18521, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.21 detected as CAD drawing (chars=1593, avg_line=12, digit_ratio=0.11, short_ratio=0.65, vectors=172297, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.30 detected as CAD drawing (chars=10638, avg_line=14, digit_ratio=0.08, short_ratio=0.59, vectors=4559, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.37 detected as CAD drawing (chars=2620, avg_line=14, digit_ratio=0.17, short_ratio=0.44, vectors=2968, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.38 detected as CAD drawing (chars=2219, avg_line=13, digit_ratio=0.19, short_ratio=0.50, vectors=4166, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.40 detected as CAD drawing (chars=2294, avg_line=13, digit_ratio=0.17, short_ratio=0.53, vectors=8317, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.41 detected as CAD drawing (chars=1572, avg_line=15, digit_ratio=0.15, short_ratio=0.51, vectors=1763, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.42 detected as CAD drawing (chars=2500, avg_line=13, digit_ratio=0.17, short_ratio=0.54, vectors=5967, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.43 detected as CAD drawing (chars=1916, avg_line=15, digit_ratio=0.15, short_ratio=0.47, vectors=3479, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.44 detected as CAD drawing (chars=11879, avg_line=20, digit_ratio=0.09, short_ratio=0.52, vectors=101984, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.50 detected as CAD drawing (chars=1418, avg_line=15, digit_ratio=0.15, short_ratio=0.53, vectors=9262, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.51 detected as CAD drawing (chars=5052, avg_line=8, digit_ratio=0.18, short_ratio=0.84, vectors=24183, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.53 detected as CAD drawing (chars=3702, avg_line=10, digit_ratio=0.14, short_ratio=0.70, vectors=12409, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.54 detected as CAD drawing (chars=3525, avg_line=11, digit_ratio=0.15, short_ratio=0.68, vectors=12672, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.55 detected as CAD drawing (chars=3716, avg_line=19, digit_ratio=0.05, short_ratio=0.32, vectors=3313, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.56 detected as CAD drawing (chars=1791, avg_line=8, digit_ratio=0.08, short_ratio=0.81, vectors=10800, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.57 detected as CAD drawing (chars=1501, avg_line=13, digit_ratio=0.09, short_ratio=0.64, vectors=10743, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.60 detected as CAD drawing (chars=1514, avg_line=13, digit_ratio=0.09, short_ratio=0.64, vectors=10290, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.62 detected as CAD drawing (chars=1894, avg_line=12, digit_ratio=0.10, short_ratio=0.64, vectors=12591, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.63 detected as CAD drawing (chars=1929, avg_line=11, digit_ratio=0.13, short_ratio=0.72, vectors=12678, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.64 detected as CAD drawing (chars=1667, avg_line=13, digit_ratio=0.08, short_ratio=0.62, vectors=12092, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.65 detected as CAD drawing (chars=3286, avg_line=11, digit_ratio=0.11, short_ratio=0.74, vectors=1859, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.66 detected as CAD drawing (chars=2476, avg_line=16, digit_ratio=0.06, short_ratio=0.37, vectors=3951, signals=2/5 [short_lines, vectors])
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.4 — image size: 1730KB raw, 2307KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.3 — image size: 1411KB raw, 1881KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.5 — image size: 3270KB raw, 4360KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 — image size: 4483KB raw, 5977KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.12 — image size: 1732KB raw, 2309KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 — image size: 3933KB raw, 5245KB base64
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkyqKcZfmtgHNVHpmVW'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkz1nQppgqzV55wwq7U'}
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.16 — image size: 2187KB raw, 2916KB base64
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkzQ6bJSAFu8VmkaFSF'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkzWDwZZDERZCf4DdoN'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkztcqTPTAFGUSsGPTZ'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVkzzdUxstG96QMzD5H1'}
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.18 — image size: 1875KB raw, 2500KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.19 — image size: 1616KB raw, 2154KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.20 — image size: 1477KB raw, 1970KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.21 — image size: 1982KB raw, 2642KB base64
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVm1RpJeaZPNeAtZCTB5'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVm1an4gDKSHf7YCG6yq'}
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.30 — image size: 1959KB raw, 2613KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.37 — image size: 958KB raw, 1277KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.38 — image size: 875KB raw, 1166KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.40 — image size: 955KB raw, 1274KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.41 — image size: 620KB raw, 827KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.42 — image size: 930KB raw, 1240KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.43 — image size: 703KB raw, 938KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.44 — image size: 2774KB raw, 3699KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.50 — image size: 2879KB raw, 3839KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.51 — image size: 3152KB raw, 4203KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.53 — image size: 1649KB raw, 2199KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.54 — image size: 1607KB raw, 2142KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.55 — image size: 1860KB raw, 2481KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.56 — image size: 1467KB raw, 1956KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.57 — image size: 1354KB raw, 1805KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.60 — image size: 1237KB raw, 1649KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.62 — image size: 1290KB raw, 1720KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.63 — image size: 1333KB raw, 1777KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.64 — image size: 1226KB raw, 1635KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.65 — image size: 1070KB raw, 1427KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.66 — image size: 1277KB raw, 1702KB base64
+[CLASSIFY] p.1 detected as CAD drawing (chars=2238, avg_line=18, digit_ratio=0.10, short_ratio=0.52, vectors=32, signals=2/5 [short_lines, short_ratio])
+[CLASSIFY] p.2 detected as CAD drawing (chars=3084, avg_line=21, digit_ratio=0.09, short_ratio=0.64, vectors=39, signals=2/5 [short_lines, short_ratio])
+[VISION] 25-0131_Laurel Estates Community Building-ComCheck_signed.pdf p.1 — image size: 337KB raw, 449KB base64
+[VISION] 25-0131_Laurel Estates Community Building-ComCheck_signed.pdf p.2 — image size: 410KB raw, 547KB base64
+[CLASSIFY] p.4 detected as CAD drawing (chars=2045, avg_line=16, digit_ratio=0.09, short_ratio=0.68, vectors=144, signals=3/5 [short_lines, short_ratio, vectors])
+[VISION] EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf p.4 — image size: 268KB raw, 358KB base64
+127.0.0.1 - - [25/Feb/2026 20:26:16] "POST /api/pre-check HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 20:26:40] "POST /api/upload HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 20:26:40] "GET /api/stream/2c30e589d0fb HTTP/1.1" 200 -
+Pre-check: 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf — read 5 of 344 pages (limit: 5)
+Pre-check: 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf — read 5 of 66 pages (limit: 5)
+Pre-check: 25-0131_Laurel Estates Community Building-ComCheck_signed.pdf — read 2 of 2 pages (limit: 5)
+Pre-check: EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf — read 4 of 4 pages (limit: 5)
+[CLASSIFY] p.1 detected as CAD drawing (chars=234, avg_line=7, digit_ratio=0.08, short_ratio=0.78, vectors=149, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.6 detected as CAD drawing (chars=2223, avg_line=21, digit_ratio=0.19, short_ratio=0.29, vectors=2116, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.18 detected as CAD drawing (chars=1276, avg_line=21, digit_ratio=0.16, short_ratio=0.25, vectors=1229, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.55 detected as CAD drawing (chars=3110, avg_line=20, digit_ratio=0.37, short_ratio=0.35, vectors=3031, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.62 detected as CAD drawing (chars=3247, avg_line=22, digit_ratio=0.22, short_ratio=0.30, vectors=3167, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.70 detected as CAD drawing (chars=3190, avg_line=17, digit_ratio=0.30, short_ratio=0.37, vectors=3108, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.74 detected as CAD drawing (chars=3470, avg_line=19, digit_ratio=0.26, short_ratio=0.39, vectors=3396, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.83 detected as CAD drawing (chars=2776, avg_line=20, digit_ratio=0.18, short_ratio=0.35, vectors=2689, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.87 detected as CAD drawing (chars=2022, avg_line=22, digit_ratio=0.20, short_ratio=0.33, vectors=1945, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.98 detected as CAD drawing (chars=2146, avg_line=21, digit_ratio=0.27, short_ratio=0.26, vectors=2050, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.99 detected as CAD drawing (chars=1606, avg_line=20, digit_ratio=0.22, short_ratio=0.35, vectors=1553, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.108 detected as CAD drawing (chars=2314, avg_line=19, digit_ratio=0.16, short_ratio=0.46, vectors=2212, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.109 detected as CAD drawing (chars=1906, avg_line=16, digit_ratio=0.16, short_ratio=0.39, vectors=1829, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.123 detected as CAD drawing (chars=1844, avg_line=22, digit_ratio=0.23, short_ratio=0.21, vectors=1769, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.128 detected as CAD drawing (chars=2058, avg_line=19, digit_ratio=0.19, short_ratio=0.35, vectors=1980, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.184 detected as CAD drawing (chars=2559, avg_line=17, digit_ratio=0.05, short_ratio=0.51, vectors=2440, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.191 detected as CAD drawing (chars=572, avg_line=10, digit_ratio=0.02, short_ratio=0.63, vectors=551, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.194 detected as CAD drawing (chars=2161, avg_line=21, digit_ratio=0.18, short_ratio=0.21, vectors=2081, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.199 detected as CAD drawing (chars=2408, avg_line=16, digit_ratio=0.14, short_ratio=0.50, vectors=2293, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.220 detected as CAD drawing (chars=377, avg_line=14, digit_ratio=0.05, short_ratio=0.52, vectors=355, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.236 detected as CAD drawing (chars=2840, avg_line=18, digit_ratio=0.16, short_ratio=0.41, vectors=2751, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.238 detected as CAD drawing (chars=2819, avg_line=15, digit_ratio=0.05, short_ratio=0.51, vectors=2728, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.272 detected as CAD drawing (chars=2718, avg_line=19, digit_ratio=0.08, short_ratio=0.51, vectors=2613, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.277 detected as CAD drawing (chars=3060, avg_line=17, digit_ratio=0.06, short_ratio=0.52, vectors=2976, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.279 detected as CAD drawing (chars=2426, avg_line=15, digit_ratio=0.03, short_ratio=0.58, vectors=2321, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.285 detected as CAD drawing (chars=2847, avg_line=21, digit_ratio=0.18, short_ratio=0.28, vectors=2755, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.298 detected as CAD drawing (chars=2868, avg_line=19, digit_ratio=0.18, short_ratio=0.46, vectors=2772, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.302 detected as CAD drawing (chars=2109, avg_line=20, digit_ratio=0.24, short_ratio=0.23, vectors=2036, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.310 detected as CAD drawing (chars=2555, avg_line=20, digit_ratio=0.27, short_ratio=0.33, vectors=2481, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.320 detected as CAD drawing (chars=2164, avg_line=17, digit_ratio=0.16, short_ratio=0.43, vectors=2085, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.330 detected as CAD drawing (chars=1252, avg_line=22, digit_ratio=0.16, short_ratio=0.30, vectors=1211, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.331 detected as CAD drawing (chars=2349, avg_line=19, digit_ratio=0.19, short_ratio=0.37, vectors=2263, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.339 detected as CAD drawing (chars=3005, avg_line=18, digit_ratio=0.20, short_ratio=0.38, vectors=2915, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.342 detected as CAD drawing (chars=3243, avg_line=16, digit_ratio=0.28, short_ratio=0.42, vectors=3158, signals=3/5 [short_lines, high_digits, vectors])
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.1 — image size: 54KB raw, 73KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.6 — image size: 429KB raw, 572KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.18 — image size: 257KB raw, 343KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.55 — image size: 570KB raw, 761KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.62 — image size: 602KB raw, 803KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.70 — image size: 592KB raw, 789KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.74 — image size: 623KB raw, 831KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.83 — image size: 509KB raw, 679KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.87 — image size: 416KB raw, 555KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.98 — image size: 432KB raw, 577KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.99 — image size: 305KB raw, 407KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.108 — image size: 455KB raw, 607KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.109 — image size: 371KB raw, 494KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.123 — image size: 369KB raw, 492KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.128 — image size: 413KB raw, 551KB base64
+[TEXT PARSE] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.118 attempt 1/2: JSONDecodeError: Invalid control character at: line 9 column 30 (char 295)
+[TEXT RAW] first 500 chars: ```json
+{
+  "submission_requirements": [
+    {
+      "category": "Submittals",
+      "requirement": "Submit Concrete Mix Design (89456)",
+      "mandatory": true,
+      "source_pdf": "24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf",
+      "source_page": 118,
+      "evidence": ".6C'/A5C'=	;		A5'#'D&	0E89456	"
+    },
+    {
+      "category": "Submittals",
+      "requirement": "Submit Reinforcing Steel Shop Drawings (89456)",
+      "mandatory": true,
+      "source_pdf": "24-0920_Laure
+[TEXT PARSE] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.118 attempt 2/2: JSONDecodeError: Invalid control character at: line 9 column 30 (char 295)
+[TEXT RAW] first 500 chars: ```json
+{
+  "submission_requirements": [
+    {
+      "category": "Submittals",
+      "requirement": "Submit Concrete Mix Design (89456)",
+      "mandatory": true,
+      "source_pdf": "24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf",
+      "source_page": 118,
+      "evidence": ".6C'/A5C'=	;		A5'#'D&	0E89456	"
+    },
+    {
+      "category": "Submittals",
+      "requirement": "Submit Reinforcing Steel Shop Drawings (89456)",
+      "mandatory": true,
+      "source_pdf": "24-0920_Laure
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.118 — image size: 197KB raw, 263KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.184 — image size: 489KB raw, 652KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.191 — image size: 122KB raw, 163KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.194 — image size: 443KB raw, 591KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.199 — image size: 484KB raw, 645KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.220 — image size: 94KB raw, 126KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.236 — image size: 545KB raw, 726KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.238 — image size: 526KB raw, 701KB base64
+[TEXT PARSE] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.227 attempt 1/2: JSONDecodeError: Unterminated string starting at: line 303 column 21 (char 12336)
+[TEXT RAW] first 500 chars: ```json
+{
+  "submission_requirements": [
+    {
+      "category": "Submittals",
+      "requirement": "Submit product data for fire-rated door assemblies per ASTM E2074",
+      "mandatory": true,
+      "source_pdf": "24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf",
+      "source_page": 227,
+      "evidence": "Product Data: Submit per ASTM E2074"
+    },
+    {
+      "category": "Submittals",
+      "requirement": "Submit shop drawings for fire-rated door assemblies per ASTM E2074",
+   
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.272 — image size: 511KB raw, 681KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.277 — image size: 559KB raw, 746KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.279 — image size: 456KB raw, 608KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.285 — image size: 537KB raw, 716KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.298 — image size: 537KB raw, 717KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.302 — image size: 404KB raw, 539KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.310 — image size: 482KB raw, 643KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.320 — image size: 415KB raw, 554KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.330 — image size: 252KB raw, 336KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.331 — image size: 459KB raw, 612KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.339 — image size: 552KB raw, 736KB base64
+[VISION] 24-0920_Laurel Estates_Spec Manual_90_ Submission Set (2).pdf p.342 — image size: 589KB raw, 785KB base64
+[CLASSIFY] p.3 detected as CAD drawing (chars=5961, avg_line=10, digit_ratio=0.02, short_ratio=0.70, vectors=479, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.4 detected as CAD drawing (chars=5721, avg_line=15, digit_ratio=0.09, short_ratio=0.58, vectors=7704, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.5 detected as CAD drawing (chars=28038, avg_line=13, digit_ratio=0.18, short_ratio=0.78, vectors=3369, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.11 detected as CAD drawing (chars=8267, avg_line=22, digit_ratio=0.03, short_ratio=0.51, vectors=116862, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.12 detected as CAD drawing (chars=1423, avg_line=19, digit_ratio=0.07, short_ratio=0.22, vectors=25772, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.13 detected as CAD drawing (chars=2718, avg_line=20, digit_ratio=0.04, short_ratio=0.28, vectors=4054, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.16 detected as CAD drawing (chars=7850, avg_line=18, digit_ratio=0.10, short_ratio=0.72, vectors=14025, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.18 detected as CAD drawing (chars=6873, avg_line=16, digit_ratio=0.03, short_ratio=0.66, vectors=15148, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.19 detected as CAD drawing (chars=4772, avg_line=17, digit_ratio=0.06, short_ratio=0.61, vectors=80995, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.20 detected as CAD drawing (chars=1956, avg_line=13, digit_ratio=0.14, short_ratio=0.51, vectors=18521, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.21 detected as CAD drawing (chars=1593, avg_line=12, digit_ratio=0.11, short_ratio=0.65, vectors=172297, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.30 detected as CAD drawing (chars=10638, avg_line=14, digit_ratio=0.08, short_ratio=0.59, vectors=4559, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.37 detected as CAD drawing (chars=2620, avg_line=14, digit_ratio=0.17, short_ratio=0.44, vectors=2968, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.38 detected as CAD drawing (chars=2219, avg_line=13, digit_ratio=0.19, short_ratio=0.50, vectors=4166, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.40 detected as CAD drawing (chars=2294, avg_line=13, digit_ratio=0.17, short_ratio=0.53, vectors=8317, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.41 detected as CAD drawing (chars=1572, avg_line=15, digit_ratio=0.15, short_ratio=0.51, vectors=1763, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.42 detected as CAD drawing (chars=2500, avg_line=13, digit_ratio=0.17, short_ratio=0.54, vectors=5967, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.43 detected as CAD drawing (chars=1916, avg_line=15, digit_ratio=0.15, short_ratio=0.47, vectors=3479, signals=3/5 [short_lines, high_digits, vectors])
+[CLASSIFY] p.44 detected as CAD drawing (chars=11879, avg_line=20, digit_ratio=0.09, short_ratio=0.52, vectors=101984, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.50 detected as CAD drawing (chars=1418, avg_line=15, digit_ratio=0.15, short_ratio=0.53, vectors=9262, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.51 detected as CAD drawing (chars=5052, avg_line=8, digit_ratio=0.18, short_ratio=0.84, vectors=24183, signals=4/5 [short_lines, high_digits, short_ratio, vectors])
+[CLASSIFY] p.53 detected as CAD drawing (chars=3702, avg_line=10, digit_ratio=0.14, short_ratio=0.70, vectors=12409, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.54 detected as CAD drawing (chars=3525, avg_line=11, digit_ratio=0.15, short_ratio=0.68, vectors=12672, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.55 detected as CAD drawing (chars=3716, avg_line=19, digit_ratio=0.05, short_ratio=0.32, vectors=3313, signals=2/5 [short_lines, vectors])
+[CLASSIFY] p.56 detected as CAD drawing (chars=1791, avg_line=8, digit_ratio=0.08, short_ratio=0.81, vectors=10800, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.57 detected as CAD drawing (chars=1501, avg_line=13, digit_ratio=0.09, short_ratio=0.64, vectors=10743, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.60 detected as CAD drawing (chars=1514, avg_line=13, digit_ratio=0.09, short_ratio=0.64, vectors=10290, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.62 detected as CAD drawing (chars=1894, avg_line=12, digit_ratio=0.10, short_ratio=0.64, vectors=12591, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.63 detected as CAD drawing (chars=1929, avg_line=11, digit_ratio=0.13, short_ratio=0.72, vectors=12678, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.64 detected as CAD drawing (chars=1667, avg_line=13, digit_ratio=0.08, short_ratio=0.62, vectors=12092, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.65 detected as CAD drawing (chars=3286, avg_line=11, digit_ratio=0.11, short_ratio=0.74, vectors=1859, signals=3/5 [short_lines, short_ratio, vectors])
+[CLASSIFY] p.66 detected as CAD drawing (chars=2476, avg_line=16, digit_ratio=0.06, short_ratio=0.37, vectors=3951, signals=2/5 [short_lines, vectors])
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.3 — image size: 1411KB raw, 1881KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.4 — image size: 1730KB raw, 2307KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.5 — image size: 3270KB raw, 4360KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 — image size: 4483KB raw, 5977KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.12 — image size: 1732KB raw, 2309KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 — image size: 3933KB raw, 5245KB base64
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpe5r9GWykV2D8kNZmp'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 1/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpeAzCxpXS6ENb16w9m'}
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.16 — image size: 2187KB raw, 2916KB base64
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpecAXzAcodvYjZDAjk'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 2/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpekFx3GsngsC4SbLaf'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpf6nUsPUKr6Ev2LvVM'}
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.18 — image size: 1875KB raw, 2500KB base64
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 3/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpfGimstyNMBLEXwvh4'}
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.19 — image size: 1616KB raw, 2154KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.20 — image size: 1477KB raw, 1970KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.21 — image size: 1982KB raw, 2642KB base64
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.11 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 6121156 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpfekb3xQYeiTTizBTP'}
+[VISION API] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.13 attempt 4/4: HTTP 400: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'messages.0.content.0.image.source.base64: image exceeds 5 MB maximum: 5370924 bytes > 5242880 bytes'}, 'request_id': 'req_011CYVpfpPXUFcwgPwvUQa1t'}
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.30 — image size: 1959KB raw, 2613KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.37 — image size: 958KB raw, 1277KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.38 — image size: 875KB raw, 1166KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.40 — image size: 955KB raw, 1274KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.41 — image size: 620KB raw, 827KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.42 — image size: 930KB raw, 1240KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.43 — image size: 703KB raw, 938KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.44 — image size: 2774KB raw, 3699KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.50 — image size: 2879KB raw, 3839KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.51 — image size: 3152KB raw, 4203KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.53 — image size: 1649KB raw, 2199KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.54 — image size: 1607KB raw, 2142KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.55 — image size: 1860KB raw, 2481KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.56 — image size: 1467KB raw, 1956KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.57 — image size: 1354KB raw, 1805KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.60 — image size: 1237KB raw, 1649KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.62 — image size: 1290KB raw, 1720KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.63 — image size: 1333KB raw, 1777KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.64 — image size: 1226KB raw, 1635KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.65 — image size: 1070KB raw, 1427KB base64
+[VISION] 25-0131_Laurel Estates Community Building_Combined Permit Set.pdf p.66 — image size: 1277KB raw, 1702KB base64
+[CLASSIFY] p.1 detected as CAD drawing (chars=2238, avg_line=18, digit_ratio=0.10, short_ratio=0.52, vectors=32, signals=2/5 [short_lines, short_ratio])
+[CLASSIFY] p.2 detected as CAD drawing (chars=3084, avg_line=21, digit_ratio=0.09, short_ratio=0.64, vectors=39, signals=2/5 [short_lines, short_ratio])
+[VISION] 25-0131_Laurel Estates Community Building-ComCheck_signed.pdf p.1 — image size: 337KB raw, 449KB base64
+[VISION] 25-0131_Laurel Estates Community Building-ComCheck_signed.pdf p.2 — image size: 410KB raw, 547KB base64
+[CLASSIFY] p.4 detected as CAD drawing (chars=2045, avg_line=16, digit_ratio=0.09, short_ratio=0.68, vectors=144, signals=3/5 [short_lines, short_ratio, vectors])
+[VISION] EXHIBIT A - BID SCOPE OF WORK - 3-31-25.pdf p.4 — image size: 268KB raw, 358KB base64
+127.0.0.1 - - [25/Feb/2026 20:38:58] "POST /api/confirm-scalars HTTP/1.1" 200 -
+[RATE TABLE] project_type=multi_family -> matched profile 'lazarus_2025' (score=18)
+[EXCEL TOTALS] building_sub=5,193,619 site_sub=175,000 GC=1,480,182 (28.5%) project_total=6,857,551
+[RATE TABLE] project_type=multi_family -> matched profile 'lazarus_2025' (score=18)
+[JSON TRADE] div=02 SITE WORK / CIVIL         $   175,000  src=user
+[JSON TRADE] div=02 Sitework                  $         0  src=none
+[JSON TRADE] div=02 Paving & Striping         $         0  src=none
+[JSON TRADE] div=02 Landscaping               $         0  src=none
+[JSON TRADE] div=02 Fencing                   $         0  src=none
+[JSON TRADE] div=03 Site Concrete             $         0  src=none
+[JSON TRADE] div=03 Building Concrete         $   566,580  src=rate_table
+[JSON TRADE] div=05 Structural Steel          $     6,500  src=placeholder
+[JSON TRADE] div=06 Rough Carpentry           $   404,052  src=rate_table
+[JSON TRADE] div=08 Doors/Hdwr/Finish Carp    $ 1,187,550  src=rate_table
+[JSON TRADE] div=08 Windows                   $    21,150  src=rate_table
+[JSON TRADE] div=07 Insulation                $    88,494  src=rate_table
+[JSON TRADE] div=07 Roofing                   $   199,652  src=rate_table
+[JSON TRADE] div=07 Siding                    $   184,800  src=rate_table
+[JSON TRADE] div=05 Gutters                   $     1,854  src=material_db
+[JSON TRADE] div=07 Flashing & Waterproofing  $     4,200  src=placeholder
+[JSON TRADE] div=09 Drywall                   $   269,800  src=rate_table
+[JSON TRADE] div=09 Flooring                  $   151,088  src=rate_table
+[JSON TRADE] div=09 Painting                  $    43,168  src=rate_table
+[JSON TRADE] div=09 Countertops & Finishes    $     5,500  src=placeholder
+[JSON TRADE] div=10 Specialties               $   436,080  src=rate_table
+[JSON TRADE] div=13 Cabinets                  $     6,200  src=rate_table
+[JSON TRADE] div=14 Conveying Equipment       $    15,000  src=placeholder
+[JSON TRADE] div=15 Plumbing                  $   312,000  src=rate_table
+[JSON TRADE] div=15 HVAC                      $   485,640  src=rate_table
+[JSON TRADE] div=16 Electrical                $   356,136  src=rate_table
+[JSON TRADE] div=16 Smart Home / Security     $    12,000  src=placeholder
+[JSON TRADE] div=01 General Requirements      $   247,315  src=calculated
+[JSON TRADE] div=15 Fire Sprinkler            $   188,860  src=rate_table
+[JSON TOTALS] building_sub=5,193,619 site_sub=175,000 GC=1,480,182 (28.5%) project_total=6,857,551
+127.0.0.1 - - [25/Feb/2026 20:38:59] "GET /api/results/2c30e589d0fb HTTP/1.1" 200 -
+127.0.0.1 - - [25/Feb/2026 20:39:56] "GET /api/download/2c30e589d0fb HTTP/1.1" 200 -

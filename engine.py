@@ -868,7 +868,10 @@ _BUYOUT_TRADES: list[tuple[int, str, str, list[str]]] = [
     # Div 3 — Concrete
     (5,  "3",  "Site Concrete",          ["site concrete", "sidewalk", "curb", "ramp",
                                            "concrete flatwork"]),
-    (6,  "3",  "Building Concrete",      ["concrete", "foundation", "footing", "slab", "masonry"]),
+    (6,  "3",  "Building Concrete",      ["concrete", "foundation", "footing", "slab"]),
+    (29, "4",  "Masonry",                ["cmu", "masonry", "brick", "block", "cast stone",
+                                           "brick veneer", "concrete masonry unit",
+                                           "stonework", "stone veneer"]),
     # Div 5 — Metals
     (7,  "5",  "Structural Steel",       ["structural", "steel", "metal connect", "simpson",
                                            "strap", "clip", "anchor bolt"]),
@@ -1531,6 +1534,13 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
     project_type = q.get('project_type', 'unknown')
     is_multifamily = project_type in ('multi_family', 'mixed_use', 'commercial', 'institutional')
     is_commercial = project_type in ('commercial', 'mixed_use', 'institutional')
+    is_residential_units = (
+        is_multifamily and
+        unit_count is not None and
+        unit_count > 0 and
+        project_type in ('multi_family', 'mixed_use')
+    )
+    # institutional/community_center: no per-unit formulas
 
     # Unit type for per-unit scaling
     unit_type = q.get('unit_type', 'standard')
@@ -1600,6 +1610,19 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
              "material_key": "foundation_wp_gcp_preprufe160",
              "material_quantity": foundation_lf * 1.5,
              "description": "GCP Preprufe 160 foundation waterproofing"},
+        ],
+        "Masonry": [
+            {"work_item": None, "quantity": 0,
+             "material_key": None, "material_quantity": 0,
+             "description": "CMU / brick / stone masonry",
+             "override_amount": round(total_sf * 25.00),
+             "note": (
+                 f"MASONRY PLACEHOLDER: $25/SF \u00d7 {total_sf:,.0f} SF = "
+                 f"${round(total_sf * 25.00):,.0f} | "
+                 f"Includes CMU block, brick veneer, cast stone. "
+                 f"Range: $15-45/SF depending on masonry type. "
+                 f"GET MASONRY SUB QUOTE."
+             )},
         ],
         "Rough Carpentry": [
             {"work_item": "wall_framing_2x6_ext", "quantity": ext_wall_sf,
@@ -1708,20 +1731,34 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
              "material_quantity": gwb_sf,
              "description": "Tape, finish, corner bead"},
         ],
-        "Flooring": [
-            {"work_item": "lvt_install",          "quantity": lvt_sf,
-             "material_key": "lvt_mid_range",
-             "material_quantity": lvt_sf,
-             "description": "LVT-1 Luxury Vinyl Tile all rooms"},
-            {"work_item": "tile_install_floor",   "quantity": tile_sf * 0.6,
-             "material_key": "ceramic_tile_floor",
-             "material_quantity": tile_sf * 0.6,
-             "description": "TL-1 Ceramic tile 4x14 bathroom floor"},
-            {"work_item": "tile_install_wall_shower", "quantity": tile_sf * 0.4,
-             "material_key": "ceramic_tile_floor",
-             "material_quantity": tile_sf * 0.4,
-             "description": "TL-1 Ceramic tile bathroom wall/shower"},
-        ],
+        "Flooring": (
+            [
+                {"work_item": "lvt_install",          "quantity": lvt_sf,
+                 "material_key": "lvt_mid_range",
+                 "material_quantity": lvt_sf,
+                 "description": "LVT-1 Luxury Vinyl Tile all rooms"},
+                {"work_item": "tile_install_floor",   "quantity": tile_sf * 0.6,
+                 "material_key": "ceramic_tile_floor",
+                 "material_quantity": tile_sf * 0.6,
+                 "description": "TL-1 Ceramic tile 4x14 bathroom floor"},
+                {"work_item": "tile_install_wall_shower", "quantity": tile_sf * 0.4,
+                 "material_key": "ceramic_tile_floor",
+                 "material_quantity": tile_sf * 0.4,
+                 "description": "TL-1 Ceramic tile bathroom wall/shower"},
+            ] if is_residential_units else
+            [
+                {"work_item": None, "quantity": 0,
+                 "material_key": None, "material_quantity": 0,
+                 "description": "Flooring allowance",
+                 "override_amount": round(total_sf * 12.00),
+                 "note": (
+                     f"Flooring $12.00/SF \u00d7 {total_sf:,.0f} SF = "
+                     f"${round(total_sf * 12.00):,.0f} | "
+                     f"Includes LVT, tile, carpet as applicable. "
+                     f"GET FLOORING SUB QUOTE."
+                 )},
+            ]
+        ),
         "Painting": [
             {"work_item": "paint_interior_2coat", "quantity": gwb_sf,
              "material_key": "paint_sw_interior_2coat",
@@ -1733,7 +1770,7 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
              "description": "Exterior PVC trim paint"},
         ],
         "Plumbing": (
-            # Commercial/multifamily distribution model
+            # Residential multifamily distribution model
             [
                 {"work_item": None, "quantity": 0,
                  "material_key": None, "material_quantity": 0,
@@ -1759,7 +1796,20 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
                      f"Includes distribution, waste/vent stacks, water heater. "
                      f"GET PLUMBING SUB QUOTE."
                  )},
-            ] if (is_multifamily and total_sf > 4000) else
+            ] if (is_residential_units and total_sf > 4000) else
+            # Non-residential or small residential — simple $/SF
+            [
+                {"work_item": None, "quantity": 0,
+                 "material_key": None, "material_quantity": 0,
+                 "description": "Plumbing allowance",
+                 "override_amount": round(total_sf * 10.00),
+                 "note": (
+                     f"Plumbing $10.00/SF \u00d7 {total_sf:,.0f} SF = "
+                     f"${round(total_sf * 10.00):,.0f} | "
+                     f"Includes fixtures, piping, water heater. "
+                     f"GET PLUMBING SUB QUOTE."
+                 )},
+            ] if (is_multifamily and not is_residential_units) else
             # Residential per-fixture model (existing logic)
             [
                 {"work_item": "plumbing_rough_per_fixture", "quantity": plumbing_fixtures,
@@ -1799,7 +1849,7 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
              "description": "Lithonia WF6 LED recessed lights"},
         ],
         "HVAC": (
-            # Commercial RTU + ductwork system
+            # Commercial/institutional RTU + ductwork system
             [
                 {"work_item": None, "quantity": 0,
                  "material_key": None, "material_quantity": 0,
@@ -1808,12 +1858,13 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
                      f"{max(1, round(total_sf / 4000))} RTU units + "
                      f"supply/return ductwork distribution"
                  ),
-                 "override_amount": round(total_sf * 45),
+                 "override_amount": round(total_sf * (45 if is_residential_units else 32)),
                  "note": (
-                     f"\u26a0\ufe0f COMMERCIAL HVAC: ${45}/SF \u00d7 {total_sf:,.0f} SF = "
-                     f"${round(total_sf * 45):,.0f} | "
+                     f"\u26a0\ufe0f COMMERCIAL HVAC: "
+                     f"${45 if is_residential_units else 32}/SF \u00d7 {total_sf:,.0f} SF = "
+                     f"${round(total_sf * (45 if is_residential_units else 32)):,.0f} | "
                      f"Includes RTU units, ductwork, controls, startup. "
-                     f"Range: $35-55/SF depending on system type. "
+                     f"{'Residential multifamily range: $35-55/SF.' if is_residential_units else 'Institutional/commercial range: $25-40/SF.'} "
                      f"RTU vs VRF vs fan coil significantly affects cost. "
                      f"GET HVAC SUB QUOTE."
                  )},
@@ -1862,16 +1913,29 @@ def get_baseline_quantities(trade_name: str, extraction: dict,
                  f"GET FIRE PROTECTION SUB QUOTE."
              )},
         ],
-        "Doors/Hdwr/Finish Carp": [
-            {"work_item": "door_install_exterior", "quantity": ext_door_count,
-             "material_key": "door_exterior_insulated_alum",
-             "material_quantity": ext_door_count,
-             "description": "Insulated aluminum exterior doors"},
-            {"work_item": "door_install_exterior", "quantity": int_door_count,
-             "material_key": "door_interior_hollow_core",
-             "material_quantity": int_door_count,
-             "description": "Interior hollow core doors"},
-        ],
+        "Doors/Hdwr/Finish Carp": (
+            [
+                {"work_item": "door_install_exterior", "quantity": ext_door_count,
+                 "material_key": "door_exterior_insulated_alum",
+                 "material_quantity": ext_door_count,
+                 "description": "Insulated aluminum exterior doors"},
+                {"work_item": "door_install_exterior", "quantity": int_door_count,
+                 "material_key": "door_interior_hollow_core",
+                 "material_quantity": int_door_count,
+                 "description": "Interior hollow core doors"},
+            ] if is_residential_units else
+            [
+                {"work_item": None, "quantity": 0,
+                 "material_key": None, "material_quantity": 0,
+                 "description": "Door allowance — storefront/interior",
+                 "override_amount": round(total_sf * 4.50),
+                 "note": (
+                     f"Door allowance $4.50/SF \u00d7 {total_sf:,.0f} SF = "
+                     f"${round(total_sf * 4.50):,.0f} | "
+                     f"Verify storefront scope."
+                 )},
+            ]
+        ),
         "Gutters": [
             {"work_item": "gutter_install", "quantity": 120,
              "material_key": "gutter_ogee_5in", "material_quantity": 120,

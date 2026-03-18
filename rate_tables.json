@@ -578,7 +578,7 @@
     },
     {
       "id": "midstate_residential_2024",
-      "source_project": "Midstate House — Single Family Residential",
+      "source_project": "Midstate House — Single Family Elevator House, Middletown CT",
       "characteristics": {
         "project_type": ["single_family"],
         "floor_count_min": 1,
@@ -586,58 +586,135 @@
         "unit_count_min": 1,
         "unit_count_max": 4,
         "total_sf_min": 800,
-        "total_sf_max": 5000
+        "total_sf_max": 5000,
+        "region": "CT",
+        "notes": "ADA-accessible elevator house. Rates derived from actual Midstate buyout 9/13/2024. Building ~2,074 SF."
       },
       "quotes": {
         "concrete_foundation": {
           "unit": "per_footprint_sf",
-          "recommended_rate": 25.0
+          "bids": [{"bidder": "Eastern", "amount": 19800, "per_unit": 9.55, "scope": "Foundation and slab. Single-family residential.", "status": "low_bid"}],
+          "recommended_rate": 9.55,
+          "range_low": 9.0,
+          "range_high": 15.0,
+          "notes": "Per footprint SF. Foundation + slab for single-family. Much lower than commercial ($105/SF)."
+        },
+        "rough_carpentry_combined": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "Budget (GC self-perform)", "amount": 26000, "per_unit": 12.54, "scope": "Full framing material + labor. Single-family wood frame.", "status": "awarded"}],
+          "recommended_rate": 12.54,
+          "range_low": 10.0,
+          "range_high": 18.0,
+          "notes": "Material + labor combined. Single-family wood frame construction."
         },
         "siding_vinyl": {
           "unit": "per_total_sf",
-          "recommended_rate": 13.0
+          "bids": [{"bidder": "Turner", "amount": 30872, "per_unit": 14.88, "scope": "Vinyl siding with PVC trim.", "status": "low_bid"}],
+          "recommended_rate": 14.88,
+          "range_low": 13.0,
+          "range_high": 18.0,
+          "notes": "Per total SF. Vinyl siding + PVC trim. Residential."
         },
         "windows_material": {
-          "unit": "per_total_sf",
-          "recommended_rate": 10.0
+          "unit": "per_opening",
+          "opening_count_basis": 19,
+          "bids": [{"bidder": "Rings End", "amount": 10475, "per_unit": 551, "scope": "Windows material supply. 19 openings.", "status": "low_bid"}],
+          "recommended_rate": 551,
+          "range_low": 450,
+          "range_high": 700,
+          "notes": "Per window opening. Material/supply only. 19 windows for single-family."
+        },
+        "doors_hardware_material": {
+          "unit": "lump_sum",
+          "bids": [{"bidder": "Bob Leach", "amount": 10500, "scope": "Doors, hardware, and finish carpentry. Single-family residential.", "status": "low_bid"}],
+          "recommended_rate": 10500,
+          "notes": "Lump sum. Doors + hardware + finish carpentry combined for single-family."
+        },
+        "cabinets_install": {
+          "unit": "lump_sum",
+          "bids": [{"bidder": "KCO", "amount": 6233, "scope": "Kitchen and bath cabinets. Material + install.", "status": "low_bid"}],
+          "recommended_rate": 6233,
+          "notes": "Lump sum. Kitchen + bath cabinets for single-family."
         },
         "hvac": {
           "unit": "per_total_sf",
-          "recommended_rate": 7.80
+          "bids": [{"bidder": "L&R Mechanical", "amount": 18000, "per_unit": 8.68, "scope": "Full HVAC. Mitsubishi mini-split system. 3 zones.", "status": "low_bid"}],
+          "recommended_rate": 8.68,
+          "range_low": 7.80,
+          "range_high": 12.0,
+          "notes": "Mini-split system. Per total SF. Residential."
         },
         "plumbing": {
           "unit": "per_total_sf",
-          "recommended_rate": 8.60
+          "bids": [{"bidder": "P&L", "amount": 10000, "per_unit": 4.82, "scope": "Full plumbing. Single-family residential.", "status": "low_bid"}],
+          "recommended_rate": 4.82,
+          "range_low": 4.0,
+          "range_high": 8.0,
+          "notes": "Per total SF. Single-family residential plumbing."
         },
         "electrical": {
           "unit": "per_total_sf",
-          "recommended_rate": 6.40
+          "bids": [{"bidder": "E. Haberli", "amount": 27000, "per_unit": 13.02, "scope": "Full electrical. 200 amp service. Single-family residential.", "status": "low_bid"}],
+          "recommended_rate": 13.02,
+          "range_low": 10.0,
+          "range_high": 16.0,
+          "notes": "Per total SF. Includes 200 amp panel, all wiring, fixtures. Single-family."
         },
         "drywall": {
           "unit": "per_total_sf",
-          "recommended_rate": 2.85
+          "bids": [{"bidder": "Total", "amount": 5900, "per_unit": 2.85, "scope": "All drywall and finish taping.", "status": "low_bid"}],
+          "recommended_rate": 2.85,
+          "range_low": 2.50,
+          "range_high": 4.00,
+          "notes": "Per total SF. Single-family residential."
         },
         "insulation": {
           "unit": "per_total_sf",
-          "recommended_rate": 3.00
+          "bids": [{"bidder": "Tri Star", "amount": 6626, "per_unit": 3.19, "scope": "Full building insulation.", "status": "low_bid"}],
+          "recommended_rate": 3.19,
+          "range_low": 3.0,
+          "range_high": 5.0,
+          "notes": "Per total SF. Includes spray foam and batt."
         },
         "roofing_epdm": {
           "unit": "per_footprint_sf",
-          "recommended_rate": 11.50
+          "bids": [{"bidder": "M&N", "amount": 9555, "per_unit": 4.61, "scope": "Asphalt shingle roofing. CertainTeed XT-25.", "status": "low_bid"}],
+          "recommended_rate": 4.61,
+          "range_low": 4.0,
+          "range_high": 8.0,
+          "notes": "Per footprint SF. Asphalt shingle (not EPDM). Single-family residential."
         },
         "painting": {
           "unit": "per_total_sf",
-          "recommended_rate": 2.25
+          "bids": [{"bidder": "Orchard", "amount": 6900, "per_unit": 3.33, "scope": "Interior painting. Prime + 2 coats.", "status": "low_bid"}],
+          "recommended_rate": 3.33,
+          "range_low": 2.50,
+          "range_high": 4.50,
+          "notes": "Per total SF. Interior only."
         },
         "flooring": {
           "unit": "per_total_sf",
-          "recommended_rate": 3.35
+          "bids": [{"bidder": "Star Two", "amount": 7019, "per_unit": 3.38, "scope": "All flooring. LVT and tile.", "status": "low_bid"}],
+          "recommended_rate": 3.38,
+          "range_low": 3.0,
+          "range_high": 5.0,
+          "notes": "Per total SF. LVT + tile for single-family."
+        },
+        "sitework": {
+          "unit": "per_total_sf",
+          "bids": [{"bidder": "Budget (GC)", "amount": 184052, "per_unit": 88.74, "scope": "Sitework $139,737 + Paving $33,295 + Site Concrete $11,020. Full site package.", "status": "awarded"}],
+          "recommended_rate": 80.0,
+          "range_low": 40.0,
+          "range_high": 120.0,
+          "notes": "CAUTION: Residential sitework is highly variable ($40-120/SF). Midstate reference was $88.74/SF. Includes grading, utilities, paving, site concrete. GET CIVIL SUB QUOTE — this is a placeholder."
         },
         "gc_markups": {
           "conditions_pct": 0.03,
           "profit_pct": 0.03,
           "contingency_pct": 0.00,
-          "permits_bond_pct": 0.025
+          "permits_bond_pct": 0.025,
+          "total_pct": 0.085,
+          "notes": "Low GC markup for single-family. Real buyout: $14,183 OH&P + $2,960 bond + $5,172 permits on $353,685 subtotal = 6.3% total."
         }
       }
     },

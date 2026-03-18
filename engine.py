@@ -161,37 +161,42 @@ def _apply_rate_table_override(trade_name, rate_profile, project_quantities):
 
     # Special case: Rough Carpentry combines materials + labor rate table entries
     if rt_key == 'rough_carpentry_combined':
-        mat_rt = rate_profile.get('rough_carpentry_materials')
-        lab_rt = rate_profile.get('rough_carpentry_labor')
-        if not mat_rt and not lab_rt:
-            return None, None
+        # If profile has a single combined entry, use the normal rate table path
+        if 'rough_carpentry_combined' not in rate_profile:
+            mat_rt = rate_profile.get('rough_carpentry_materials')
+            lab_rt = rate_profile.get('rough_carpentry_labor')
+            if not mat_rt and not lab_rt:
+                return None, None
 
-        pq = project_quantities or {}
-        total_sf = pq.get('total_building_sf') or 1000
+            pq = project_quantities or {}
+            _sf_defaults = {'single_family': 1800, 'multi_family': 10000,
+                            'commercial': 8000, 'mixed_use': 12000}
+            _pt = pq.get('project_type', 'unknown')
+            total_sf = pq.get('total_building_sf') or _sf_defaults.get(_pt, 2000)
 
-        mat_rate = (mat_rt or {}).get('recommended_rate', 0) or 0
-        lab_rate = (lab_rt or {}).get('recommended_rate', 0) or 0
-        combined_rate = mat_rate + lab_rate
+            mat_rate = (mat_rt or {}).get('recommended_rate', 0) or 0
+            lab_rate = (lab_rt or {}).get('recommended_rate', 0) or 0
+            combined_rate = mat_rate + lab_rate
 
-        if combined_rate <= 0:
-            return None, None
+            if combined_rate <= 0:
+                return None, None
 
-        budget_val = round(combined_rate * total_sf)
-        mat_bids = (mat_rt or {}).get('bids', [])
-        lab_bids = (lab_rt or {}).get('bids', [])
-        mat_note = (mat_rt or {}).get('notes', '')
-        lab_note = (lab_rt or {}).get('notes', '')
+            budget_val = round(combined_rate * total_sf)
+            mat_bids = (mat_rt or {}).get('bids', [])
+            lab_bids = (lab_rt or {}).get('bids', [])
+            mat_note = (mat_rt or {}).get('notes', '')
+            lab_note = (lab_rt or {}).get('notes', '')
 
-        note_val = (
-            f"Material ${mat_rate:.2f}/SF + Labor ${lab_rate:.2f}/SF "
-            f"= ${combined_rate:.2f}/SF \u00d7 {total_sf:,.0f} SF | "
-            f"Material: {mat_bids[0]['bidder'] if mat_bids else 'N/A'} "
-            f"@ ${mat_bids[0].get('amount', 0):,.0f}. "
-            f"Labor: {lab_bids[0]['bidder'] if lab_bids else 'N/A'} "
-            f"@ ${lab_bids[0].get('amount', 0):,.0f}. | "
-            f"{mat_note} {lab_note}"
-        )
-        return budget_val, note_val
+            note_val = (
+                f"Material ${mat_rate:.2f}/SF + Labor ${lab_rate:.2f}/SF "
+                f"= ${combined_rate:.2f}/SF \u00d7 {total_sf:,.0f} SF | "
+                f"Material: {mat_bids[0]['bidder'] if mat_bids else 'N/A'} "
+                f"@ ${mat_bids[0].get('amount', 0):,.0f}. "
+                f"Labor: {lab_bids[0]['bidder'] if lab_bids else 'N/A'} "
+                f"@ ${lab_bids[0].get('amount', 0):,.0f}. | "
+                f"{mat_note} {lab_note}"
+            )
+            return budget_val, note_val
 
     if rt_key not in rate_profile:
         return None, None
@@ -202,7 +207,10 @@ def _apply_rate_table_override(trade_name, rate_profile, project_quantities):
 
     if rec_rate is not None and rec_rate > 0:
         pq = project_quantities or {}
-        total_sf = pq.get('total_building_sf') or 1000
+        _sf_defaults = {'single_family': 1800, 'multi_family': 10000,
+                        'commercial': 8000, 'mixed_use': 12000}
+        _pt = pq.get('project_type', 'unknown')
+        total_sf = pq.get('total_building_sf') or _sf_defaults.get(_pt, 2000)
         footprint_sf = pq.get('footprint_sf') or (total_sf / max(pq.get('floor_count', 1) or 1, 1))
         unit_count = pq.get('unit_count') or 1
         plumbing_fixtures = pq.get('plumbing_fixtures') or rt.get('fixture_count_basis') or (unit_count * 5)
@@ -274,7 +282,7 @@ def _apply_rate_table_override(trade_name, rate_profile, project_quantities):
 
 # ─── Constants ───────────────────────────────────────────────────────────────
 
-MODEL = "claude-sonnet-4-5-20250929"
+MODEL = "claude-sonnet-4-6"
 TEMPERATURE = 0
 DPI = 200
 MAX_IMAGE_BYTES = 4_800_000  # Stay under Claude's 5MB base64 limit
@@ -3172,6 +3180,22 @@ def validate_project_quantities(pq: dict, emit: Callable[[str], None]) -> dict:
         _est = round(pq['footprint_sf'] * pq['floor_count'])
         pq['total_building_sf'] = _est
         msg = f"Auto-estimated total_building_sf = {pq['footprint_sf']} x {pq['floor_count']} = {_est}"
+        findings.append(msg)
+        emit(f"[VALIDATION] {msg}")
+
+    # Estimate total_building_sf from window count if still missing
+    # Typical residential: ~100-120 SF per window; commercial: ~150 SF per window
+    if not pq.get('total_building_sf') and pq.get('window_count'):
+        _wc = pq['window_count']
+        _pt = pq.get('project_type', 'unknown')
+        _sf_per_window = 120 if _pt == 'single_family' else 150
+        _est = round(_wc * _sf_per_window)
+        # Apply project-type floor: don't go below type minimum
+        _type_mins = {'single_family': 1200, 'multi_family': 5000, 'commercial': 3000}
+        _est = max(_est, _type_mins.get(_pt, 1200))
+        pq['total_building_sf'] = _est
+        msg = (f"Auto-estimated total_building_sf from window count: "
+               f"{_wc} windows x {_sf_per_window} SF/window = {_est} SF")
         findings.append(msg)
         emit(f"[VALIDATION] {msg}")
 

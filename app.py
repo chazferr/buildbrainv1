@@ -45,21 +45,18 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 # In-memory job store: job_id -> {status, queue, excel_bytes, stats, error}
 jobs: dict[str, dict] = {}
 
-# ─── IP Whitelist ─────────────────────────────────────────────────────────────
+# ─── IP Whitelist (disabled for cloud hosting, enable for local dev) ──────────
 
-ALLOWED_IPS = {
-    "127.0.0.1",        # localhost
-    "::1",              # localhost IPv6
-    "10.0.0.18",        # your local network IP
-    "71.235.242.49",    # external allowed IP
-}
-
-
-@app.before_request
-def check_ip_whitelist():
-    client_ip = request.remote_addr
-    if client_ip not in ALLOWED_IPS:
-        return jsonify({"error": "Access denied"}), 403
+# ALLOWED_IPS = {
+#     "127.0.0.1",        # localhost
+#     "::1",              # localhost IPv6
+# }
+#
+# @app.before_request
+# def check_ip_whitelist():
+#     client_ip = request.remote_addr
+#     if client_ip not in ALLOWED_IPS:
+#         return jsonify({"error": "Access denied"}), 403
 
 
 # ─── Routes ──────────────────────────────────────────────────────────────────
@@ -344,7 +341,7 @@ def ask_buildbrain():
     try:
         client = anthropic.Anthropic(api_key=API_KEY)
         response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-sonnet-4-6",
             max_tokens=300,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -487,7 +484,7 @@ def pre_check():
     try:
         client = anthropic.Anthropic(api_key=API_KEY)
         response = client.messages.create(
-            model="claude-opus-4-6",
+            model="claude-sonnet-4-6",
             max_tokens=800,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -748,9 +745,10 @@ def _run_extraction(job_id: str):
 # ─── Entry point ─────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
     print("=" * 50)
     print("  BuildBrain Web App")
-    print("  Local:   http://localhost:5000")
-    print("  Network: http://0.0.0.0:5000")
+    print(f"  Local:   http://localhost:{port}")
+    print(f"  Network: http://0.0.0.0:{port}")
     print("=" * 50)
-    app.run(host="0.0.0.0", debug=False, port=5000, threaded=True)
+    app.run(host="0.0.0.0", debug=False, port=port, threaded=True)

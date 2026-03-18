@@ -83,9 +83,35 @@ def _get_gemini_client(api_key: str):
         _gemini_configured = True
     return genai.GenerativeModel(model_name=GEMINI_MODEL)
 
-from wage_rates import get_wage, CT_WAGE_RATES
-from material_db import get_material_price, MATERIAL_DB
-from productivity_rates import calculate_labor, PRODUCTIVITY_RATES
+try:
+    from wage_rates import get_wage, CT_WAGE_RATES
+except ImportError:
+    CT_WAGE_RATES = {}
+    def get_wage(*a, **kw): return 0.0
+
+try:
+    from material_db import get_material_price, MATERIAL_DB
+except ImportError:
+    MATERIAL_DB = {}
+    def get_material_price(*a, **kw): return 0.0
+
+try:
+    from productivity_rates import calculate_labor, PRODUCTIVITY_RATES
+except ImportError:
+    PRODUCTIVITY_RATES = {}
+    def calculate_labor(*a, **kw): return 0.0
+
+
+def _get_response_text(response) -> str:
+    """Extract text from Claude response, skipping thinking blocks.
+
+    Claude Sonnet 4.6 uses adaptive thinking by default, so response.content
+    may contain [thinking_block, text_block] instead of just [text_block].
+    """
+    return next(
+        (block.text for block in reversed(response.content) if block.type == "text"),
+        "",
+    )
 
 # Optional imports for extended file types
 try:
@@ -334,8 +360,8 @@ DPI = 200
 MAX_IMAGE_BYTES = 4_800_000  # Stay under Claude's 5MB base64 limit
 
 # Cost rates (USD per 1M tokens)
-INPUT_RATE = 18.0
-OUTPUT_RATE = 85.0
+INPUT_RATE = 3.0    # Sonnet 4.6: $3/M input tokens
+OUTPUT_RATE = 15.0  # Sonnet 4.6: $15/M output tokens
 
 # ─── Pydantic schemas ───────────────────────────────────────────────────────
 
@@ -897,7 +923,7 @@ If truly nothing is extractable, return:
             stats["output_tokens"] += usage.output_tokens
             stats["api_calls"] += 1
 
-            raw_text = response.content[0].text
+            raw_text = _get_response_text(response)
             json_text = extract_json_from_text(raw_text)
 
             data = json.loads(json_text)
@@ -2287,7 +2313,7 @@ If truly nothing is extractable, return:
             stats["output_tokens"] += usage.output_tokens
             stats["api_calls"] += 1
 
-            raw_text = response.content[0].text
+            raw_text = _get_response_text(response)
             json_text = extract_json_from_text(raw_text)
 
             data = json.loads(json_text)
@@ -2524,7 +2550,7 @@ def _extract_text_page(
             stats["output_tokens"] += usage.output_tokens
             stats["api_calls"] += 1
 
-            raw_text = response.content[0].text
+            raw_text = _get_response_text(response)
             json_text = extract_json_from_text(raw_text)
             data = json.loads(json_text)
             extraction = PageExtraction(**data)
@@ -2751,19 +2777,18 @@ def _process_image(client, file_path, emit, global_stats, file_stats, gemini_api
         {"type": "text", "text": prompt_text},
     ]}]
 
-    SIMPLIFIED_PROMPT = """
+    SIMPLIFIED_PROMPT = f"""
 This is a construction drawing image.
 Extract ANY trades or work items visible.
-Return valid JSON only:
-{
+Return valid JSON only (no markdown fences):
+{{
   "trades_and_scope": [
-    {"trade": "trade name", "scope": ["scope item"]}
+    {{"csi_division": "NA", "trade": "trade name", "scope_description": "scope", "estimated_cost": null, "vendor_name": null, "quantity": null, "source_pdf": "{file_name}", "source_page": 1, "evidence": "brief quote"}}
   ],
-  "submission_requirements": [],
-  "flags": []
-}
+  "submission_requirements": []
+}}
 If truly nothing is extractable, return:
-{"trades_and_scope": [], "submission_requirements": [], "flags": []}
+{{"trades_and_scope": [], "submission_requirements": []}}
 """
 
     extraction = None
@@ -2781,7 +2806,7 @@ If truly nothing is extractable, return:
             page_stats["input_tokens"] += response.usage.input_tokens
             page_stats["output_tokens"] += response.usage.output_tokens
             page_stats["api_calls"] += 1
-            raw_text = response.content[0].text
+            raw_text = _get_response_text(response)
             data = json.loads(extract_json_from_text(raw_text))
             extraction = PageExtraction(**data)
             break

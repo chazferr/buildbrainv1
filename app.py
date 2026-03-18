@@ -23,7 +23,8 @@ from flask import Flask, Response, render_template, request, jsonify, send_file
 
 from engine import (build_excel_bytes, build_results_json, process_files, parse_sov_from_buyout,
                     extract_project_quantities, validate_project_quantities,
-                    classify_project_complexity, SUPPORTED_EXTENSIONS)
+                    classify_project_complexity, SUPPORTED_EXTENSIONS, _get_response_text,
+                    extract_json_from_text)
 
 # ─── Load environment ────────────────────────────────────────────────────────
 load_dotenv()
@@ -79,7 +80,7 @@ def health():
             messages=[{"role": "user", "content": "Say OK"}],
         )
         return jsonify({"status": "ok", "model": "claude-sonnet-4-6",
-                        "reply": resp.content[0].text.strip()})
+                        "reply": _get_response_text(resp).strip()})
     except Exception as e:
         return jsonify({"status": "error", "error": str(e)}), 500
 
@@ -362,7 +363,7 @@ def ask_buildbrain():
             max_tokens=300,
             messages=[{"role": "user", "content": prompt}],
         )
-        answer = response.content[0].text.strip()
+        answer = _get_response_text(response).strip()
         return jsonify({"answer": answer})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -505,8 +506,8 @@ def pre_check():
             max_tokens=800,
             messages=[{"role": "user", "content": prompt}],
         )
-        text = response.content[0].text.strip()
-        text = text.replace("```json", "").replace("```", "").strip()
+        text = _get_response_text(response)
+        text = extract_json_from_text(text)
         result = json.loads(text)
 
         # Run construction type classifier on result

@@ -917,7 +917,7 @@ If truly nothing is extractable, return:
             extraction = PageExtraction(**data)
             return extraction
 
-        except (json.JSONDecodeError, ValidationError):
+        except (json.JSONDecodeError, ValidationError, AttributeError):
             if attempt == 0:
                 retry_text = RETRY_PROMPT.format(pdf_name=file_name, page_num=page_num)
                 messages.append({"role": "assistant", "content": raw_text})
@@ -2255,7 +2255,7 @@ If truly nothing is extractable, return:
             extraction = PageExtraction(**data)
             return extraction
 
-        except (json.JSONDecodeError, ValidationError) as e:
+        except (json.JSONDecodeError, ValidationError, AttributeError) as e:
             print(f"[VISION PARSE] {pdf_name} p.{page_num} attempt {attempt+1}/4: "
                   f"{type(e).__name__}: {e}", flush=True)
             if 'raw_text' in locals():
@@ -2491,7 +2491,7 @@ def _extract_text_page(
             extraction = PageExtraction(**data)
             return extraction
 
-        except (json.JSONDecodeError, ValidationError) as e:
+        except (json.JSONDecodeError, ValidationError, AttributeError) as e:
             print(f"[TEXT PARSE] {pdf_name} p.{page_num} attempt {attempt+1}/3: "
                   f"{type(e).__name__}: {e}", flush=True)
             if 'raw_text' in locals():
@@ -2743,7 +2743,7 @@ If truly nothing is extractable, return:
             data = json.loads(extract_json_from_text(raw_text))
             extraction = PageExtraction(**data)
             break
-        except (json.JSONDecodeError, ValidationError):
+        except (json.JSONDecodeError, ValidationError, AttributeError):
             if attempt == 0:
                 messages.append({"role": "assistant", "content": raw_text})
                 messages.append({"role": "user", "content": RETRY_PROMPT.format(pdf_name=file_name, page_num=1)})

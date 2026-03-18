@@ -461,10 +461,19 @@ def render_page_to_png(doc: fitz.Document, page_idx: int, dpi: int = DPI) -> byt
 def extract_json_from_text(text: str) -> str:
     """Try to extract JSON from response text, stripping markdown fences if present."""
     text = text.strip()
-    if text.startswith("```"):
-        text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
-        text = re.sub(r"\n?```$", "", text)
-        text = text.strip()
+    # Strip markdown fences anywhere in the text
+    text = re.sub(r"```json\s*", "", text)
+    text = re.sub(r"```\s*$", "", text)
+    text = re.sub(r"^```[a-zA-Z]*\s*", "", text)
+    text = text.strip()
+    # If there's text before the first '{', strip it
+    brace_idx = text.find("{")
+    if brace_idx > 0:
+        text = text[brace_idx:]
+    # If there's text after the last '}', strip it
+    rbrace_idx = text.rfind("}")
+    if rbrace_idx >= 0 and rbrace_idx < len(text) - 1:
+        text = text[:rbrace_idx + 1]
     return text
 
 
@@ -796,19 +805,18 @@ def process_text_page(
         }
     ]
 
-    SIMPLIFIED_PROMPT = """
+    SIMPLIFIED_PROMPT = f"""
 This is a construction document section.
 Extract ANY trades or work items visible.
-Return valid JSON only:
-{
+Return valid JSON only (no markdown fences):
+{{
   "trades_and_scope": [
-    {"trade": "trade name", "scope": ["scope item"]}
+    {{"csi_division": "NA", "trade": "trade name", "scope_description": "scope", "estimated_cost": null, "vendor_name": null, "quantity": null, "source_pdf": "{file_name}", "source_page": {page_num}, "evidence": "brief quote"}}
   ],
-  "submission_requirements": [],
-  "flags": []
-}
+  "submission_requirements": []
+}}
 If truly nothing is extractable, return:
-{"trades_and_scope": [], "submission_requirements": [], "flags": []}
+{{"trades_and_scope": [], "submission_requirements": []}}
 """
 
     for attempt in range(4):
@@ -2181,19 +2189,18 @@ def process_page(
         }
     ]
 
-    SIMPLIFIED_PROMPT = """
+    SIMPLIFIED_PROMPT = f"""
 This is a construction drawing page.
 Extract ANY trades or work items visible.
-Return valid JSON only:
-{
+Return valid JSON only (no markdown fences):
+{{
   "trades_and_scope": [
-    {"trade": "trade name", "scope": ["scope item"]}
+    {{"csi_division": "NA", "trade": "trade name", "scope_description": "scope", "estimated_cost": null, "vendor_name": null, "quantity": null, "source_pdf": "{pdf_name}", "source_page": {page_num}, "evidence": "brief quote"}}
   ],
-  "submission_requirements": [],
-  "flags": []
-}
+  "submission_requirements": []
+}}
 If truly nothing is extractable, return:
-{"trades_and_scope": [], "submission_requirements": [], "flags": []}
+{{"trades_and_scope": [], "submission_requirements": []}}
 """
 
     for attempt in range(4):
@@ -2242,7 +2249,7 @@ If truly nothing is extractable, return:
         except (json.JSONDecodeError, ValidationError) as e:
             print(f"[VISION PARSE] {pdf_name} p.{page_num} attempt {attempt+1}/4: "
                   f"{type(e).__name__}: {e}", flush=True)
-            if 'raw_text' in dir():
+            if 'raw_text' in locals():
                 print(f"[VISION RAW] first 500 chars: {raw_text[:500]}", flush=True)
             if attempt == 0:
                 retry_text = RETRY_PROMPT.format(pdf_name=pdf_name, page_num=page_num)
@@ -2438,13 +2445,28 @@ def _extract_text_page(
         f"{prompt_text}"
     )
 
-    for attempt in range(2):
+    simplified_prompt = (
+        f"--- DOCUMENT CONTENT ({pdf_name}, Page {page_num}) ---\n\n"
+        f"{text}\n\n"
+        f"--- END DOCUMENT CONTENT ---\n\n"
+        f"Extract trades/scope from this construction document page.\n"
+        f"Return ONLY valid JSON (no markdown fences, no explanation):\n"
+        f'{{"trades_and_scope": [{{"csi_division": "NA", "trade": "name", '
+        f'"scope_description": "scope", "estimated_cost": null, "vendor_name": null, '
+        f'"quantity": null, "source_pdf": "{pdf_name}", "source_page": {page_num}, '
+        f'"evidence": "quote"}}], "submission_requirements": []}}\n'
+        f"If nothing extractable: "
+        f'{{"trades_and_scope": [], "submission_requirements": []}}'
+    )
+
+    for attempt in range(3):
         try:
+            use_prompt = simplified_prompt if attempt >= 2 else full_prompt
             response = client.messages.create(
                 model=MODEL,
                 max_tokens=4096,
                 temperature=TEMPERATURE,
-                messages=[{"role": "user", "content": full_prompt}],
+                messages=[{"role": "user", "content": use_prompt}],
             )
 
             usage = response.usage
@@ -2459,23 +2481,23 @@ def _extract_text_page(
             return extraction
 
         except (json.JSONDecodeError, ValidationError) as e:
-            print(f"[TEXT PARSE] {pdf_name} p.{page_num} attempt {attempt+1}/2: "
+            print(f"[TEXT PARSE] {pdf_name} p.{page_num} attempt {attempt+1}/3: "
                   f"{type(e).__name__}: {e}", flush=True)
-            if 'raw_text' in dir():
+            if 'raw_text' in locals():
                 print(f"[TEXT RAW] first 500 chars: {raw_text[:500]}", flush=True)
-            if attempt == 1:
+            if attempt == 2:
                 stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
         except anthropic.APIStatusError as e:
             if e.status_code == 429:
                 wait = 2 ** attempt
                 time.sleep(wait)
                 continue
-            if attempt == 0:
+            if attempt < 2:
                 time.sleep(3)
             else:
                 stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
         except anthropic.APIError:
-            if attempt == 0:
+            if attempt < 2:
                 time.sleep(3)
             else:
                 stats["failed_pages"].append(f"{pdf_name} p.{page_num}")

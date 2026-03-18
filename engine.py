@@ -23,7 +23,6 @@ import random
 
 import anthropic
 import fitz  # PyMuPDF
-import google.generativeai as genai
 import pandas as pd
 from pydantic import BaseModel, ValidationError, field_validator
 
@@ -70,18 +69,6 @@ def _rate_limited_api_call(client, **kwargs):
             raise  # Re-raise so caller's retry logic handles it
     finally:
         _api_semaphore.release()
-
-# ─── Gemini Vision ───────────────────────────────────────────────────────────
-GEMINI_MODEL = "gemini-3.1-pro-preview"
-_gemini_configured = False
-
-
-def _get_gemini_client(api_key: str):
-    global _gemini_configured
-    if not _gemini_configured:
-        genai.configure(api_key=api_key)
-        _gemini_configured = True
-    return genai.GenerativeModel(model_name=GEMINI_MODEL)
 
 try:
     from wage_rates import get_wage, CT_WAGE_RATES
@@ -2176,64 +2163,12 @@ def _detect_site_scope(consolidated: list[dict], trades: list) -> dict:
 # ─── Page processing ────────────────────────────────────────────────────────
 
 
-def _call_gemini_vision(
-    png_bytes: bytes,
-    prompt_text: str,
-    gemini_api_key: str,
-    pdf_name: str = "",
-    page_num: int = 0,
-    emit: Callable = None,
-) -> str:
-    """
-    Send page image to Gemini 3.1 Pro for extraction.
-    Returns raw text response matching Claude format.
-    Falls back to Claude if Gemini fails.
-    """
-    import PIL.Image
-    import io as _io
-
-    _emit = emit or (lambda x: None)
-
-    try:
-        model = _get_gemini_client(gemini_api_key)
-        image = PIL.Image.open(_io.BytesIO(png_bytes))
-
-        response = model.generate_content(
-            [image, prompt_text],
-            request_options={"timeout": 120},
-            generation_config=genai.GenerationConfig(
-                temperature=0.1,
-                max_output_tokens=4096,
-            ),
-            media_resolution="media_resolution_high",
-        )
-
-        raw_text = response.text
-
-        # Strip markdown fences if Gemini wraps JSON
-        if raw_text.strip().startswith("```"):
-            raw_text = raw_text.strip()
-            raw_text = raw_text.split("\n", 1)[1]
-            raw_text = raw_text.rsplit("```", 1)[0]
-
-        _emit(f"[GEMINI] {pdf_name} p.{page_num} — "
-              f"{len(png_bytes)//1024}KB")
-
-        return raw_text.strip()
-
-    except Exception as e:
-        _emit(f"[GEMINI FALLBACK] {pdf_name} p.{page_num}"
-              f" — Gemini failed ({e}), using Claude")
-        return None  # caller handles fallback
-
-
 def process_page(
     client: anthropic.Anthropic,
     image_bytes: bytes,
     pdf_name: str,
     page_num: int,
     stats: dict,
-    gemini_api_key: str = "",
 ) -> Optional[PageExtraction]:
     """Send a page image to Claude and parse the extraction result."""
 
@@ -2588,7 +2523,7 @@ def _extract_text_page(
     )
 
 
-def _process_pdf(client, file_path, emit, global_stats, file_stats, gemini_api_key=""):
+def _process_pdf(client, file_path, emit, global_stats, file_stats):
     """Process a PDF file page by page using parallel extraction (8 workers)."""
     file_name = file_path.name
     file_path_str = str(file_path)
@@ -2654,7 +2589,6 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats, gemini_api_k
                                     "api_calls": 0, "failed_pages": []}
                     vision_extraction = process_page(
                         client, png_bytes, file_name, page_num, vision_stats,
-                        gemini_api_key=gemini_api_key,
                     )
                     # Accumulate Vision stats regardless
                     page_stats["input_tokens"] += vision_stats["input_tokens"]
@@ -2689,7 +2623,6 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats, gemini_api_k
 
             extraction = process_page(
                 client, png_bytes, file_name, page_num, page_stats,
-                gemini_api_key=gemini_api_key,
             )
 
         # Thread-safe stats accumulation
@@ -2753,7 +2686,7 @@ def _process_pdf(client, file_path, emit, global_stats, file_stats, gemini_api_k
     return reqs, trades
 
 
-def _process_image(client, file_path, emit, global_stats, file_stats, gemini_api_key=""):
+def _process_image(client, file_path, emit, global_stats, file_stats):
     """Process a standalone image file via Vision API."""
     file_name = file_path.name
     emit(f"Processing image {file_name}...")
@@ -3369,7 +3302,6 @@ def process_files(
     file_paths: list[Path],
     api_key: str,
     progress_callback: Optional[Callable[[str], None]] = None,
-    gemini_api_key: str = "",
 ) -> tuple[list[SubmissionRequirement], list[TradeAndScope], dict]:
     """
     Process a list of files (PDFs, images, DOCX, EML, XLSX, CSV, TXT):
@@ -3414,9 +3346,9 @@ def process_files(
         emit(f"Opening {file_path.name}...")
 
         if ext == ".pdf":
-            reqs, trades = _process_pdf(client, file_path, emit, global_stats, file_stats, gemini_api_key=gemini_api_key)
+            reqs, trades = _process_pdf(client, file_path, emit, global_stats, file_stats)
         elif ext in image_exts:
-            reqs, trades = _process_image(client, file_path, emit, global_stats, file_stats, gemini_api_key=gemini_api_key)
+            reqs, trades = _process_image(client, file_path, emit, global_stats, file_stats)
         elif ext in text_exts:
             reqs, trades = _process_text_file(client, file_path, emit, global_stats, file_stats)
         else:

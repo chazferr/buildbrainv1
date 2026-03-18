@@ -3040,7 +3040,7 @@ CONSTRUCTION DOCUMENTS TEXT:
             max_tokens=300,
             messages=[{"role": "user", "content": prompt_identity}]
         )
-        text1 = resp1.content[0].text.strip().replace('```json', '').replace('```', '').strip()
+        text1 = extract_json_from_text(_get_response_text(resp1))
         identity = json.loads(text1)
 
         _pt = identity.get('project_type', 'unknown')
@@ -3119,7 +3119,7 @@ CONSTRUCTION DOCUMENTS TEXT:
             max_tokens=1000,
             messages=[{"role": "user", "content": prompt_dimensions}]
         )
-        text2 = resp2.content[0].text.strip().replace('```json', '').replace('```', '').strip()
+        text2 = extract_json_from_text(_get_response_text(resp2))
         dimensions = json.loads(text2)
 
         # Merge: identity fields take priority

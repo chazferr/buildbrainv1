@@ -2248,6 +2248,9 @@ If truly nothing is extractable, return:
             stats["output_tokens"] += usage.output_tokens
             stats["api_calls"] += 1
 
+            print(f"[DEBUG] response.content types: {[getattr(b, 'type', 'unknown') for b in response.content]}", flush=True)
+            print(f"[DEBUG] raw_text first 200: {_get_response_text(response)[:200]}", flush=True)
+
             raw_text = _get_response_text(response)
             json_text = extract_json_from_text(raw_text)
 

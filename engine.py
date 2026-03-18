@@ -19,11 +19,57 @@ from email import policy
 from pathlib import Path
 from typing import Callable, Optional
 
+import random
+
 import anthropic
 import fitz  # PyMuPDF
 import google.generativeai as genai
 import pandas as pd
 from pydantic import BaseModel, ValidationError, field_validator
+
+
+# ─── Global API rate limiter ────────────────────────────────────────────────
+# Limits concurrent Anthropic API calls and staggers them to avoid 429s.
+
+_api_semaphore = threading.Semaphore(2)  # max 2 in-flight API calls at once
+_api_lock = threading.Lock()
+_last_api_call = 0.0
+_MIN_API_INTERVAL = 0.5  # seconds between API calls
+_backoff_until = 0.0  # global backoff timestamp — all workers pause when a 429 hits
+
+
+def _rate_limited_api_call(client, **kwargs):
+    """Wrapper around client.messages.create with global rate limiting."""
+    global _last_api_call, _backoff_until
+
+    _api_semaphore.acquire()
+    try:
+        # If any worker recently hit a 429, all workers wait
+        now = time.time()
+        if now < _backoff_until:
+            pause = _backoff_until - now
+            print(f"[THROTTLE] Global backoff — waiting {pause:.1f}s", flush=True)
+            time.sleep(pause)
+
+        # Stagger: ensure minimum interval between calls
+        with _api_lock:
+            now = time.time()
+            wait = _MIN_API_INTERVAL - (now - _last_api_call)
+            if wait > 0:
+                time.sleep(wait)
+            _last_api_call = time.time()
+
+        try:
+            return client.messages.create(**kwargs)
+        except anthropic.APIStatusError as e:
+            if e.status_code == 429:
+                # Signal ALL workers to back off
+                backoff_secs = 10 + random.uniform(2, 5)
+                _backoff_until = time.time() + backoff_secs
+                print(f"[RATE LIMIT] 429 hit — global backoff {backoff_secs:.1f}s", flush=True)
+            raise  # Re-raise so caller's retry logic handles it
+    finally:
+        _api_semaphore.release()
 
 # ─── Gemini Vision ───────────────────────────────────────────────────────────
 GEMINI_MODEL = "gemini-3.1-pro-preview"
@@ -838,7 +884,8 @@ If truly nothing is extractable, return:
                     }
                 ]
 
-            response = client.messages.create(
+            response = _rate_limited_api_call(
+                client,
                 model=MODEL,
                 max_tokens=4096,
                 temperature=TEMPERATURE,
@@ -2227,7 +2274,8 @@ If truly nothing is extractable, return:
                     }
                 ]
 
-            response = client.messages.create(
+            response = _rate_limited_api_call(
+                client,
                 model=MODEL,
                 max_tokens=4096,
                 temperature=TEMPERATURE,
@@ -2287,7 +2335,8 @@ If truly nothing is extractable, return:
             print(f"[VISION API] {pdf_name} p.{page_num} attempt {attempt+1}/4: "
                   f"HTTP {e.status_code}: {e.message}", flush=True)
             if e.status_code == 429:
-                wait = 2 ** attempt
+                wait = (2 ** (attempt + 1)) + random.uniform(1, 3)
+                print(f"[RATE LIMIT] Waiting {wait:.1f}s before retry...", flush=True)
                 time.sleep(wait)
                 continue
             if attempt < 3:
@@ -2462,7 +2511,8 @@ def _extract_text_page(
     for attempt in range(3):
         try:
             use_prompt = simplified_prompt if attempt >= 2 else full_prompt
-            response = client.messages.create(
+            response = _rate_limited_api_call(
+                client,
                 model=MODEL,
                 max_tokens=4096,
                 temperature=TEMPERATURE,
@@ -2488,8 +2538,11 @@ def _extract_text_page(
             if attempt == 2:
                 stats["failed_pages"].append(f"{pdf_name} p.{page_num}")
         except anthropic.APIStatusError as e:
+            print(f"[TEXT API] {pdf_name} p.{page_num} attempt {attempt+1}/3: "
+                  f"HTTP {e.status_code}: {e.message}", flush=True)
             if e.status_code == 429:
-                wait = 2 ** attempt
+                wait = (2 ** (attempt + 1)) + random.uniform(1, 3)
+                print(f"[RATE LIMIT] Waiting {wait:.1f}s before retry...", flush=True)
                 time.sleep(wait)
                 continue
             if attempt < 2:
@@ -2723,7 +2776,7 @@ If truly nothing is extractable, return:
                     {"type": "text", "text": SIMPLIFIED_PROMPT},
                 ]}]
 
-            response = client.messages.create(model=MODEL, max_tokens=4096,
+            response = _rate_limited_api_call(client, model=MODEL, max_tokens=4096,
                                               temperature=TEMPERATURE, messages=messages)
             page_stats["input_tokens"] += response.usage.input_tokens
             page_stats["output_tokens"] += response.usage.output_tokens

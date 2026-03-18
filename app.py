@@ -67,6 +67,23 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/api/health")
+def health():
+    """Quick API key validation — tests a tiny Claude call."""
+    import anthropic
+    try:
+        client = anthropic.Anthropic(api_key=API_KEY)
+        resp = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=5,
+            messages=[{"role": "user", "content": "Say OK"}],
+        )
+        return jsonify({"status": "ok", "model": "claude-sonnet-4-6",
+                        "reply": resp.content[0].text.strip()})
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
 @app.route("/api/upload", methods=["POST"])
 def upload():
     """Accept file uploads (PDFs, DOCX, XLSX, EML, images, etc.) and return a job_id."""
